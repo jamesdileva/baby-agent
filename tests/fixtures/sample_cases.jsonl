@@ -1,0 +1,2 @@
+{"id": 1, "signature": "test_preflight::fail(0.0s)", "error_excerpt": "FAIL(0.0s) - test never ran", "diagnosis": "harness ran from wrong cwd; probe never executed", "times_seen": 3, "last_seen": "2026-08-20T10:00:00Z", "confirmed_by": "agent-b"}
+{"id": 2, "signature": "test_config_load::unicode_decode_error", "error_excerpt": "UnicodeDecodeError: 'utf-8' codec can't decode byte 0xef", "diagnosis": "UTF-8 BOM prefix on config file; strip before parse", "times_seen": 2, "last_seen": "2026-08-22T09:30:00Z", "confirmed_by": "tess"}
