@@ -17,7 +17,7 @@ from . import signatures
 from . import store
 from . import teach as teach_mod
 from . import transport
-from .skills import auto_capture, digest, flaky, journal, locate, merge, preflight, regression, repocheck, snapshot
+from .skills import archive_mine, auto_capture, digest, flaky, journal, locate, merge, preflight, regression, repocheck, snapshot
 
 
 def build_parser():
@@ -258,6 +258,32 @@ def build_parser():
         default=None,
         metavar="PATH",
         help="digest store file (default: digest.jsonl)",
+    )
+
+    miner = sub.add_parser(
+        "mine",
+        help="mine archives, git logs, and transcripts into cases",
+        epilog=(
+            "Digest DECISIONS.md files, git logs, and failure transcripts "
+            "into importable cases. Known lore (FAIL(0.0s), BOM, stale-"
+            "installer) is retrievable via lookup after mining. Exit "
+            "contract: 0 success, 1 operational error."
+        ),
+    )
+    miner.add_argument("directory", help="root directory to scan for sources")
+    miner.add_argument(
+        "--out",
+        required=True,
+        metavar="PATH",
+        help="output file for mined cases (cases.jsonl format)",
+    )
+    miner.add_argument(
+        "--sources",
+        action="append",
+        default=None,
+        dest="sources",
+        choices=["decisions", "git", "transcripts"],
+        help="source types to mine (repeatable; default: all)",
     )
 
     return parser
@@ -542,6 +568,19 @@ def format_results_ask(results, query):
     return digest.format_results(results, query)
 
 
+def _cmd_mine(args):
+    try:
+        results = archive_mine.mine_directory(args.directory, args.sources)
+    except archive_mine.MineError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    for path, err in results["errors"]:
+        print(f"warning: {path}: {err}", file=sys.stderr)
+    count = archive_mine.export_mined(results["cases"], args.out)
+    print(archive_mine.format_results(results))
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -560,6 +599,7 @@ _COMMANDS = {
     "merge": _cmd_merge,
     "digest": _cmd_digest,
     "ask": _cmd_ask,
+    "mine": _cmd_mine,
 }
 
 
