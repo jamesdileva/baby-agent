@@ -17,7 +17,7 @@ from . import signatures
 from . import store
 from . import teach as teach_mod
 from . import transport
-from .skills import auto_capture, flaky, journal, locate, merge, preflight, regression, repocheck, snapshot
+from .skills import auto_capture, digest, flaky, journal, locate, merge, preflight, regression, repocheck, snapshot
 
 
 def build_parser():
@@ -224,6 +224,41 @@ def build_parser():
     )
     merger.add_argument("--into", required=True, type=int, dest="into_id", help="target case ID (keeps signature/diagnosis)")
     merger.add_argument("--from", required=True, type=int, dest="from_id", help="source case ID (absorbed and removed)")
+
+    digester = sub.add_parser(
+        "digest",
+        help="ingest markdown documents into the knowledge base",
+        epilog=(
+            "Walk a directory, parse .md files into sections, store them "
+            "as retrievable entries. Re-digest updates existing entries "
+            "(dedup by content hash). Exit contract: 0 success, "
+            "1 operational error."
+        ),
+    )
+    digester.add_argument("directory", help="directory of markdown files to ingest")
+    digester.add_argument(
+        "--store",
+        default=None,
+        metavar="PATH",
+        help="digest store file (default: digest.jsonl)",
+    )
+
+    asker = sub.add_parser(
+        "ask",
+        help="search digested documents for a query",
+        epilog=(
+            "Search digest entries by case-insensitive keywords. Returns "
+            "cited passages from ingested markdown. Exit contract: 0 "
+            "matches found, 1 no matches."
+        ),
+    )
+    asker.add_argument("query", help="search keywords")
+    asker.add_argument(
+        "--store",
+        default=None,
+        metavar="PATH",
+        help="digest store file (default: digest.jsonl)",
+    )
 
     return parser
 
@@ -480,6 +515,33 @@ def _cmd_merge(args):
     return 0
 
 
+def _cmd_digest(args):
+    try:
+        results = digest.digest_directory(args.directory, args.store)
+    except digest.DigestError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    for path, err in results["errors"]:
+        print(f"warning: {path}: {err}", file=sys.stderr)
+    print(
+        f"digested {results['files_scanned']} file(s): "
+        f"{results['entries_added']} added, "
+        f"{results['entries_updated']} updated"
+    )
+    return 0
+
+
+def _cmd_ask(args):
+    results = digest.search(args.query, args.store)
+    print(format_results_ask(results, args.query))
+    return 0 if results else 1
+
+
+def format_results_ask(results, query):
+    """Render ask results as human-readable cited output."""
+    return digest.format_results(results, query)
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -496,6 +558,8 @@ _COMMANDS = {
     "journal": _cmd_journal,
     "teach": _cmd_teach,
     "merge": _cmd_merge,
+    "digest": _cmd_digest,
+    "ask": _cmd_ask,
 }
 
 

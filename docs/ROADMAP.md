@@ -219,7 +219,14 @@ base as retrievable entries (`qa ask "deployment?"` returns cited passages).
 Project context becomes lookup, not re-reading.
 
 **Exit:** digested corpus answers fixture questions with correct citations;
-re-digest updates rather than duplicates.
+re-digest updates rather than duplicates. **Met:**
+tests/test_digest_skill.py (42 tests: parse_markdown headings/BOM/empty/
+h2/nested/text-before-heading/nonexistent; DigestStore add/persist/dedup/
+hash-update/incremental-ids/corrupt; search content/heading/case-insensitive/
+multi-keyword/empty; format_results truncation; snippet middle/start/end;
+digest_directory single/nested/re-dedup/skip-non-md/empty-dir/search-after-
+digest; CLI exit contracts digest=0,1 ask=0,1); 433 OK, shipped
+2026-08-26 (S20 slice).
 
 ### S21 — `archive-mine` skill: learn from past eras
 
