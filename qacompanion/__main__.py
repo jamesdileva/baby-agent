@@ -15,6 +15,7 @@ from . import lookup as lookup_mod
 from . import report as report_mod
 from . import signatures
 from . import store
+from . import teach as teach_mod
 from . import transport
 from .skills import auto_capture, flaky, journal, locate, preflight, regression, repocheck, snapshot
 
@@ -188,6 +189,28 @@ def build_parser():
         default=None,
         metavar="FILE",
         help="ledger file path (default: JOURNAL.md in cwd)",
+    )
+
+    teacher = sub.add_parser(
+        "teach",
+        help="add a rule to the skill registry",
+        epilog=(
+            "Validates a JSON rule and appends it to a pack file "
+            "(default: skills/taught.json). The pack is re-validated "
+            "after each write. Exit contract: 0 rule accepted, "
+            "1 validation error, 2 I/O error."
+        ),
+    )
+    teacher.add_argument(
+        "--rule",
+        required=True,
+        help="JSON rule object (pattern, classification, diagnosis_hint, ...)",
+    )
+    teacher.add_argument(
+        "--pack",
+        default=teach_mod.DEFAULT_PACK,
+        metavar="PATH",
+        help=f"pack file to write (default: {teach_mod.DEFAULT_PACK})",
     )
 
     return parser
@@ -411,6 +434,27 @@ def _cmd_journal(args):
         return 1
 
 
+def _cmd_teach(args):
+    import json as json_mod
+    try:
+        rule_dict = json_mod.loads(args.rule)
+    except json_mod.JSONDecodeError as exc:
+        print(f"error: invalid JSON: {exc}", file=sys.stderr)
+        return 1
+    pack_path = Path(args.pack)
+    created = not pack_path.exists()
+    try:
+        teach_mod.teach_rule(rule_dict, pack_path)
+    except teach_mod.RegistryError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    except OSError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(teach_mod.render_teach(rule_dict, pack_path, created=created))
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -425,6 +469,7 @@ _COMMANDS = {
     "snapshot": _cmd_snapshot,
     "repocheck": _cmd_repocheck,
     "journal": _cmd_journal,
+    "teach": _cmd_teach,
 }
 
 

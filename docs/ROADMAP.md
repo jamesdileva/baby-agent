@@ -192,7 +192,12 @@ propose rules for parent sign-off.
 
 **Exit:** a rule pack added at runtime is honored by the next lookup without
 code edits; malformed packs rejected loudly; core behavior identical when
-the skills dir is empty.
+the skills dir is empty. **Met:** tests/test_skill_registry.py (53 tests:
+rule validation incl. regex/classification/exit-code/unknown-fields; pack
+validation; load_pack/load_all with I/O + JSON errors; match_rules with
+regex/exit-code/multi-pack; format output; teach creates pack/appends/
+validates/rejects/round-trips; CLI exit contracts 0/1); shipped 2026-08-26
+(S16 slice).
 
 ### S17 — Module-contract skills (guarded)
 
