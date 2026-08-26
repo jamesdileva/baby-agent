@@ -61,6 +61,14 @@ def _validate_case(case, line_number):
         ) from exc
 
 
+def serialize(cases):
+    """Canonical frozen-format bytes (id-sorted, one JSON object per LF line)."""
+    return "".join(
+        json.dumps(case, ensure_ascii=False) + "\n"
+        for case in sorted(cases, key=lambda item: item["id"])
+    )
+
+
 def utc_now_stamp(now=None):
     moment = now or datetime.now(timezone.utc)
     return moment.isoformat(timespec="seconds").replace("+00:00", "Z")
@@ -107,10 +115,7 @@ class CaseStore:
     def save(self, cases):
         """Atomically replace the store (temp copy in the same directory)."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        payload = "".join(
-            json.dumps(case, ensure_ascii=False) + "\n"
-            for case in sorted(cases, key=lambda item: item["id"])
-        )
+        payload = serialize(cases)
         handle_fd, tmp_name = tempfile.mkstemp(
             dir=str(self.path.parent), prefix=".cases-", suffix=".tmp"
         )

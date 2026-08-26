@@ -70,7 +70,12 @@ is pinned here only to mark the exact S4 seeding state. The two files under
 
 ## Re-import path
 
-`qa import` (ROADMAP S5) does not exist yet; re-creating the base from lore
-means replaying the `record` commands above. The import duplicate-signature
-policy is proposed as D-0005 in docs/DECISIONS.md and awaits human ruling;
-no import merge logic lands before that ruling.
+`qa import` (ROADMAP S5, shipped 2026-08-25) validates the FULL frozen
+format (`id` included) and atomically replaces the store; per D-0005 it
+aborts while any signature already exists live unless `--merge` is given
+(folds `times_seen`, never overwrites stored fields).
+
+`seed/lore.jsonl` itself is the frozen PRE-record shape (no `id`), so it
+is deliberately NOT a valid import file. Restoring lore means replaying
+the `record` commands above; moving or restoring whole case bases means
+export -> import.

@@ -12,6 +12,7 @@ from . import lookup as lookup_mod
 from . import report as report_mod
 from . import signatures
 from . import store
+from . import transport
 
 
 def build_parser():
@@ -33,6 +34,21 @@ def build_parser():
     sub.add_parser("report", help="summarize the case base")
 
     sub.add_parser("accuracy", help="score recall against the frozen holdout")
+
+    exporter = sub.add_parser("export", help="atomic copy of the case base")
+    exporter.add_argument("--out", required=True, help="destination path for the copy")
+
+    importer = sub.add_parser(
+        "import", help="validate a case file, then atomically replace the store"
+    )
+    importer.add_argument(
+        "--in", dest="infile", required=True, help="cases.jsonl-format file to import"
+    )
+    importer.add_argument(
+        "--merge",
+        action="store_true",
+        help="fold duplicate signatures into existing cases (bumps times_seen)",
+    )
 
     return parser
 
@@ -86,11 +102,35 @@ def _cmd_accuracy(args):
     return 0
 
 
+def _cmd_export(args):
+    try:
+        count = transport.export_cases(store.CaseStore(), args.out)
+    except (ValueError, OSError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(f"exported {count} case(s) -> {args.out}")
+    return 0
+
+
+def _cmd_import(args):
+    try:
+        added, merged, total = transport.import_cases(
+            store.CaseStore(), args.infile, merge=args.merge
+        )
+    except (ValueError, OSError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(f"imported {added} new case(s), merged {merged}; store holds {total}")
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
     "report": _cmd_report,
     "accuracy": _cmd_accuracy,
+    "export": _cmd_export,
+    "import": _cmd_import,
 }
 
 

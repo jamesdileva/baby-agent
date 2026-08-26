@@ -86,7 +86,7 @@ changes until that slice lands.
 Provenance: goal-vs-spec divergence flagged by agent-a, confirmed firsthand
 by agent-b (mails #13/#14); condition text verbatim from mail #15.
 
-## D-0005 import duplicate-signature policy [RATIFIED 2026-08-25 - implementation pending]
+## D-0005 import duplicate-signature policy [RATIFIED 2026-08-25 - implemented]
 
 Original proposal: **reject duplicates** outright, import replaces
 wholesale, no merge-by-bump.
@@ -100,9 +100,23 @@ an explicit opt-in merge**:
 > convenience; merging is opt-in.
 
 This supersedes the reject-only wording above (condition text verbatim
-from mail #15). Implementation lands in the import slice; no import logic
-before then (agent-b TASK #14 criterion 4 honored). Provenance: TASK #14
-criterion 4; spec S5 row ("Validate then atomically replace").
+from mail #15). Provenance: TASK #14 criterion 4; spec S5 row ("Validate
+then atomically replace").
+
+IMPLEMENTED in the S5 slice (qacompanion/transport.py). Implementation
+notes binding the shipped behavior: duplicates are detected BOTH within
+the import file and against the live store; the default path aborts
+naming every offending `line N: signature`. `--merge` folds counts only
+(`times_seen` summed onto the live twin; diagnosis, error_excerpt,
+confirmed_by, last_seen untouched - corrections travel the teacher loop,
+never import), appends unseen signatures with fresh ids in file order,
+and refuses a signature matching several live cases (AMBIGUOUS state)
+rather than picking a winner. Intra-file duplicates abort in both modes.
+Import files must satisfy the full frozen format (`id` included);
+signatures pass through verbatim (canonical() stays a record/lookup
+gate) so export -> import -> export is byte-stable. Consequence recorded
+in SEEDING.md: seed/lore.jsonl (pre-record shape, no id) is not an
+import file; lore restores via the record CLI.
 
 ## Slice-numbering canon [IN FORCE - documentation only]
 
