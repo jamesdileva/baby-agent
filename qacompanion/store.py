@@ -26,7 +26,7 @@ _FIELD_TYPES = {
 
 
 def default_path():
-    """Explicit arg > env override > repo-root default."""
+    """Env override (QA_CASES_FILE) > repo-root default."""
     return Path(os.environ.get(ENV_OVERRIDE) or DEFAULT_PATH)
 
 

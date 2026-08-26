@@ -25,7 +25,11 @@ _FIELD_TYPES = {"signature": str, "diagnosis": str}
 
 
 def default_holdout_path():
-    """Explicit arg > env override > repo-root default."""
+    """Env override (QA_HOLDOUT_FILE) > repo-root default.
+
+    Explicit paths flow through load_holdout(path=...); the CLI passes
+    no path argument, so the env override is the only redirect channel.
+    """
     return Path(os.environ.get(ENV_OVERRIDE) or DEFAULT_HOLDOUT_PATH)
 
 

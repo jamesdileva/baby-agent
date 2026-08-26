@@ -5,9 +5,9 @@ Per AGENTS.md, `docs/spec.md` is frozen for v1: entries here *propose*;
 the human disposes. Nothing below changes behavior until signed off
 (except where explicitly marked as already-in-force implementation detail).
 
-## D-0001 lookup exit-code policy [PROPOSED - needs human sign-off]
+## D-0001 lookup exit-code policy [RATIFIED 2026-08-25 - human mail #15]
 
-Proposed spec wording:
+Proposed spec wording (ratified):
 
 > `lookup` exits 0 on well-formed stores, including when no case matches
 > (printing exactly `no matching case`). A corrupt store raises ValueError,
@@ -20,9 +20,11 @@ This matches the shipped behavior since S2 (tests/test_lookup.py).
 Provenance: agent-b TASK #9 acceptance criterion 5; first flagged in the
 S2 review of b9b83f5.
 
-Status: implemented in code, pending human ratification of the wording.
+Status: RATIFIED AS WORDED by the human [mail #15, 2026-08-25]:
+"no matching case" exits 0 (successful honest answer); corrupt store
+exits 1. Behavior already matches since S2; no code change required.
 
-## D-0002 '::' separator is non-injective [KNOWN LIMITATION - guard deferred]
+## D-0002 '::' separator is non-injective [RATIFIED 2026-08-25 - deferred - human mail #15]
 
 `SEPARATOR = " :: "` is not injective: distinct (test_name, error_line)
 pairs can compose to the same signature string whenever the parts
@@ -45,10 +47,16 @@ a control-character separator in v2 with a store migration.
 Decision: ship v1 with the deterministic-first-split rule, this documented
 limitation, and an AMBIGUOUS backstop; revisit only if a real collision is
 observed in cases.jsonl.
+RATIFIED AS DEFERRED by the human [mail #15, 2026-08-25], with the same
+revisit trigger (real observed collision). No code change required.
 Provenance: agent-b TASK #9 acceptance criterion 6 ("an undocumented known
 collision is worse than a documented deferred one").
 
 ## D-0003 naive last_seen interpreted as UTC [PROPOSED - needs human sign-off]
+
+NOTE (2026-08-25): the human's mail #15 ruled on exactly four items
+(D-0001, D-0002, D-0004, D-0005). This entry was NOT among them and
+remains open; behavior is unchanged pending a ruling.
 
 Proposed spec wording (Input robustness / report):
 
@@ -62,32 +70,39 @@ conservative. Implemented in shipped behavior since 83b6f91
 Provenance: agent-b review of 83b6f91 (mail #13) suggested putting the
 interpretation on the record.
 
-## D-0004 accuracy-score line inside `report` [PROPOSED - needs human ruling]
+## D-0004 accuracy-score line inside `report` [RATIFIED WITH CONDITION 2026-08-25 - implementation pending]
 
 PROJECT_GOAL.md's report bullet includes an "accuracy score"; spec.md L33
 (the frozen table row for `report`) does not. Per AGENTS.md the spec wins,
-so shipped `report` has NO accuracy line; accuracy lives in its own
-subcommand (`qa accuracy`). If ruled IN, proposed amendment wording:
-append "; accuracy score" to the spec report row and one line to
-report output. Until then, nothing changes.
+so shipped `report` has NO accuracy line yet; accuracy lives in its own
+subcommand (`qa accuracy`).
+
+RATIFIED IN by the human [mail #15, 2026-08-25], with one condition: when
+the holdout is empty or unplayed, the report line must degrade honestly
+(e.g. `accuracy: n/a - holdout not yet created`) - never a fabricated
+percentage. Implementation plan: append "; accuracy score" to the spec
+report row and add the line to report output in the next slice. Nothing
+changes until that slice lands.
 Provenance: goal-vs-spec divergence flagged by agent-a, confirmed firsthand
-by agent-b (mails #13/#14).
+by agent-b (mails #13/#14); condition text verbatim from mail #15.
 
-## D-0005 import duplicate-signature policy [PROPOSED - needs human ruling]
+## D-0005 import duplicate-signature policy [RATIFIED 2026-08-25 - implementation pending]
 
-Proposal: **reject duplicates**. `import --in P` validates the whole input
-atomically before touching live data; a signature appearing twice in the
-input file is a ValueError naming the second line, and nothing replaces the
-live base. Import replaces wholesale — merging near-duplicate signatures is
-a deliberate teacher act reserved for the future merge tool (ROADMAP S18),
-never a silent side effect of a copy operation.
+Original proposal: **reject duplicates** outright, import replaces
+wholesale, no merge-by-bump.
 
-Alternative considered and rejected for v1: merge-by-bump onto existing
-counts (silent mutation of recorded history during what looks like a copy).
+RATIFIED by the human [mail #15, 2026-08-25] as **reject by default, with
+an explicit opt-in merge**:
 
-Gate honored: no import logic lands until this is ruled (agent-b TASK #14
-criterion 4). Provenance: TASK #14 criterion 4; spec S5 row ("Validate then
-atomically replace").
+> On duplicate signature during import, abort that import and name every
+> offending line/signature in the error. Provide an explicit `--merge`
+> opt-in flag that bumps times_seen instead. Predictability over
+> convenience; merging is opt-in.
+
+This supersedes the reject-only wording above (condition text verbatim
+from mail #15). Implementation lands in the import slice; no import logic
+before then (agent-b TASK #14 criterion 4 honored). Provenance: TASK #14
+criterion 4; spec S5 row ("Validate then atomically replace").
 
 ## Slice-numbering canon [IN FORCE - documentation only]
 
@@ -105,14 +120,18 @@ citations. Historical drift, logged so citations stay unambiguous:
 The "S5" used in mail/task #14 titles for the accuracy work maps to
 ROADMAP S4 above. From here on: ROADMAP numbers only.
 
-## Pending human sign-off — single-pass queue
+## Ruling queue status [updated 2026-08-25, per human mail #15]
 
-All open rulings, for one-pass adjudication:
+Mail #15 ruled on four of the five open items in a single pass:
 
-1. **D-0001** lookup exit-code wording (0 on miss, 1 on corrupt store)
-   — implemented since S2, needs ratification.
-2. **D-0002** `' :: '` separator non-injectivity — known-limitation note;
-   acknowledge or direct a fix direction.
-3. **D-0003** naive last_seen → UTC fallback — implemented, ratify wording.
-4. **D-0004** accuracy-score line inside `report` — amendment needed if IN.
-5. **D-0005** import duplicate-signature policy — blocks S5 import work.
+1. **D-0001** lookup exit-code wording — RATIFIED as worded.
+2. **D-0002** `' :: '` separator non-injectivity — RATIFIED as deferred.
+3. **D-0003** naive last_seen → UTC fallback — STILL PROPOSED (not among
+   the four; awaiting ruling).
+4. **D-0004** accuracy-score line inside `report` — RATIFIED IN with the
+   honest-degradation condition; implementation queued.
+5. **D-0005** import duplicate-signature policy — RATIFIED: reject by
+   default naming offenders, `--merge` opt-in bumps times_seen;
+   implementation queued.
+
+Sole remaining open ruling: D-0003.
