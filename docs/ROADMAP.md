@@ -398,7 +398,11 @@ note in A). Reduces false `no matching case` results caused by near-duplicate
 signatures.
 
 **Exit:** merge preserves combined counts; B disappears from report; merging
-with itself is rejected.
+with itself is rejected. **Met:** tests/test_merge_skill.py (19 tests:
+validation same-id/nonexistent; counts combined; source removed/preserved;
+merged-from field; last-seen uses newer; target keeps identity; persistence;
+three-case merge; report disappears); CLI wired, 379 OK, shipped 2026-08-26
+(S18 slice).
 
 ### S19 — Robust I/O hardening
 

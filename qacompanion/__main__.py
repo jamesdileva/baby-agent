@@ -17,7 +17,7 @@ from . import signatures
 from . import store
 from . import teach as teach_mod
 from . import transport
-from .skills import auto_capture, flaky, journal, locate, preflight, regression, repocheck, snapshot
+from .skills import auto_capture, flaky, journal, locate, merge, preflight, regression, repocheck, snapshot
 
 
 def build_parser():
@@ -212,6 +212,18 @@ def build_parser():
         metavar="PATH",
         help=f"pack file to write (default: {teach_mod.DEFAULT_PACK})",
     )
+
+    merger = sub.add_parser(
+        "merge",
+        help="merge near-duplicate cases (dedup tool)",
+        epilog=(
+            "Merge case B into case A: combined times_seen, B removed, "
+            "merged-from note added to A. Exit contract: 0 success, "
+            "1 operational error (bad IDs, same case)."
+        ),
+    )
+    merger.add_argument("--into", required=True, type=int, dest="into_id", help="target case ID (keeps signature/diagnosis)")
+    merger.add_argument("--from", required=True, type=int, dest="from_id", help="source case ID (absorbed and removed)")
 
     return parser
 
@@ -455,6 +467,19 @@ def _cmd_teach(args):
     return 0
 
 
+def _cmd_merge(args):
+    try:
+        result = merge.merge(store.CaseStore(), args.into_id, args.from_id)
+    except merge.MergeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(merge.format_merge(result))
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -470,6 +495,7 @@ _COMMANDS = {
     "repocheck": _cmd_repocheck,
     "journal": _cmd_journal,
     "teach": _cmd_teach,
+    "merge": _cmd_merge,
 }
 
 
