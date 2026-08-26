@@ -17,7 +17,7 @@ from . import signatures
 from . import store
 from . import teach as teach_mod
 from . import transport
-from .skills import archive_mine, auto_capture, digest, flaky, journal, locate, merge, preflight, regression, repocheck, snapshot
+from .skills import archive_mine, auto_capture, digest, flaky, journal, locate, merge, preflight, regression, repocheck, school, snapshot
 
 
 def build_parser():
@@ -284,6 +284,39 @@ def build_parser():
         dest="sources",
         choices=["decisions", "git", "transcripts"],
         help="source types to mine (repeatable; default: all)",
+    )
+
+    schooler = sub.add_parser(
+        "school",
+        help="interactive session walking unconfirmed diagnoses",
+        epilog=(
+            "Walks pending (unconfirmed) cases, letting the parent "
+            "confirm, correct, or create new cases in one pass. Exit "
+            "contract: 0 session completed, 1 operational error."
+        ),
+    )
+    schooler.add_argument(
+        "--by",
+        required=True,
+        help="who is confirming (e.g., 'human', 'agent-a')",
+    )
+    schooler.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="max cases to process (default: all pending)",
+    )
+    schooler.add_argument(
+        "--cases",
+        default=None,
+        metavar="PATH",
+        help="cases store file (default: cases.jsonl)",
+    )
+    schooler.add_argument(
+        "--ledger",
+        default=None,
+        metavar="PATH",
+        help="journal ledger for session logging (default: none)",
     )
 
     return parser
@@ -581,6 +614,30 @@ def _cmd_mine(args):
     return 0
 
 
+def _cmd_school(args):
+    cs = store.CaseStore(args.cases)
+    try:
+        result = school.run_session(
+            cs,
+            by=args.by,
+            limit=args.limit,
+            ledger=args.ledger,
+        )
+    except school.SchoolError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(school.format_session_summary(
+        result["processed"],
+        result["confirmed"],
+        result["corrected"],
+        result["created"],
+    ))
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -600,6 +657,7 @@ _COMMANDS = {
     "digest": _cmd_digest,
     "ask": _cmd_ask,
     "mine": _cmd_mine,
+    "school": _cmd_school,
 }
 
 
