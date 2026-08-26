@@ -14,7 +14,7 @@ from . import report as report_mod
 from . import signatures
 from . import store
 from . import transport
-from .skills import auto_capture
+from .skills import auto_capture, flaky
 
 
 def build_parser():
@@ -34,6 +34,11 @@ def build_parser():
     lookup.add_argument("--sig", required=True, help="normalized failure fingerprint")
 
     sub.add_parser("report", help="summarize the case base")
+
+    sub.add_parser(
+        "flakes",
+        help="pass-after-fail stats; chronic flakes listed separately",
+    )
 
     sub.add_parser("accuracy", help="score recall against the frozen holdout")
 
@@ -102,13 +107,25 @@ def _cmd_lookup(args):
 def _cmd_report(args):
     try:
         cases = store.CaseStore().load()
-        output = "\n".join(
-            [report_mod.format_report(cases), report_mod.accuracy_line(cases)]
-        )
+        sections = [report_mod.format_report(cases), report_mod.accuracy_line(cases)]
+        if flaky.has_entries():
+            entries = flaky.FlakeStore().load()
+            sections.append(flaky.format_flakes(cases, entries))
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    print(output)
+    print("\n".join(sections))
+    return 0
+
+
+def _cmd_flakes(args):
+    try:
+        cases = store.CaseStore().load()
+        entries = flaky.FlakeStore().load()
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(flaky.format_flakes(cases, entries))
     return 0
 
 
@@ -169,6 +186,13 @@ def _cmd_run(args):
             file=sys.stderr,
         )
         return result["returncode"]
+    if result["pass_error"]:
+        print(
+            f"warning: pass counting failed ({result['pass_error']})",
+            file=sys.stderr,
+        )
+    for row in result["passed"]:
+        print(f"pass counted case #{row['id']} times_passed={row['times_passed']}")
     recorded = result["recorded"]
     if recorded is None:
         return result["returncode"]
@@ -185,6 +209,7 @@ _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
     "report": _cmd_report,
+    "flakes": _cmd_flakes,
     "accuracy": _cmd_accuracy,
     "export": _cmd_export,
     "import": _cmd_import,

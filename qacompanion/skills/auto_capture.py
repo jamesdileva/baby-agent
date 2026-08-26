@@ -16,9 +16,11 @@ exactly one case:
 - diagnosis: honest placeholder naming exit code and command; never a
   fabricated diagnosis. Teacher review turns it into real lore.
 
-A zero-exit run writes nothing to the store. Hang policy (explicit
-decision, docs/DECISIONS.md): no timeout is enforced; a hung child hangs
-the wrapper, exactly like running the command by hand.
+A zero-exit run writes nothing to the store, but (S8) counts one pass
+for each existing case keyed by this command via the flaky skill; a
+stats failure there warns without masking the child's exit code. Hang
+policy (explicit decision, docs/DECISIONS.md): no timeout is enforced;
+a hung child hangs the wrapper, exactly like running the command by hand.
 """
 
 import os
@@ -26,6 +28,7 @@ import re
 import subprocess
 
 from .. import signatures, store
+from . import flaky
 
 GUARD_ENV = "QA_RUN_ACTIVE"
 CONFIRMED_BY = "auto-capture"
@@ -77,17 +80,21 @@ def build_diagnosis(argv_text, returncode):
 
 
 def run_wrapped(cmd):
-    """Execute cmd and, on failure, record one case.
+    """Execute cmd; on failure record one case, on success count passes.
 
-    Returns {"returncode", "output_text", "recorded", "record_error"}:
-    recorded is None on success, record_error carries a store-failure
-    message. The child's exit code is never masked by a recording problem;
-    callers surface record_error without changing the returned code.
+    Returns {"returncode", "output_text", "recorded", "record_error",
+    "passed", "pass_error"}: recorded is None on success, record_error
+    carries a store-failure message, passed lists the cases that counted
+    a pass (S8), pass_error a flaky-stats failure. The child's exit code
+    is never masked by a recording problem; callers surface the errors
+    without changing the returned code.
     """
     completed = execute(cmd)
     output_text = (completed.stdout or b"").decode("utf-8", errors="replace")
     recorded = None
     record_error = None
+    passed = []
+    pass_error = None
     if completed.returncode != 0:
         argv_text = " ".join(cmd)
         signature, excerpt = parse_failure(argv_text, output_text)
@@ -107,9 +114,16 @@ def run_wrapped(cmd):
                 "signature": signature,
                 "excerpt": excerpt,
             }
+    else:
+        try:
+            passed = flaky.FlakeStore().observe_command_pass(" ".join(cmd))
+        except ValueError as exc:
+            pass_error = str(exc)
     return {
         "returncode": completed.returncode,
         "output_text": output_text,
         "recorded": recorded,
         "record_error": record_error,
+        "passed": passed,
+        "pass_error": pass_error,
     }

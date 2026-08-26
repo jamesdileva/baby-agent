@@ -328,3 +328,36 @@ Provenance: digest + mail #56 + mail #61 + REVIEW mails #68/#70;
 regression tests test_signature_stable_across_volatile_summary_counts /
 test_first_error_marker_line_wins_over_later_noise; disconfirmer rerun
 IDENTICAL=True post-fix.
+
+## D-0008 S8 flaky skill storage & semantics [2026-08-26, slice landing]
+
+Decisions made while implementing S8 (flaky skill), binding because
+ROADMAP's exit criteria left them open:
+
+- Sidecar storage: flake stats live in `flakes.jsonl` beside the case
+  store (same directory; QA_CASES_FILE routes both), NOT as new fields
+  in cases.jsonl - spec.md is frozen ("v2 may add fields"), so v1
+  cannot extend the case schema. Sidecar entries are strict-validated
+  {"signature", "times_passed" >= 1, "last_pass"}, signature-sorted,
+  atomically saved (mirrors store.py policy).
+- Pass observation is ambient and symmetric with S7: a ZERO-exit
+  `qa run` counts one pass for every existing case whose signature's
+  command part equals the wrapped command's normalized form (the same
+  signatures.canonical partition rule that keyed the failure). Passes
+  NEVER create cases - absence of evidence stays absent. Manual
+  `record` remains pass-blind (no observation path exists for it).
+- Flake-rate denominator: fails = times_seen, passes = times_passed;
+  rate = passes / (passes + fails). Sound only since D-0007 Amendment
+  1: one stable signature per failing test (hard gate #65).
+- Chronic = strictly >50% pass rate (ROADMAP wording). `qa flakes`
+  lists chronic separately from <=50% history; cases with zero passes
+  are never listed (they are ordinary failures, not flake evidence);
+  orphaned sidecar entries are retained on disk but not displayed.
+- Corruption policy mirrors S7/core: unreadable or malformed sidecar
+  or case store exits 1 on read paths (`flakes`, `report`); during a
+  passing `qa run`, a stats failure warns on stderr and NEVER masks
+  the child's exit code.
+- Report flag gating: the flaky block appears in `report` output once
+  at least one pass has been observed; before that, zero noise.
+- Provenance: Phase B authorization (human mail #56) + reviewer gate
+  lift with firsthand verification (REVIEW mail #72 @400b68c).
