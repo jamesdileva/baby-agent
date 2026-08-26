@@ -261,6 +261,44 @@ taught patterns, self-proposed refinements, measurable accuracy. It does not
 produce general reasoning. Novel situations still escalate — that escalation
 path IS part of the design, forever.
 
+## Baby-brain track (v4 moonshot) — a local, free mind on top
+
+The decoupled agent gets a voice: a small LOCAL model (Ollama, e.g.
+gemma-class) wired to everything the colony taught. Zero paid tokens; the
+case base + digested docs become retrieval context (RAG); simple tool calls
+(search cases, grep docs, read journal) let it research before answering.
+
+Separation of concerns: qacompanion-core stays deterministic and LLM-free
+(D1 stands for the engine); the brain is an OPTIONAL layer that reads the
+same data. If the model is removed, the tool remains fully functional.
+
+### S26 — Ollama bridge + retrieval context
+
+`qa ask "<question>"` — retrieves relevant cases/doc-passages/skills, feeds
+them as context to the local model, returns a grounded answer WITH citations.
+Falls back to plain lookup when Ollama is absent.
+
+**Exit:** fixture questions answered with correct citations using a local
+model; identical question without Ollama returns raw lookups.
+
+### S27 — Research tools
+
+Expose case-search, doc-grep, and journal-read as simple callable tools the
+model may invoke before answering (kept deliberately few and dumb — tiny
+models are unreliable orchestrators).
+
+**Exit:** questions requiring two-step research answered correctly; a
+tool-loop guard prevents infinite calls.
+
+### S28 — Escalation handshake
+
+When confidence is low, the brain drafts the question for a LIVE agent
+(opencode session), and the agent's answer is distilled back into the case
+base — closing the loop: novel questions today, free lookups tomorrow.
+
+**Exit:** one escalated question demonstrably becomes a stored case after
+parent confirmation.
+
 ## Deferred
 
 - Interactive teach/watch console (TUI): stream failures, confirm diagnoses,
