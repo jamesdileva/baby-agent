@@ -11,6 +11,7 @@ from unittest import mock
 from qacompanion.__main__ import main
 from qacompanion import lookup
 from qacompanion import store
+from tests import quiet_stdout
 
 
 def make_case(case_id, signature, diagnosis, times_seen=1):
@@ -59,6 +60,7 @@ class FormatMatchesTests(unittest.TestCase):
 
 class LookupCliTests(unittest.TestCase):
     def setUp(self):
+        self.stdout_buf = quiet_stdout(self)
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.store_path = Path(self._tmp.name) / "cases.jsonl"
@@ -93,6 +95,7 @@ class CrossPathE2eTests(unittest.TestCase):
     POSIX_SIG = "tests/test_config.py::test_load :: filenotfounderror: /home/j/proj/data/config.json"
 
     def setUp(self):
+        self.stdout_buf = quiet_stdout(self)
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.store_path = Path(self._tmp.name) / "cases.jsonl"

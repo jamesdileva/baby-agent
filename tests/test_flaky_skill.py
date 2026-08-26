@@ -18,6 +18,7 @@ from unittest import mock
 from qacompanion import store
 from qacompanion.__main__ import main
 from qacompanion.skills import auto_capture, flaky
+from tests import quiet_stdout
 
 
 class FlakyUnitTests(unittest.TestCase):
@@ -106,6 +107,7 @@ class FlakyCliTests(unittest.TestCase):
     """E2E through main(): fail via `qa run`, pass later via same cmd."""
 
     def setUp(self):
+        self.stdout_buf = quiet_stdout(self)
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.store_path = Path(self._tmp.name) / "cases.jsonl"

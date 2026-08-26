@@ -12,6 +12,7 @@ from unittest import mock
 from qacompanion.__main__ import main
 from qacompanion import report as report_mod
 from qacompanion import store
+from tests import quiet_stdout
 
 NOW = datetime(2026, 8, 26, tzinfo=timezone.utc)
 
@@ -101,6 +102,7 @@ class FormatReportTests(unittest.TestCase):
 
 class ReportCliTests(unittest.TestCase):
     def setUp(self):
+        self.stdout_buf = quiet_stdout(self)
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.store_path = Path(self._tmp.name) / "cases.jsonl"

@@ -14,6 +14,7 @@ from unittest import mock
 from qacompanion.__main__ import main
 from qacompanion import accuracy as accuracy_mod
 from qacompanion import store
+from tests import quiet_stdout
 
 
 def make_case(case_id, signature, diagnosis="d", times_seen=1):
@@ -182,6 +183,7 @@ class FormatAccuracyTests(unittest.TestCase):
 
 class AccuracyCliTests(unittest.TestCase):
     def setUp(self):
+        self.stdout_buf = quiet_stdout(self)
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.store_path = Path(self._tmp.name) / "cases.jsonl"

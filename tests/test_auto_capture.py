@@ -16,6 +16,7 @@ from unittest import mock
 from qacompanion import store
 from qacompanion.__main__ import main
 from qacompanion.skills import auto_capture
+from tests import quiet_stdout
 
 
 class AutoCaptureUnitTests(unittest.TestCase):
@@ -99,6 +100,7 @@ class AutoCaptureCliTests(unittest.TestCase):
     """E2E through main() against an isolated temp store."""
 
     def setUp(self):
+        self.stdout_buf = quiet_stdout(self)
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.store_path = Path(self._tmp.name) / "cases.jsonl"
@@ -189,6 +191,9 @@ class AutoCaptureCliTests(unittest.TestCase):
 
 
 class StoreIsolationTests(unittest.TestCase):
+    def setUp(self):
+        self.stdout_buf = quiet_stdout(self)
+
     def test_env_override_routes_auto_record_to_isolated_store(self):
         """A QA_CASES_FILE-wrapped run lands ONLY in the override store.
 

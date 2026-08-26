@@ -20,6 +20,7 @@ from unittest import mock
 
 from qacompanion.__main__ import main
 from qacompanion.skills import preflight
+from tests import quiet_stdout
 
 DIGEST = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
@@ -249,6 +250,7 @@ class RealGitE2ETests(unittest.TestCase):
     """The single real-hook e2e pair (S10 pattern): real git, temp repo."""
 
     def setUp(self):
+        self.stdout_buf = quiet_stdout(self)
         self._tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.addCleanup(self._tmp.cleanup)
         self.root = Path(self._tmp.name)

@@ -20,6 +20,7 @@ from qacompanion import report as report_mod
 from qacompanion import store
 from qacompanion.__main__ import main
 from qacompanion.skills import auto_capture, flaky, regression
+from tests import quiet_stdout
 
 BASE = datetime(2026, 8, 25, 10, 0, 0, tzinfo=timezone.utc)
 
@@ -142,6 +143,7 @@ class RegressionCliTests(unittest.TestCase):
     """Golden report output + the single real-hook e2e (mail #93)."""
 
     def setUp(self):
+        self.stdout_buf = quiet_stdout(self)
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.store_path = Path(self._tmp.name) / "cases.jsonl"

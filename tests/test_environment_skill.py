@@ -18,6 +18,7 @@ from unittest import mock
 from qacompanion import store
 from qacompanion.__main__ import main
 from qacompanion.skills import auto_capture, environment
+from tests import quiet_stdout
 
 
 class ClassifyUnitTests(unittest.TestCase):
@@ -105,6 +106,7 @@ class EnvironmentCaptureCliTests(unittest.TestCase):
     """E2E through main(): classified vs unclassified captured failures."""
 
     def setUp(self):
+        self.stdout_buf = quiet_stdout(self)
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.store_path = Path(self._tmp.name) / "cases.jsonl"

@@ -9,10 +9,12 @@ from unittest import mock
 
 from qacompanion.__main__ import main
 from qacompanion import store
+from tests import quiet_stdout
 
 
 class RecordCliTests(unittest.TestCase):
     def setUp(self):
+        self.stdout_buf = quiet_stdout(self)
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.store_path = Path(self._tmp.name) / "cases.jsonl"
@@ -52,6 +54,31 @@ class RecordCliTests(unittest.TestCase):
         code = main(["record", "--sig", "s", "--err", "e", "--diag", "d"])
         self.assertEqual(1, code)
         self.assertEqual(before, self.store_path.read_bytes())
+
+
+class ParentCliStdoutLeakRegressionTests(unittest.TestCase):
+    """Failure mode (mails #93/#98/#112): parent-CLI lines printed by
+    in-process main() escapes into the unittest console because capture
+    paths redirected stderr only; stdout capture must hold them."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.store_path = Path(self._tmp.name) / "cases.jsonl"
+        patcher = mock.patch.dict(os.environ, {store.ENV_OVERRIDE: str(self.store_path)})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.stdout_buf = quiet_stdout(self)
+
+    def test_record_lines_land_in_buffer_not_console(self):
+        argv = ["record", "--sig", "s", "--err", "e", "--diag", "d"]
+        code = main(argv)
+        main(argv)
+        self.assertEqual(0, code)
+        self.assertEqual(
+            "recorded new case #1 times_seen=1\nbumped case #1 times_seen=2\n",
+            self.stdout_buf.getvalue(),
+        )
 
 
 if __name__ == "__main__":
