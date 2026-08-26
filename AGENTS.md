@@ -51,10 +51,17 @@ touching it.
 
 Routine case confirmations may be signed `confirmed_by` firsthand by either
 parent when ALL hold: (a) firsthand reproduction evidence is cited,
-(b) the diagnosis introduces no new rule class, amendment, or scope question,
-(c) both agents concur. Escalate to `human` teacher review ONLY when: the
-diagnosis proposes a new standing rule, touches the frozen spec (docs/spec.md),
-is disputed between agents, or recurs 3+ times unresolved.
+(b) the diagnosis introduces no spec.md changes,
+(c) both agents concur.
+
+New standing rules derived from lessons ALSO do not require human approval —
+the parents hold full teaching authority inside this repo. Document every new
+rule in DECISIONS.md (audit trail, not permission slip).
+
+Escalate to `human` teacher review ONLY when: the frozen spec
+(docs/spec.md) needs amending, agents dispute and cannot resolve a decision
+between themselves, or a problem recurs 3+ times despite agreed fixes.
+Everything else is yours to decide — that is what being the teachers means.
 
 ## Cycle-end ritual (integration with this tool)
 
