@@ -742,3 +742,59 @@ S12, born from "where does the taskline repo live on disk?").
 
 Status: awaiting agent-b REVIEW of the S12 slice; S13 snapshot next
 on approval.
+
+## S13 snapshot slice [2026-08-26]
+
+Workplace literacy continues: `qa snapshot SOURCE [--archives DIR]
+[--label LABEL]` (ROADMAP S13, born from "archive it so it's not
+lost."). Landed on the S12 hold closure: agent-b REVIEW mail #116
+ratified a3ad542 as-is firsthand (three alternating greens, five
+files, DECISIONS verified) and bound two riders onto S13 - both ride
+this commit.
+
+- Pins frozen in the module docstring (fixtures-first discipline):
+  stamps are UTC YYYYMMDDThhmmssZ with optional "<label>-" prefix;
+  labels rejected when empty or containing '/', '\\', ':' or dot
+  components ('.', '..'); a stamp collision REFUSES to overwrite and
+  touches nothing; the manifest never lists itself; file rows sorted
+  for deterministic output (relative posix path, size, SHA256);
+  hashing chunked at 1 MiB so large files never buffer whole; empty
+  dirs survive via a "dirs" row; shutil-default symlink copy.
+- Honesty pin: every snapshot SELF-VERIFIES post-copy (re-hashes the
+  archive, renders "manifest verified: N/N") - a manifest is never
+  taken on faith. Standalone re-verifier for old archives deferred;
+  revisit when a consumer needs it.
+- Exit contract PROPOSED as spec amendment, extending the still-
+  PENDING-human exit-code QUESTION (one ruling should now cover
+  preflight, locate AND snapshot): 0 created+self-verified,
+  1 operational (bad source/label, stamp collision), 2 environment
+  (copy/write failure or post-copy drift).
+- Tests: 21 new (stamp/label gates; hash vector + 2-chunk-plus-17
+  equivalence; manifest sorted/deterministic/self-exclusion/dirs row;
+  four verify verdicts pristine/tamper/extra/missing plus corrupt
+  manifest and size-drift rows; hermetic golden CLI set incl.
+  collision-no-touch, invalid-label-before-any-write, archives parent
+  created on demand, copy-failure exit 2; real round-trip e2e pair -
+  unicode + binary + empty-dir tree restored byte-identical and every
+  restored file re-hashed against the manifest). Suite 195 -> 216,
+  tmp-dir fixtures only (case#9 rider).
+- LESSON RIDER (binding, review mail #116): SOLE-COMMITTER rule
+  adopted as standing practice under delegated teaching authority
+  (b96ebfd, auth #94) - agent-a's slices commit exclusively; reviews
+  pin HEAD hashes; no commit lands inside an open review window
+  without an explicit sole-committer claim. Root cause of the S12
+  ordering breach was live-editing during review (module mtimes
+  06:00-06:04 vs commit 06:06:55), so reviewers sample ONLY the
+  pinned hash going forward. Audit trail entry, not a permission
+  slip; recorded here same-commit as required.
+- Same-commit rider: freshness-gated case#6 bump 20->21 (phantom
+  #34, identical false pair 'ROADMAP-dirty' + 'FAIL(0.0s)';
+  firsthand disproof porcelain EMPTY + Ran 195 OK EXIT=0 in 4.847s
+  at HEAD=a3ad542; authorizations verbatim - mail #116: "Freshness-
+  gated bump case#6 20->21 AUTHORIZED", citing mail #115 ratify-as-is
+  APPROVAL of a3ad542); tally stands at 31 observed / 21 recorded
+  since anchor 2026-08-26T07:22Z.
+
+Status: awaiting agent-b REVIEW of the S13 slice (pin this landed
+HEAD hash); S14 repocheck next on approval; Phase gate entry follows
+once S15 journal lands.

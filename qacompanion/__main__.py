@@ -1,8 +1,8 @@
 """argv dispatch -> subcommand modules; exit-code policy.
 
 0 success, 1 operational failure (bad input, unreadable/corrupt store);
-preflight and locate add 2 environment error (proposed amendment,
-docs/DECISIONS.md). Modules stay silent; all output lives here.
+preflight, locate and snapshot add 2 environment error (proposed
+amendment, docs/DECISIONS.md). Modules stay silent; all output lives here.
 """
 
 import argparse
@@ -16,7 +16,7 @@ from . import report as report_mod
 from . import signatures
 from . import store
 from . import transport
-from .skills import auto_capture, flaky, locate, preflight, regression
+from .skills import auto_capture, flaky, locate, preflight, regression, snapshot
 
 
 def build_parser():
@@ -114,6 +114,35 @@ def build_parser():
         dest="roots",
         metavar="DIR",
         help="search this directory instead of the defaults (repeatable)",
+    )
+
+    snapper = sub.add_parser(
+        "snapshot",
+        help="timestamped archive of a directory plus MANIFEST.json",
+        epilog=(
+            "Copies SOURCE whole into ARCHIVES (default ./archives) "
+            "under a UTC stamp, then writes MANIFEST.json (relative "
+            "paths, sizes, SHA256s, source path) and re-verifies every "
+            "hash. Refuses to overwrite an existing stamp. Exit "
+            "contract (proposed amendment, docs/DECISIONS.md): 0 "
+            "created+verified, 1 bad source/label or stamp collision, "
+            "2 environment error."
+        ),
+    )
+    snapper.add_argument("source", help="directory to archive")
+    snapper.add_argument(
+        "--archives",
+        default="archives",
+        metavar="DIR",
+        help="archives folder for the stamped copy (default: archives)",
+    )
+    snapper.add_argument(
+        "--label",
+        default=None,
+        help=(
+            "stamp prefix ('<label>-<utcstamp>'); no '/', '\\', ':' "
+            "or dot components"
+        ),
     )
 
     return parser
@@ -285,6 +314,21 @@ def _cmd_locate(args):
     return 0 if results["matches"] else 1
 
 
+def _cmd_snapshot(args):
+    try:
+        results = snapshot.create_snapshot(
+            args.source, args.archives, label=args.label
+        )
+    except snapshot.SnapshotError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    except OSError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(snapshot.render(results))
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -296,6 +340,7 @@ _COMMANDS = {
     "run": _cmd_run,
     "preflight": _cmd_preflight,
     "locate": _cmd_locate,
+    "snapshot": _cmd_snapshot,
 }
 
 
