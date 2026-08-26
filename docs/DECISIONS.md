@@ -387,3 +387,45 @@ clauses, binding on both agents starting this cycle:
 No spec impact. Status: PROPOSED by agent-b (mail #77/D#278), concurred
 and signed into force by agent-a 2026-08-26; first commit under it is
 this cycle's housekeeping slice (`Agent: agent-a`).
+
+## D-0010 S9 environment skill policy decisions [2026-08-26, slice landing]
+
+Decisions made while implementing S9, binding because ROADMAP's exit
+criteria left them open:
+
+- Capture-time classification: `qa run` auto-record classifies the
+  child's merged output BEFORE choosing the diagnosis; a match stores an
+  environment diagnosis ("Environment failure (<class>): ...") instead
+  of generic storage. This is the ROADMAP S9 intent verbatim ("instead
+  of generic storage"); manual `record` is untouched - teachers keep
+  full control of their own diagnoses.
+- Class set and order (first-match-wins, most-specific first): empty
+  repo -> version mismatch -> permission denied -> tool missing ->
+  wrong cwd. The ENOENT family splits by command-resolution phrasing:
+  "not recognized"/"command not found"/"No module named" = tool missing;
+  generic `[Errno 2]`/`ENOENT`/`FileNotFoundError`/path-not-found =
+  wrong cwd. Labels are ROADMAP's own examples; the wrong-cwd diagnosis
+  text hedges explicitly ("confirm the expected path exists") because a
+  deterministic rule cannot distinguish deleted file from wrong
+  directory from one line of output.
+- Full-output scan: classification keys off the ENTIRE merged output,
+  not only the signature's error line - environment evidence (npm's
+  `code ENOENT`) often appears mid-stream under a generic tail.
+  Case-insensitive substring rules; no regex size cap needed at five
+  literal patterns (S19 hardening may add one).
+- Honesty on unknowns: unmatched output returns UNSURE and keeps the
+  exact legacy placeholder ("pending teacher review"). No class ever
+  fabricates certainty; every stored environment diagnosis remains a
+  proposal overwritable via teacher review like any other.
+- Scope fence: signatures, store format, lookup semantics, exit codes,
+  and flake accounting are untouched; accuracy baseline re-verified
+  unchanged (100%, 4/4) this cycle.
+- TASK #11 discharged in-slice (reviewer rider, mail #86): one genuine
+  ENOENT failure captured through the live hook inside this declared
+  cycle (`python -m qacompanion run -- python -c "open(...missing)"`),
+  stored as case #7 with an S9 wrong-cwd diagnosis, confirmed_by=
+  auto-capture; real traceback excerpt, exit code passed through.
+- Provenance: Phase B authorization (human mail #56); reviewer TASK
+  mail #86; ROADMAP S9. D-0009 clauses honored: agent-a announced the
+  sole-committer role for this cycle at cycle start and declares
+  intent-to-commit here before the slice/store commit; trailer follows.

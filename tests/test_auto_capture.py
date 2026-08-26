@@ -6,7 +6,6 @@ verification culture): the e2e tests here drive actual subprocesses.
 
 import contextlib
 import io
-import json
 import os
 import tempfile
 import unittest
@@ -191,8 +190,19 @@ class AutoCaptureCliTests(unittest.TestCase):
 
 class StoreIsolationTests(unittest.TestCase):
     def test_env_override_routes_auto_record_to_isolated_store(self):
+        """A QA_CASES_FILE-wrapped run lands ONLY in the override store.
+
+        Verified as a byte-for-byte non-touch of the repo-root store
+        rather than by counting confirmed_by=auto-capture rows there:
+        since case #7 (TASK #11 discharge, D-0010) the live base
+        legitimately HOLDS auto-capture cases, so the old zero-rows
+        heuristic misfired. Byte comparison proves the same isolation
+        property regardless of live-store history.
+        """
         with tempfile.TemporaryDirectory() as tmp:
             isolated = Path(tmp) / "isolated.jsonl"
+            live = Path(store.DEFAULT_PATH)
+            live_before = live.read_bytes() if live.exists() else None
             with mock.patch.dict(os.environ, {store.ENV_OVERRIDE: str(isolated)}):
                 os.environ.pop(auto_capture.GUARD_ENV, None)
                 stderr = io.StringIO()
@@ -202,13 +212,10 @@ class StoreIsolationTests(unittest.TestCase):
                     )
             self.assertEqual(1, code)
             self.assertTrue(isolated.exists())  # went to override, not repo base
-            live = Path(store.DEFAULT_PATH)
-            if live.exists():
-                live_cases = [json.loads(line) for line in live.read_text(
-                    encoding="utf-8-sig").splitlines() if line.strip()]
-                self.assertFalse(
-                    any("auto-capture" == c["confirmed_by"] for c in live_cases)
-                )
+            if live_before is None:
+                self.assertFalse(live.exists())
+            else:
+                self.assertEqual(live_before, live.read_bytes())
 
 
 if __name__ == "__main__":

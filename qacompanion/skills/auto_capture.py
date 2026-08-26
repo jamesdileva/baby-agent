@@ -13,8 +13,11 @@ exactly one case:
   remaining non-empty line. This keeps signatures stable when only a
   runner's summary counts vary between otherwise identical failures.
 - error_excerpt: merged output tail, bounded to MAX_EXCERPT_CHARS
-- diagnosis: honest placeholder naming exit code and command; never a
-  fabricated diagnosis. Teacher review turns it into real lore.
+- diagnosis: the S9 environment skill classifies the merged output first;
+  a match records an environment diagnosis ("tool missing", "wrong cwd",
+  ...) instead of generic storage. Unclassified output keeps the honest
+  placeholder naming exit code and command - never a fabricated
+  diagnosis. Teacher review turns either into real lore.
 
 A zero-exit run writes nothing to the store, but (S8) counts one pass
 for each existing case keyed by this command via the flaky skill; a
@@ -28,7 +31,7 @@ import re
 import subprocess
 
 from .. import signatures, store
-from . import flaky
+from . import environment, flaky
 
 GUARD_ENV = "QA_RUN_ACTIVE"
 CONFIRMED_BY = "auto-capture"
@@ -98,11 +101,15 @@ def run_wrapped(cmd):
     if completed.returncode != 0:
         argv_text = " ".join(cmd)
         signature, excerpt = parse_failure(argv_text, output_text)
+        diagnosis = (
+            environment.diagnose(output_text)
+            or build_diagnosis(argv_text, completed.returncode)
+        )
         try:
             case, created = store.CaseStore().record(
                 signature=signature,
                 error_excerpt=excerpt,
-                diagnosis=build_diagnosis(argv_text, completed.returncode),
+                diagnosis=diagnosis,
                 by=CONFIRMED_BY,
             )
         except ValueError as exc:

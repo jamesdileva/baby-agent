@@ -49,6 +49,19 @@ diagnosis). A zero-exit run records nothing. No timeout is enforced — a
 hung child hangs the wrapper (explicit decision, docs/DECISIONS.md).
 Nested `qa run` invocations are refused.
 
+### Environment classification (S9 skill)
+
+When `run` auto-records a failure, the merged output is first classified
+against a deterministic, ordered rule set (see
+`qacompanion/skills/environment.py`). Matches record an environment
+diagnosis instead of the generic placeholder: `empty repo` (git outside
+any work tree), `version mismatch`, `permission denied`, `tool missing`
+(command/module not found), or `wrong cwd` (ENOENT family - the
+npm-ENOENT lesson). Unclassified output keeps the honest "pending teacher
+review" placeholder; classification never changes signatures, exit codes,
+or lookup semantics, and teacher review can overwrite it like any
+diagnosis.
+
 - Case base: `cases.jsonl` in the repo root (override with `QA_CASES_FILE`).
 - Holdout: `seed/holdout.jsonl`, frozen at creation (override
   `QA_HOLDOUT_FILE`). Mutating it invalidates every future accuracy
