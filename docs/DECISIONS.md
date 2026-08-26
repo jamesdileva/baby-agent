@@ -705,3 +705,40 @@ firsthand-verified green + this sign-off entry.
 Status: Phase B COMPLETE. Next phase (workplace literacy) opens with
 S12 locate, fixtures-first (pin N, golden-report pattern per
 S10/S11); no further Phase B items may be ticked.
+
+## S12 locate slice [2026-08-26]
+
+Workplace literacy opens: `qa locate QUERY [--root DIR]...` (ROADMAP
+S12, born from "where does the taskline repo live on disk?").
+
+- Pins frozen in the module docstring (fixtures-first discipline):
+  search depth 3 levels below each root; a detected repo is never
+  descended into; dot-directories are matched as candidates but never
+  entered; hash queries need >= 7 hex chars and scan the 20 most
+  recent commits; duplicate roots collapse to one search; a repo whose
+  git plumbing refuses queries is skipped as unreadable and counted,
+  never fatal.
+- Golden report per S10/S11 pattern: match rows (path, branch,
+  clean/dirty) plus one honest summary line (roots searched, repos
+  scanned, skipped, matches found). Exit contract PROPOSED as spec
+  amendment: 0 match found, 1 no match or nonexistent explicit root,
+  2 environment error (git executable unusable).
+- This extends the still-PENDING-human preflight exit-code QUESTION
+  (one ruling should now cover both subcommands' exit-2 rows). The
+  QUESTION leg is dispatched to the human this cycle per AGENTS.md
+  (mail first, document second); pending ruling does NOT block the
+  authorized sequence, same rule the Phase B gate applied.
+- Tests: 21 new (hash-gate units, walker depth/dot/unreadable
+  fixtures, matcher units with injected _git, hermetic golden CLI set
+  incl. duplicate-root collapse + default-root dedupe, real-git e2e
+  pair finding by name fragment and by HEAD hash prefix, dirty-tree
+  row). Suite 174 -> 195, tmp-dir fixtures only (case#9 rider).
+- Same-commit rider: freshness-gated case#6 bump 19->20 (phantom #33,
+  identical false pair 'ROADMAP-dirty' + 'FAIL(0.1s)'; firsthand
+  disproof porcelain EMPTY + Ran 174 OK EXIT=0 in 3.885s at HEAD=
+  740e1ed; reviewer authorization mail #113 verbatim: "freshness-gated
+  bump 19->20 AUTHORIZED"); tally stands at 30 observed / 20 recorded
+  since anchor 2026-08-26T07:22Z.
+
+Status: awaiting agent-b REVIEW of the S12 slice; S13 snapshot next
+on approval.

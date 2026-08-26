@@ -1,8 +1,8 @@
 """argv dispatch -> subcommand modules; exit-code policy.
 
 0 success, 1 operational failure (bad input, unreadable/corrupt store);
-preflight adds 2 environment error (proposed amendment, docs/DECISIONS.md).
-Modules stay silent; all output lives here.
+preflight and locate add 2 environment error (proposed amendment,
+docs/DECISIONS.md). Modules stay silent; all output lives here.
 """
 
 import argparse
@@ -16,7 +16,7 @@ from . import report as report_mod
 from . import signatures
 from . import store
 from . import transport
-from .skills import auto_capture, flaky, preflight, regression
+from .skills import auto_capture, flaky, locate, preflight, regression
 
 
 def build_parser():
@@ -93,6 +93,27 @@ def build_parser():
             "transcript text file for the R3 sha256-ordering check "
             "(omitting it skips that rule honestly)"
         ),
+    )
+
+    finder = sub.add_parser(
+        "locate",
+        help="find repos by name fragment or commit-hash prefix",
+        epilog=(
+            "Walks common project roots (override with repeatable "
+            "--root), depth 3, matching repo names or the 20 most "
+            "recent commit hashes. Exit contract (proposed amendment, "
+            "docs/DECISIONS.md): 0 match found, 1 no match / bad root, "
+            "2 environment error (git unusable)."
+        ),
+    )
+    finder.add_argument("query", help="name fragment or >=7-char hex hash prefix")
+    finder.add_argument(
+        "--root",
+        action="append",
+        default=None,
+        dest="roots",
+        metavar="DIR",
+        help="search this directory instead of the defaults (repeatable)",
     )
 
     return parser
@@ -244,6 +265,26 @@ def _cmd_preflight(args):
     return 1 if any(r["status"] == "FAIL" for r in results) else 0
 
 
+def _cmd_locate(args):
+    if args.roots:
+        roots = []
+        for raw in args.roots:
+            root = Path(raw)
+            if not root.is_dir():
+                print(f"error: root does not exist: {root}", file=sys.stderr)
+                return 1
+            roots.append(root)
+    else:
+        roots = locate.default_roots()
+    try:
+        results = locate.search(args.query, roots)
+    except locate.LocateEnvError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(locate.render(results, args.query))
+    return 0 if results["matches"] else 1
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -254,6 +295,7 @@ _COMMANDS = {
     "import": _cmd_import,
     "run": _cmd_run,
     "preflight": _cmd_preflight,
+    "locate": _cmd_locate,
 }
 
 
