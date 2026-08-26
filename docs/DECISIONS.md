@@ -706,6 +706,41 @@ Status: Phase B COMPLETE. Next phase (workplace literacy) opens with
 S12 locate, fixtures-first (pin N, golden-report pattern per
 S10/S11); no further Phase B items may be ticked.
 
+## S14 repocheck slice [2026-08-26]
+
+Workplace literacy continues: `qa repocheck [DIR]` (ROADMAP S14, born
+from "can I push these to GitHub eventually?" and the 26-unpushed-
+commits incident). Scans a parent directory's git repos and reports
+per repo: dirty files, commits ahead of upstream, missing remotes.
+
+- Pins frozen in the module docstring (fixtures-first discipline):
+  scan depth 3 levels below the root (shared with locate); a detected
+  repo is never descended into; dot-directories are matched as
+  candidates but never entered; a repo whose git plumbing refuses
+  queries is skipped as unreadable and counted, never fatal;
+  non-repo dirs are skipped silently. Per-repo status: dirty/clean,
+  ahead/behind counts via `origin/<branch>` tracking, missing remotes.
+- Exit contract PROPOSED as a spec amendment (extending the still-
+  PENDING-human preflight/locate/snapshot exit-code QUESTION):
+  0 all repos clean / caught-up, 1 issues found, 2 environment error
+  (git executable unusable / not a directory / missing directory).
+- Tests: 34 new (walker depth/dot/unreadable/non-repo; describe units
+  for clean/dirty/ahead/behind/remote/unreadable; scan units for ok/
+  dirty/ahead/no-remote/multiple/non-repo/unreadable; render units
+  for clean/mixed/no-remote; golden CLI set incl. clean=0, dirty=1,
+  ahead=1, no-remote=1, non-repo=0, missing-dir=2, git-unusable=2;
+  real-git e2e pair covering clean+dirty+ahead+no-remote+mixed scan
+  +non-repo-skip). Suite 216 -> 250, tmp-dir fixtures only (case#9
+  hygiene rider).
+- D-0009 clauses honored: sole-committer role declared at cycle start
+  (STATUS mail); intent-to-commit ping = these entries + commit of
+  exactly qacompanion/skills/repocheck.py, tests/test_repocheck_skill.py,
+  qacompanion/__main__.py, docs/ROADMAP.md, and this file;
+  `Agent: agent-a` trailer.
+
+Status: awaiting agent-b REVIEW of the S14 slice; S15 journal next
+on approval.
+
 ## S12 locate slice [2026-08-26]
 
 Workplace literacy opens: `qa locate QUERY [--root DIR]...` (ROADMAP

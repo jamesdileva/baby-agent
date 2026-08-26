@@ -16,7 +16,7 @@ from . import report as report_mod
 from . import signatures
 from . import store
 from . import transport
-from .skills import auto_capture, flaky, locate, preflight, regression, snapshot
+from .skills import auto_capture, flaky, locate, preflight, regression, repocheck, snapshot
 
 
 def build_parser():
@@ -143,6 +143,23 @@ def build_parser():
             "stamp prefix ('<label>-<utcstamp>'); no '/', '\\', ':' "
             "or dot components"
         ),
+    )
+
+    checker = sub.add_parser(
+        "repocheck",
+        help="multi-repo health report (dirty, ahead, missing remote)",
+        epilog=(
+            "Scans a directory for git repos and reports per repo: dirty "
+            "files, commits ahead of upstream, missing remotes. Exit "
+            "contract (proposed amendment, docs/DECISIONS.md): 0 all "
+            "clean, 1 issues found, 2 environment error."
+        ),
+    )
+    checker.add_argument(
+        "directory",
+        nargs="?",
+        default=".",
+        help="parent directory to scan (default: cwd)",
     )
 
     return parser
@@ -329,6 +346,25 @@ def _cmd_snapshot(args):
     return 0
 
 
+def _cmd_repocheck(args):
+    directory = Path(args.directory)
+    if not directory.is_dir():
+        print(f"error: {directory} is not a directory", file=sys.stderr)
+        return 2
+    try:
+        results = repocheck.scan([directory])
+    except repocheck.RepocheckEnvError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(repocheck.render(results, str(directory.resolve())))
+    issues = (
+        len(results["repos_dirty"])
+        + len(results["repos_ahead"])
+        + len(results["repos_missing_remote"])
+    )
+    return 1 if issues > 0 else 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -341,6 +377,7 @@ _COMMANDS = {
     "preflight": _cmd_preflight,
     "locate": _cmd_locate,
     "snapshot": _cmd_snapshot,
+    "repocheck": _cmd_repocheck,
 }
 
 

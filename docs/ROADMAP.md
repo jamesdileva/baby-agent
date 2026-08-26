@@ -155,7 +155,11 @@ commits ahead of upstream, missing remotes. One glance = which projects need
 attention.
 
 **Exit:** fixture repos with known states classified correctly; non-repo
-dirs skipped silently.
+dirs skipped silently. **Met:** tests/test_repocheck_skill.py (34 tests:
+walker depth/dot/unreadable/non-repo; describe/scan units for clean/
+dirty/ahead/behind/remote/unreadable; render units; golden CLI set incl.
+exit contracts; real-git e2e pair); scan depth 3, tmp-dir fixtures only
+(case#9 rider), shipped 2026-08-26 (S14 slice).
 
 ### S15 — `journal`: durable lessons ledger
 
