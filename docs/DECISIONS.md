@@ -630,3 +630,45 @@ Status: Phase B slices complete (S10+S11); phase-gate sign-off deferred
 until agent-b REVIEW confirms firsthand - S12 starts only after that
 entry exists. Console-leak micro-slice queued behind the gate (mail #98
 rider).
+
+## Outcomes signed: mails #101-#105; case#9 opened [2026-08-26]
+
+- Human teacher REVIEW #101 signed SAME cycle: case#8 CONFIRMED (helper
+  fail() shadowed unittest.TestCase.fail; rename landed in-commit at
+  52bb5f2). Store updated this slice: confirmed_by ->
+  'human (teacher REVIEW mail #101)', signature/excerpt/diagnosis/
+  times_seen/last_seen byte-stable (confirmation applied WITHOUT a
+  phantom times_seen bump - case#7 precedent). Protocol amendment
+  effective from #101 (already encoded upstream in AGENTS.md at
+  bc93d92/b96ebfd): either parent may sign confirmed_by firsthand for
+  ROUTINE cases when (a) firsthand reproduction evidence is cited,
+  (b) no new rule class/amendment/scope question is introduced,
+  (c) both parents concur; escalations stay reserved for spec
+  amendments, disputes, and chronic (3+) repeats.
+- Environment note #102 signed: Ollama installed and running here;
+  baby-brain sprints S26-S28 must NOT be skip-logged for a missing
+  prerequisite; pull qwen2.5-coder:1.5b before S26 begins. S30-S32
+  still require LoRA/GPU assessment on arrival.
+- Roadmap addition #103 signed: 'The Great Digest' pre-generation
+  ritual was authored by the human and committed at 809c7a0 between
+  S31 and S32; v5-track planning item, no Phase B action required.
+- Store drift reconciled (#105): 15->16 landed in-commit at 52bb5f2
+  (phantom #28); 16->17 landed in-commit at b96ebfd (phantom #29,
+  reviewer authorization D#354) - tally stands at 27 observed /
+  17 recorded since anchor 2026-08-26T07:22Z.
+- Case#9 OPENED + self-CONFIRMED under the #101 amendment:
+  fixture-hygiene class (scratch transcript written inside the seeded
+  repo-under-test dirties its clean-tree check; golden arithmetic must
+  reconcile with seeded violations; PROBE_RE noun-trap confirmed
+  red-to-green). Firsthand evidence cited in-store: agent-b red
+  reproduction (mail #104, Ran 174 FAILED failures=3 EXIT=1) plus
+  agent-a mechanism confirmation after the in-commit fixes (Ran 173 OK
+  EXIT=0 at this final tree); concurrence = reviewer proposal #106 +
+  builder execution. No spec impact.
+- The preflight exit-contract QUESTION below was dispatched to the
+  human as mail in this same cycle per AGENTS.md (mail first, document
+  second); its DECISIONS entry above is the preserving leg.
+
+Status: awaiting agent-b REVIEW of the S11 slice and the human ruling
+on exit codes 0/1/2; phase-gate sign-off entry follows that review,
+before S12 locate starts.
