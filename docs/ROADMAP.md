@@ -299,6 +299,44 @@ base — closing the loop: novel questions today, free lookups tomorrow.
 **Exit:** one escalated question demonstrably becomes a stored case after
 parent confirmation.
 
+## Make-our-own-model track (v5 endgame) — weights that grew up here
+
+Not a stock model with retrieval — an actual custom fine-tune. The case
+base, digested docs, and journal become TRAINING DATA; a small open base
+model (Qwen2.5-0.5b / gemma-2-2b class) gets LoRA-tuned on them, producing
+`baby-agent:<checkpoint>` models importable straight into Ollama.
+
+### S29 — Training-data pipeline
+
+`qa export-training --out train.jsonl` — converts cases, corrections,
+journal entries, and digested doc Q&A into instruction-format pairs
+(question → grounded answer). Holdout split carved out and frozen.
+
+**Exit:** exported file trains without format errors; holdout excluded.
+
+### S30 — First checkpoint: `baby-agent:ep1`
+
+One LoRA fine-tune pass over the exported data (tooling choice open:
+unsloth / LLaMA-Factory / MLX depending on hardware). Import to Ollama,
+benchmark against S26's RAG answers AND the frozen holdout.
+
+**Exit:** `baby-agent:ep1` exists in Ollama; benchmark table compares it vs
+base model vs RAG-vs-stock, honestly including where it got worse.
+
+### S31 — Generational loop
+
+Re-train on schedule or when the case base grows by a threshold. Every
+checkpoint preserved (`ep1`, `ep2`, ...) with its accuracy report — a
+literal fossil record of the agent's education. Regression guard identical
+to D4: a generation that forgets old lessons is documented, not shipped
+silently.
+
+**Exit:** two generations exist; gen2 measurably improves on gen1's weak
+categories without regressing strong ones — or the attempt is honestly
+recorded as failed.
+
+## Deferred
+
 ## Deferred
 
 - Interactive teach/watch console (TUI): stream failures, confirm diagnoses,
