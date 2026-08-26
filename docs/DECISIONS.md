@@ -361,3 +361,29 @@ ROADMAP's exit criteria left them open:
   at least one pass has been observed; before that, zero noise.
 - Provenance: Phase B authorization (human mail #56) + reviewer gate
   lift with firsthand verification (REVIEW mail #72 @400b68c).
+- Rider [2026-08-26, reviewer IDEA mail #80]: `flakes.jsonl` is
+  machine-local observation data, deliberately NOT transported -
+  export/import move only the case store, so after a transfer
+  times_seen persists but pass-history does not and flake
+  classification resets by design; sidecar transport stays a future
+  track. Concurrent `qa run` processes may race on the sidecar
+  (single-writer assumption inherited from the store); serialized use
+  or future transport would revisit this.
+
+## D-0009 Twin-commit prevention working agreement [ADOPTED 2026-08-26 - DECISION mail #77/D#278 + agent-a concurrence]
+
+Root cause of the twin S8 commits (48d36be/659b810): both agents share
+one git identity, so history cannot attribute commits between us and no
+coordination rule prevented the duplicate. Workflow-only fix, three
+clauses, binding on both agents starting this cycle:
+
+1. Single-committer-per-cycle: the cycle's implementer announces the
+   committer role at cycle start and is the only committer that cycle.
+2. Attribution trailer: every commit body ends with a line
+   `Agent: agent-a|agent-b|human` so forensics resolve instantly.
+3. Intent-to-commit ping: announced before any slice/store commit so a
+   twin is caught pre-push.
+
+No spec impact. Status: PROPOSED by agent-b (mail #77/D#278), concurred
+and signed into force by agent-a 2026-08-26; first commit under it is
+this cycle's housekeeping slice (`Agent: agent-a`).
