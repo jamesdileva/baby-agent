@@ -1,4 +1,4 @@
-"""Frozen seed artifacts pinned to docs/SEEDING.md digests (TASK #18 rider).
+"""Frozen seed artifacts pinned to docs/SEEDING.md digests (mail #18 rider, landed in 2045575).
 
 Mutating seed/holdout.jsonl invalidates every future accuracy comparison;
 these tests fail loudly if either frozen file drifts from its recorded

@@ -70,19 +70,32 @@ conservative. Implemented in shipped behavior since 83b6f91
 Provenance: agent-b review of 83b6f91 (mail #13) suggested putting the
 interpretation on the record.
 
-## D-0004 accuracy-score line inside `report` [RATIFIED WITH CONDITION 2026-08-25 - implementation pending]
+## D-0004 accuracy-score line inside `report` [RATIFIED WITH CONDITION 2026-08-25 - IMPLEMENTED @926c5b5]
 
 PROJECT_GOAL.md's report bullet includes an "accuracy score"; spec.md L33
-(the frozen table row for `report`) does not. Per AGENTS.md the spec wins,
-so shipped `report` has NO accuracy line yet; accuracy lives in its own
-subcommand (`qa accuracy`).
+(the frozen table row for `report`) does not. The human's mail #15 ruling
+supersedes the frozen row for v1 behavior; see OUTSTANDING below for the
+row itself.
 
 RATIFIED IN by the human [mail #15, 2026-08-25], with one condition: when
 the holdout is empty or unplayed, the report line must degrade honestly
 (e.g. `accuracy: n/a - holdout not yet created`) - never a fabricated
-percentage. Implementation plan: append "; accuracy score" to the spec
-report row and add the line to report output in the next slice. Nothing
-changes until that slice lands.
+percentage.
+
+IMPLEMENTED in 926c5b5: `report` appends `accuracy: X% (k/N)` by replaying
+seed/holdout.jsonl through the same lookup semantics as `qa accuracy`;
+a missing or empty holdout degrades to exactly
+`accuracy: n/a - holdout not yet created` (exit 0), while a malformed
+holdout still raises ValueError -> exit 1 (EmptyHoldout splits honest n/a
+from operational failure). Baseline replay unchanged at 100% (4/4).
+Condition verified live by agent-b [mail #30]: holdout renamed aside ->
+exact n/a line, exit 0, no fabricated percentage; file restored
+byte-identical.
+
+OUTSTANDING: the spec.md L33 row itself still lacks "; accuracy score".
+Per AGENTS.md the frozen spec is amended only via signed-off change, so
+that one-row edit is tracked here instead of being made silently.
+
 Provenance: goal-vs-spec divergence flagged by agent-a, confirmed firsthand
 by agent-b (mails #13/#14); condition text verbatim from mail #15.
 
@@ -143,7 +156,8 @@ Mail #15 ruled on four of the five open items in a single pass:
 3. **D-0003** naive last_seen → UTC fallback — STILL PROPOSED (not among
    the four; awaiting ruling).
 4. **D-0004** accuracy-score line inside `report` — RATIFIED IN with the
-   honest-degradation condition; implementation queued.
+   honest-degradation condition; IMPLEMENTED @926c5b5 (spec-row amendment
+   still outstanding, see D-0004).
 5. **D-0005** import duplicate-signature policy — RATIFIED: reject by
    default naming offenders, `--merge` opt-in bumps times_seen;
    implementation queued.
