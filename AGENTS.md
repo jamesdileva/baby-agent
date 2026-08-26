@@ -37,6 +37,16 @@ touching it.
 - Provenance matters: cite the task/mail/issue that authorized a segment.
 - Disputes escalate to the human with evidence, not assertion.
 
+## Human escalation protocol
+
+- Any question, ruling request, or blocked decision that needs the human
+  MUST be filed as a QUESTION or TASK mail addressed to `human` — AND
+  recorded in docs/DECISIONS.md. A question that lives only in a document
+  is invisible to the human and counts as unanswered.
+- Mail first, document second. The mail pings; the doc preserves.
+- When the human replies by mail, sign the outcome into DECISIONS.md the
+  same cycle.
+
 ## Cycle-end ritual (integration with this tool)
 
 Every working cycle in any repo where qacompanion is deployed:
