@@ -19,9 +19,10 @@ The tool is the student: it stores, matches, reports — never guesses silently.
 
 ## Status
 
-v1 in progress (see [docs/spec.md](docs/spec.md), frozen; slice log in
-[docs/ROADMAP.md](docs/ROADMAP.md)). Shipped: `record`, `lookup`, `report`,
-`accuracy`. Run brief that produced the spec:
+v1 core complete (see [docs/spec.md](docs/spec.md), frozen); skills
+ladder in progress (slice log in [docs/ROADMAP.md](docs/ROADMAP.md)).
+Shipped: `record`, `lookup`, `report`, `accuracy`, `export`/`import`,
+and the `run` auto-capture skill. Run brief that produced the spec:
 [docs/qa-companion-run.md](../../../Agents/docs/qa-companion-run.md) in the
 Antfarm repo.
 
@@ -33,6 +34,20 @@ python -m qacompanion lookup --sig "test_parse :: assertionerror: expected 2 got
 python -m qacompanion report
 python -m qacompanion accuracy
 ```
+
+### Auto-capture (S7 skill)
+
+```powershell
+python -m qacompanion run -- python -m pytest tests/ -q
+```
+
+Wraps any command: the command runs exactly as typed (argv list, no
+shell), its merged output is echoed to stderr, its exit code is passed
+through untouched, and a nonzero exit is auto-recorded into the case base
+(signature = command + last output line; honest "pending teacher review"
+diagnosis). A zero-exit run records nothing. No timeout is enforced — a
+hung child hangs the wrapper (explicit decision, docs/DECISIONS.md).
+Nested `qa run` invocations are refused.
 
 - Case base: `cases.jsonl` in the repo root (override with `QA_CASES_FILE`).
 - Holdout: `seed/holdout.jsonl`, frozen at creation (override

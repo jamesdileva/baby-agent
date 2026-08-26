@@ -5,6 +5,7 @@ Modules stay silent; all output lives here.
 """
 
 import argparse
+import os
 import sys
 
 from . import accuracy as accuracy_mod
@@ -13,6 +14,7 @@ from . import report as report_mod
 from . import signatures
 from . import store
 from . import transport
+from .skills import auto_capture
 
 
 def build_parser():
@@ -48,6 +50,23 @@ def build_parser():
         "--merge",
         action="store_true",
         help="fold duplicate signatures into existing cases (bumps times_seen)",
+    )
+
+    runner = sub.add_parser(
+        "run",
+        help="wrap a command; auto-record its failure on nonzero exit",
+        epilog=(
+            "Hang policy (explicit decision, docs/DECISIONS.md): no timeout "
+            "is enforced; a hung child hangs this wrapper. The child's "
+            "merged stdout+stderr is echoed verbatim to stderr. Nested "
+            "'qa run' invocations are refused."
+        ),
+    )
+    runner.add_argument(
+        "cmd",
+        nargs=argparse.REMAINDER,
+        metavar="-- CMD [ARGS ...]",
+        help="command to wrap, passed as an argv list (no shell)",
     )
 
     return parser
@@ -127,6 +146,41 @@ def _cmd_import(args):
     return 0
 
 
+def _cmd_run(args):
+    cmd = list(args.cmd)
+    if cmd and cmd[0] == "--":
+        cmd = cmd[1:]
+    if not cmd:
+        print("error: run requires a command after '--'", file=sys.stderr)
+        return 1
+    if os.environ.get(auto_capture.GUARD_ENV) == "1":
+        print("error: nested 'qa run' refused (recursion guard)", file=sys.stderr)
+        return 1
+    try:
+        result = auto_capture.run_wrapped(cmd)
+    except OSError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    sys.stderr.write(result["output_text"])
+    sys.stderr.flush()
+    if result["record_error"]:
+        print(
+            f"warning: auto-record failed ({result['record_error']})",
+            file=sys.stderr,
+        )
+        return result["returncode"]
+    recorded = result["recorded"]
+    if recorded is None:
+        return result["returncode"]
+    case = recorded["case"]
+    verb = "auto-recorded new case" if recorded["created"] else "auto-bumped case"
+    print(
+        f"{verb} #{case['id']} times_seen={case['times_seen']} "
+        f"exit={result['returncode']}"
+    )
+    return result["returncode"]
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -134,6 +188,7 @@ _COMMANDS = {
     "accuracy": _cmd_accuracy,
     "export": _cmd_export,
     "import": _cmd_import,
+    "run": _cmd_run,
 }
 
 

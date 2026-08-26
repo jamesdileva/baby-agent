@@ -265,3 +265,36 @@ Verified firsthand 2026-08-26: `tests/test_seeds.py:1` carries the
 provenance label verbatim ("mail #18 rider, landed in 2045575"), pinning
 the frozen seed artifacts to docs/SEEDING.md digests. Provenance:
 digest + mail #54.
+
+## D-0007 S7 auto-capture policy decisions [2026-08-26, slice landing]
+
+Decisions made while implementing S7 (`qa run -- <cmd>`), all binding on
+future skills and recorded here because ROADMAP's exit criteria left
+them open (reviewer rider #3 in mail #61 demanded an explicit stated
+hang policy):
+
+- Hang policy: NO timeout is enforced. A hung child hangs the wrapper,
+  exactly like running the command by hand; qa run never invents a kill
+  signal the user did not ask for. Stated in `run --help` epilog and
+  module docstring, not silently defaulted.
+- Output policy: the child runs with stdout+stderr merged into one pipe;
+  qacompanion echoes the merged text verbatim to ITS OWN stderr. Nothing
+  is swallowed (case #1 / FAIL(0.0s) lesson); stdout piping of the
+  wrapper stays noise-free. Consequence, accepted: child stdout lines
+  appear on stderr while wrapped.
+- Parse rule: signature error part = LAST non-empty line of merged
+  output (generic-command adaptation of "first error line"; CLI failure
+  summaries live at the tail). Excerpt = merged-output tail bounded to
+  4000 chars, `[truncated] `-prefixed when cut.
+- Diagnosis honesty: auto-recorded cases carry a placeholder diagnosis
+  naming exit code + command + "pending teacher review" - never a
+  fabricated diagnosis. confirmed_by = "auto-capture".
+- Recursion guard: children inherit QA_RUN_ACTIVE=1; a `qa run` that
+  starts under it refuses with exit 1 before executing anything.
+- Store-failure policy: a corrupt/unreadable store must not mask the
+  child's result - warning goes to stderr and the CHILD's exit code is
+  returned unchanged.
+- Provenance: Phase B authorization (human mail #56) + reviewer
+  green-light with binding riders (mail #61, criteria 6-8).
+
+Provenance: digest + mail #56 + mail #61.
