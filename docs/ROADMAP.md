@@ -183,6 +183,42 @@ boundary between evolution and self-modification; stay on the right side.
 **Exit:** one example module passes discovery + suite gate; an intentionally
 failing module is demonstrably blocked from loading.
 
+## School & capstone (v2 track) — knowledge expansion
+
+### S20 — `digest` skill: document ingestion
+
+Point at a directory (or repo): parse all markdown/docs into the knowledge
+base as retrievable entries (`qa ask "deployment?"` returns cited passages).
+Project context becomes lookup, not re-reading.
+
+**Exit:** digested corpus answers fixture questions with correct citations;
+re-digest updates rather than duplicates.
+
+### S21 — `archive-mine` skill: learn from past eras
+
+Digest Antfarm archives: DECISIONS.md files, git logs, failure transcripts.
+Every diagnosis ever paid for across every colony era becomes a case.
+
+**Exit:** mined cases import cleanly; known lore (FAIL(0.0s), BOM,
+stale-installer) is retrievable via lookup.
+
+### S22 — School mode
+
+`qa school` — interactive session walking recent unconfirmed diagnoses with
+the parents: confirm/correct/case-create in one pass. Formalizes the teacher
+loop into a repeatable ritual (the "school" the human asked for).
+
+**Exit:** a school session processes N pending diagnoses end-to-end; ledger
+and case base updated atomically.
+
+### Capstone — guided project (graduation exam)
+
+Parents architect a small but real application; qacompanion participates
+end-to-end using every acquired skill: preflight before commits, capture
+during test runs, doc-digest for conventions, journal for decisions, case
+lookups for every failure. Success = the project ships with zero repeated
+diagnoses — everything new was taught, everything taught was recalled.
+
 ## Deferred
 
 - Interactive teach/watch console (TUI): stream failures, confirm diagnoses,
