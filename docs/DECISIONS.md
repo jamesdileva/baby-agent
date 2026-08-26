@@ -163,3 +163,28 @@ Mail #15 ruled on four of the five open items in a single pass:
    implementation queued.
 
 Sole remaining open ruling: D-0003.
+
+## S6 live teacher-loop exercise [recorded 2026-08-26]
+
+ROADMAP S6 exit requires exercising one live loop against a real failure
+and recording it here. Two live loops now exist:
+
+1. **Case #5** (store-hygiene incident, @e413e7c): recorded with proposed
+   diagnosis, REVIEW requested from the human. Correction leg still
+   PENDING - bundled into the human ping per task/mail #35.
+2. **Case #6** (this cycle): the sitrep-reliability failure, observed
+   firsthand for the 5th consecutive cycle - sitrep asserted a dirty
+   ROADMAP.md plus a failing suite; fresh `git status --porcelain` was
+   empty and `python -m unittest` exited 0 (104/104). Recorded via the
+   `record` CLI with a proposed diagnosis and REVIEW requested. The loop's
+   record/diagnose legs ran against the live store inside this declared
+   cycle, exactly as the runbook prescribes.
+
+Teacher-loop runbook landed in README (capture -> record -> REVIEW ->
+confirm/correct/create), incorporating the mail #35 riders: holdout path
+is seed/holdout.jsonl, never repo root (`QA_HOLDOUT_FILE` override);
+accuracy is only meaningful past a handful of holdout entries; drops are
+reported as old-vs-new k/N and justified or reverted.
+
+Provenance: ROADMAP S6; IMPLEMENTATION_GUIDE.md slice note S6; riders from
+mails #31/#33/#35; phantom-sitrep history in agent-a MEMORY.md.

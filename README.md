@@ -43,6 +43,34 @@ python -m qacompanion accuracy
 - Exit codes: 0 success, 1 operational failure. `lookup` exits 0 even on
   a miss — it prints exactly `no matching case` rather than failing.
 
+## Teacher loop (runbook)
+
+The tool never invents diagnoses; learning happens out-of-band through
+teachers (the human creators, plus colony agents proposing for REVIEW):
+
+1. **Capture.** After any real test run with failures, take the test name
+   and first error line verbatim.
+2. **Record.** `record` each failure with your best-guess diagnosis
+   (`--by <name>` marks who proposed it). Matching signatures bump
+   `times_seen`; new ones create cases. Never exercise the CLI against the
+   live store outside a declared cycle — set `QA_CASES_FILE` to a temp copy
+   (see case #5).
+3. **Request REVIEW.** Teachers confirm or correct each diagnosis:
+   a correction re-runs `record` with the fixed `--diag` (same signature —
+   the diagnosis is overwritten and `times_seen` bumps); a correction for a
+   failure with no stored case creates one.
+4. **Re-lookup.** Next occurrence should return the confirmed diagnosis.
+
+Accuracy caveats when reporting or comparing scores:
+
+- The holdout lives at `seed/holdout.jsonl`, **not** the repo root; point
+  overrides at `QA_HOLDOUT_FILE`. Mutating it invalidates all comparisons.
+- Accuracy is only meaningful once the holdout holds more than a handful of
+  entries; with N=4 a single miss swings 25 points. Say so instead of
+  quoting a bare percentage.
+- If accuracy drops after a change, cite old-vs-new as k/N in the cycle
+  summary and justify or revert — never ship the drop silently.
+
 ## Roles in this repo
 
 - agent-a: builder
