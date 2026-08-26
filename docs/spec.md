@@ -50,3 +50,27 @@ The initial case base imports `seed/lore.jsonl` at S4: the colony's real
 failure history (FAIL(0.0s) harness artifact, BOM-prefix crashes,
 stale-installer custody, empty-repo tooling errors), so accuracy measures
 against genuine lessons from day one.
+
+## Data durability & retention policy
+
+- `cases.jsonl` is committed to git at the end of any cycle that changed it
+  (data and code travel together; the history of lessons is part of the
+  product).
+- Stale cases are reported, never auto-deleted. Pruning is a deliberate,
+  human-approved act (`prune --older-than 180d --confirmed-only` arrives in
+  v1.1 if ever needed).
+- Known limitation (documented, not fixed in v1): single-writer assumption.
+  Concurrent `record` during a live test run may lose one append; export/
+  import uses atomic replace precisely so recovery is always possible.
+
+## Input robustness (non-negotiable)
+
+Reading any file this tool produces or consumes MUST tolerate the colony's
+oldest documented failures:
+
+- UTF-8 BOM prefix: stripped before parse (the BOM-breaks-config lesson)
+- CRLF line endings: treated identically to LF
+- Trailing newline or its absence: both valid
+
+Skill-pack regexes must compile with a size cap and are executed with a
+timeout guard — a runaway pattern degrades to `unsure`, never hangs lookup.

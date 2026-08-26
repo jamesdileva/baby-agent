@@ -183,3 +183,22 @@ boundary between evolution and self-modification; stay on the right side.
 **Exit:** one example module passes discovery + suite gate; an intentionally
 failing module is demonstrably blocked from loading.
 
+### S18 — `merge`: teacher dedup tool
+
+Teachers spot two signatures that are really one failure. `merge --into A
+--from B` re-points B's times_seen onto A and removes B (with a merged-from
+note in A). Reduces false `no matching case` results caused by near-duplicate
+signatures.
+
+**Exit:** merge preserves combined counts; B disappears from report; merging
+with itself is rejected.
+
+### S19 — Robust I/O hardening
+
+Spec section "Input robustness" made testable: BOM-stripped JSONL load,
+CRLF-equivalence, trailing-newline tolerance, skill-pack regex compile caps +
+timeout guard degrading to `unsure`.
+
+**Exit:** fixtures exist for each robustness rule; a hostile regex fixture
+provably cannot hang lookup.
+

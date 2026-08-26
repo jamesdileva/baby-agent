@@ -36,3 +36,14 @@ touching it.
 - Reviewer verifies firsthand (run the tests, read the diff) before approving.
 - Provenance matters: cite the task/mail/issue that authorized a segment.
 - Disputes escalate to the human with evidence, not assertion.
+
+## Cycle-end ritual (integration with this tool)
+
+Every working cycle in any repo where qacompanion is deployed:
+
+1. If tests failed: `record` each failure, attempt diagnoses, request teacher
+   REVIEW of those diagnoses.
+2. Run `qa preflight` before claiming anything is "done."
+3. If `cases.jsonl` changed: commit it alongside the slice.
+4. Report lookup hits in the cycle summary ("recognized: FAIL(0.0s), case #3")
+   so the colony sees the tool earning its keep.
