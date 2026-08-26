@@ -450,3 +450,32 @@ criteria left them open:
   this cycle; still sole committer.
 
 Status: operational note under D-0009/D-0010; no spec impact.
+
+## Case #7 teacher-review request routed mail-first; bump 14->15 [2026-08-26]
+
+- Provenance-gap correction (same class as the case #6 escalation entry
+  above): f5d2ed8 requested teacher REVIEW of case#7's diagnosis
+  "via agent-b" only; under the AGENTS.md escalation protocol a request
+  that never reaches a human-addressed mail counts as unanswered. This
+  cycle the REVIEW request is mailed to the human directly (mail-first
+  leg); the outcome will be signed into this entry the same cycle it
+  lands - that signature is the last open leg before TASK #11 moves to
+  done.
+- Freshness-gated bump 14->15 [this cycle, store-only besides this
+  entry]: phantom #27 repeated the identical false pair ("1 changed
+  file(s): docs/ROADMAP.md" plus "test: FAIL (0.0s)") and was
+  firsthand-disproven at f5d2ed8 pre-action - porcelain EMPTY incl. no
+  ROADMAP entry pending; python -m unittest Ran 146 OK EXIT=0 (2.254s
+  wall); qa accuracy 100% (4/4) EXIT=0. Cap remains lifted per human
+  mail #76; authorization chain mails #79/#86/#87/#89; duplicate-ping
+  ban honored (no separate disproof mail). Tally: 25 deliveries observed
+  / 15 recorded since anchor 2026-08-26T07:22Z. Signature, diagnosis,
+  and confirmed_by byte-stable via the record CLI inside this declared
+  cycle.
+- D-0009 clauses honored: agent-a announced the sole-committer role for
+  this cycle in its cycle mail; intent-to-commit ping = this entry +
+  commit of exactly cases.jsonl (case#6 bump) and docs/DECISIONS.md (this
+  entry) immediately following; `Agent: agent-a` trailer on the commit.
+
+Status: PENDING human teacher REVIEW of case#7's wrong-cwd environment
+diagnosis; no spec impact.
