@@ -52,11 +52,12 @@ revisit trigger (real observed collision). No code change required.
 Provenance: agent-b TASK #9 acceptance criterion 6 ("an undocumented known
 collision is worse than a documented deferred one").
 
-## D-0003 naive last_seen interpreted as UTC [PROPOSED - needs human sign-off]
+## D-0003 naive last_seen interpreted as UTC [RATIFIED 2026-08-26 - human mail #41]
 
-NOTE (2026-08-25): the human's mail #15 ruled on exactly four items
-(D-0001, D-0002, D-0004, D-0005). This entry was NOT among them and
-remains open; behavior is unchanged pending a ruling.
+RATIFIED AS WORDED by the human [mail #41, 2026-08-26]: naive `last_seen`
+stamps are interpreted as UTC. Behavior unchanged - implemented since
+83b6f91 (`report._as_utc`, tested in tests/test_report.py); no code change
+required.
 
 Proposed spec wording (Input robustness / report):
 
@@ -92,9 +93,10 @@ Condition verified live by agent-b [mail #30]: holdout renamed aside ->
 exact n/a line, exit 0, no fabricated percentage; file restored
 byte-identical.
 
-OUTSTANDING: the spec.md L33 row itself still lacks "; accuracy score".
-Per AGENTS.md the frozen spec is amended only via signed-off change, so
-that one-row edit is tracked here instead of being made silently.
+RESOLVED 2026-08-26 [mail #41]: the spec.md L33 amendment was approved;
+the frozen report row now reads "... stale (>30d since last_seen);
+accuracy score". The table matches shipped behavior @926c5b5; nothing
+outstanding remains on this decision.
 
 Provenance: goal-vs-spec divergence flagged by agent-a, confirmed firsthand
 by agent-b (mails #13/#14); condition text verbatim from mail #15.
@@ -147,31 +149,35 @@ citations. Historical drift, logged so citations stay unambiguous:
 The "S5" used in mail/task #14 titles for the accuracy work maps to
 ROADMAP S4 above. From here on: ROADMAP numbers only.
 
-## Ruling queue status [updated 2026-08-25, per human mail #15]
+## Ruling queue status [updated 2026-08-26, per human mails #15 and #41]
 
 Mail #15 ruled on four of the five open items in a single pass:
 
 1. **D-0001** lookup exit-code wording — RATIFIED as worded.
 2. **D-0002** `' :: '` separator non-injectivity — RATIFIED as deferred.
-3. **D-0003** naive last_seen → UTC fallback — STILL PROPOSED (not among
-   the four; awaiting ruling).
+3. **D-0003** naive last_seen → UTC fallback — RATIFIED as worded
+   [mail #41, 2026-08-26]; behavior unchanged since 83b6f91.
 4. **D-0004** accuracy-score line inside `report` — RATIFIED IN with the
-   honest-degradation condition; IMPLEMENTED @926c5b5 (spec-row amendment
-   still outstanding, see D-0004).
+   honest-degradation condition; IMPLEMENTED @926c5b5; L33 row amended
+   per mail #41 (see D-0004).
 5. **D-0005** import duplicate-signature policy — RATIFIED: reject by
    default naming offenders, `--merge` opt-in bumps times_seen;
    implementation queued.
 
-Sole remaining open ruling: D-0003.
+No open rulings remain [queue empty as of mail #41, 2026-08-26].
 
 ## S6 live teacher-loop exercise [recorded 2026-08-26]
 
 ROADMAP S6 exit requires exercising one live loop against a real failure
 and recording it here. Two live loops now exist:
 
-1. **Case #5** (store-hygiene incident, @e413e7c): recorded with proposed
-   diagnosis, REVIEW requested from the human. Correction leg still
-   PENDING - bundled into the human ping per task/mail #35.
+1. **Case #5** (store-hygiene incident, @e413e7c): diagnosis CONFIRMED by
+   the human [mail #41, 2026-08-26]; store `confirmed_by` updated to the
+   teacher accordingly - confirmation is not an occurrence, so no
+   times_seen bump. The isolation rule stands exactly as diagnosed:
+   manual/test invocations MUST set QA_CASES_FILE to a temp copy; live
+   cases.jsonl changes only inside a declared cycle; coordinate before
+   touching another agent's working tree.
 2. **Case #6** (this cycle): the sitrep-reliability failure, observed
    firsthand for the 5th consecutive cycle - sitrep asserted a dirty
    ROADMAP.md plus a failing suite; fresh `git status --porcelain` was

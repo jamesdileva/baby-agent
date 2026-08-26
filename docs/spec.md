@@ -30,7 +30,7 @@ Deterministic, stdlib-only, honest about what it does not know.
 |---------|----------|------|
 | `record --sig S --err E --diag D [--by N]` | Insert or bump matching signature (`times_seen++`, update `last_seen`; `--diag` overwrites when provided) | 0 / 1 |
 | `lookup --sig S` | Print highest-times_seen match, or exactly `no matching case` | 0 always |
-| `report` | Total cases, top 5 by times_seen, stale (>30d since last_seen) | 0 |
+| `report` | Total cases, top 5 by times_seen, stale (>30d since last_seen); accuracy score | 0 |
 | `accuracy` | Replay `seed/holdout.jsonl`: % of entries where lookup returns the recorded diagnosis | 0 |
 | `export --out P` | Atomic copy of the case base | 0 / 1 |
 | `import --in P` | Validate then atomically replace; corrupt input never touches live data | 0 / 1 |
