@@ -104,3 +104,56 @@ clean tree before claiming done. `qa preflight` runs the checklist.
 **Exit:** each rule has a violation fixture and a passing fixture; checklist
 output names the rule violated.
 
+## Workplace skills (v1.x) — general competence, taught by real asks
+
+These are not QA features — they are the general workplace literacy every
+agent needs. Each sprint builds a small reusable utility born from an actual
+question the human asked that no agent could answer alone. Same discipline:
+stdlib only, tests-first, one slice per cycle, usage docs ship with the code
+(a tool without docs does not count as done).
+
+### S12 — `locate`: repo and project finder
+
+Born from: *"Where does the taskline repo live on disk?"*
+
+Walks common roots (user projects dir, home, data homes), detects git roots,
+matches names/fragments, prints absolute paths + branch + dirty status.
+
+**Exit:** finds a seeded test repo by name fragment and by contained commit
+hash; handles permission errors gracefully.
+
+### S13 — `snapshot`: archive-with-manifest
+
+Born from: *"Archive it so it's not lost."*
+
+Timestamped copy of any directory into an archives folder plus a
+`MANIFEST.json` (file list, sizes, SHA256s, source path). The Antfarm archive
+behavior, as a portable tool.
+
+**Exit:** snapshot round-trips byte-identical; manifest hashes verified;
+refuses to overwrite existing snapshot stamps.
+
+### S14 — `repocheck`: multi-repo health report
+
+Born from: *"Can I push these to GitHub eventually?"* and the 26-unpushed-
+commits incident.
+
+Scans a parent directory's git repos and reports per repo: dirty files,
+commits ahead of upstream, missing remotes. One glance = which projects need
+attention.
+
+**Exit:** fixture repos with known states classified correctly; non-repo
+dirs skipped silently.
+
+### S15 — `journal`: durable lessons ledger
+
+Born from: *"VOID-L1 residuals live only in mail/memory."*
+
+Append-only markdown ledger with auto-timestamped entries (`journal add
+<text>`), searchable (`journal grep`), designed to be committed alongside
+any repo so lessons survive resets. The antidote to knowledge living only
+in conversation.
+
+**Exit:** entries survive concurrent adds; grep returns matching entries
+with dates; ledger file is human-readable markdown.
+
