@@ -71,7 +71,7 @@ conservative. Implemented in shipped behavior since 83b6f91
 Provenance: agent-b review of 83b6f91 (mail #13) suggested putting the
 interpretation on the record.
 
-## D-0004 accuracy-score line inside `report` [RATIFIED WITH CONDITION 2026-08-25 - IMPLEMENTED @926c5b5]
+## D-0004 accuracy-score line inside `report` [CLOSED 2026-08-26 - human mail #54 - condition satisfied @926c5b5]
 
 PROJECT_GOAL.md's report bullet includes an "accuracy score"; spec.md L33
 (the frozen table row for `report`) does not. The human's mail #15 ruling
@@ -97,6 +97,10 @@ RESOLVED 2026-08-26 [mail #41]: the spec.md L33 amendment was approved;
 the frozen report row now reads "... stale (>30d since last_seen);
 accuracy score". The table matches shipped behavior @926c5b5; nothing
 outstanding remains on this decision.
+
+CLOSED 2026-08-26 [human mail #54, relayed verbatim in agent-b TASK
+mail #57]: D-0004 is fully resolved - condition satisfied @926c5b5 per
+the human ruling. No further action on this decision, ever.
 
 Provenance: goal-vs-spec divergence flagged by agent-a, confirmed firsthand
 by agent-b (mails #13/#14); condition text verbatim from mail #15.
@@ -195,14 +199,44 @@ reported as old-vs-new k/N and justified or reverted.
 Provenance: ROADMAP S6; IMPLEMENTATION_GUIDE.md slice note S6; riders from
 mails #31/#33/#35; phantom-sitrep history in agent-a MEMORY.md.
 
-## Case #6 teacher-review escalation [OPEN - filed 2026-08-26]
+## Case #6 teacher-review escalation [RESOLVED 2026-08-26 - human mail #54]
 
 A QUESTION was mailed to the human this cycle requesting formal TEACHER
 REVIEW of case #6's diagnosis (sitrep-reliability failure). Provenance
 admission: earlier REVIEW requests lived only in this document and cycle
 summaries - never in a human-addressed mail - so under the escalation
 protocol they counted as unanswered; this mail is the first mail-first
-leg. The outcome gets signed into this section the same cycle it arrives.
+leg.
+
+OUTCOME SIGNED 2026-08-26: the human answered [mail #54] - ROADMAP
+mystery solved, and the teacher review of case #6's diagnosis is
+CONFIRMED (per mail #54, citing the #41-era record, as relayed verbatim
+in agent-b's TASK mail #57). The provenance gap is closed. Consequences,
+all executed the same cycle:
+
+1. **Auto-bump cap LIFTED**: the hard-stop condition ("resume solely on
+   the human's REVIEW/correction or explicit override") is met; bumps
+   resume under normal freshness gating. First gated bump applied below.
+2. **ROADMAP incident CLOSED** under the case #5 rule (uncoordinated
+   tree/restore races; sitrep claims are never evidence).
+3. **Scope fence CONFIRMED at ruling time** (core S1-S6 + signed
+   rulings only), then extended by the same-day Phase B authorization
+   [human mail #56 to agent-a]: Skills ladder S7-S11 now in scope under
+   `qacompanion/skills/`; core stays deterministic and LLM-free; S12+
+   stays out until Phase B ships and is signed.
+
+Gated bump 4->5 [this cycle]: freshness gate run firsthand at HEAD
+21930c4 before any edit - `git status --porcelain` EMPTY, `python -m
+unittest` Ran 104 tests OK EXIT=0 - against an identical sitrep claim of
+ROADMAP-dirty + FAIL(0.0s). Recorded via the record CLI with full text
+re-passed (bump overwrites excerpt/diag/last_seen); excerpt anchored
+"5th recorded occurrence since 2026-08-26T07:22Z".
+
+Cross-cycle raw tally [honest note, not silently merged]: agent-a's
+ledger counts this delivery as the 13th consecutive phantom observed;
+agent-b's counter stood at 11 as of TASK mail #57. Both tallies are
+cited going forward as "N observed, M recorded" until reconciled; the
+anchor-based times_seen remains the canonical spec counter.
 
 Auto-bump cap semantics [IN FORCE from this entry]: while case #6's
 REVIEW request is pending, occurrence bumps are HARD-STOPPED at the
@@ -215,7 +249,19 @@ applied the 3->4 bump while the cap was already being described as
 as worded from here forward, and agent-b's hold of 4->5 is correct
 under these semantics.
 
-Unit-wording rider (agent-b TASK #48): the S6 entry above says "5th
-consecutive cycle" while the store anchors "4th recorded occurrence
-since 2026-08-26T07:22Z"; both texts are reconciled on whichever future
-touch finally records the next occurrence (currently cap-gated).
+Unit-wording rider (agent-b TASK #48): EXECUTED on the 4->5 touch above.
+The two units are now unambiguous in case #6's diagnosis text itself:
+times_seen = recorded bumps since anchor 2026-08-26T07:22Z (spec counter,
+format frozen, NO backfill of pre-anchor cycles); raw cross-cycle
+deliveries are a separate tally cited in summaries as "N observed,
+M recorded".
+
+## TASK #18 seed-provenance rider [CLOSED 2026-08-26 - already satisfied]
+
+Per human mail #54 (relayed verbatim in agent-b TASK mail #57; silence
+is the only wrong answer): the rider was ALREADY SATISFIED at 2045575 -
+completed-before-board. Chosen disposition: neither re-land nor drop.
+Verified firsthand 2026-08-26: `tests/test_seeds.py:1` carries the
+provenance label verbatim ("mail #18 rider, landed in 2045575"), pinning
+the frozen seed artifacts to docs/SEEDING.md digests. Provenance:
+digest + mail #54.
