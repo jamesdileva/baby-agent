@@ -47,3 +47,72 @@ limitation, and an AMBIGUOUS backstop; revisit only if a real collision is
 observed in cases.jsonl.
 Provenance: agent-b TASK #9 acceptance criterion 6 ("an undocumented known
 collision is worse than a documented deferred one").
+
+## D-0003 naive last_seen interpreted as UTC [PROPOSED - needs human sign-off]
+
+Proposed spec wording (Input robustness / report):
+
+> A `last_seen` stamp without timezone information is interpreted as UTC,
+> never crashes, never shifts stale classification by an unstated offset.
+
+Rationale: mixed-offset or legacy stores would otherwise crash `report` on
+the first naive stamp; interpreting naive-as-UTC is deterministic and
+conservative. Implemented in shipped behavior since 83b6f91
+(`report._as_utc`, tested in tests/test_report.py).
+Provenance: agent-b review of 83b6f91 (mail #13) suggested putting the
+interpretation on the record.
+
+## D-0004 accuracy-score line inside `report` [PROPOSED - needs human ruling]
+
+PROJECT_GOAL.md's report bullet includes an "accuracy score"; spec.md L33
+(the frozen table row for `report`) does not. Per AGENTS.md the spec wins,
+so shipped `report` has NO accuracy line; accuracy lives in its own
+subcommand (`qa accuracy`). If ruled IN, proposed amendment wording:
+append "; accuracy score" to the spec report row and one line to
+report output. Until then, nothing changes.
+Provenance: goal-vs-spec divergence flagged by agent-a, confirmed firsthand
+by agent-b (mails #13/#14).
+
+## D-0005 import duplicate-signature policy [PROPOSED - needs human ruling]
+
+Proposal: **reject duplicates**. `import --in P` validates the whole input
+atomically before touching live data; a signature appearing twice in the
+input file is a ValueError naming the second line, and nothing replaces the
+live base. Import replaces wholesale — merging near-duplicate signatures is
+a deliberate teacher act reserved for the future merge tool (ROADMAP S18),
+never a silent side effect of a copy operation.
+
+Alternative considered and rejected for v1: merge-by-bump onto existing
+counts (silent mutation of recorded history during what looks like a copy).
+
+Gate honored: no import logic lands until this is ruled (agent-b TASK #14
+criterion 4). Provenance: TASK #14 criterion 4; spec S5 row ("Validate then
+atomically replace").
+
+## Slice-numbering canon [IN FORCE - documentation only]
+
+ROADMAP/spec slice numbers are canon for commit subjects and provenance
+citations. Historical drift, logged so citations stay unambiguous:
+
+| Commit | Subject said | ROADMAP canon | Delivered |
+|--------|--------------|---------------|-----------|
+| a2cf9f2 | S1 | S1 storage core + `record` | match |
+| b9b83f5 | S2 | S2 signatures + `lookup` | match |
+| 7c7d6fe | S3 | (S2 follow-up) canonical() gate + DECISIONS | off-by-one label |
+| 83b6f91 | S4 | S3 `report` | off-by-one label |
+| (this)  | S4 | S4 `accuracy` + holdout replay | canon restored |
+
+The "S5" used in mail/task #14 titles for the accuracy work maps to
+ROADMAP S4 above. From here on: ROADMAP numbers only.
+
+## Pending human sign-off — single-pass queue
+
+All open rulings, for one-pass adjudication:
+
+1. **D-0001** lookup exit-code wording (0 on miss, 1 on corrupt store)
+   — implemented since S2, needs ratification.
+2. **D-0002** `' :: '` separator non-injectivity — known-limitation note;
+   acknowledge or direct a fix direction.
+3. **D-0003** naive last_seen → UTC fallback — implemented, ratify wording.
+4. **D-0004** accuracy-score line inside `report` — amendment needed if IN.
+5. **D-0005** import duplicate-signature policy — blocks S5 import work.

@@ -19,9 +19,29 @@ The tool is the student: it stores, matches, reports — never guesses silently.
 
 ## Status
 
-Pre-implementation. See [docs/spec.md](docs/spec.md) for the frozen v1 spec
-and [docs/qa-companion-run.md](../../../Agents/docs/qa-companion-run.md) in
-the Antfarm repo for the run brief that produced this spec.
+v1 in progress (see [docs/spec.md](docs/spec.md), frozen; slice log in
+[docs/ROADMAP.md](docs/ROADMAP.md)). Shipped: `record`, `lookup`, `report`,
+`accuracy`. Run brief that produced the spec:
+[docs/qa-companion-run.md](../../../Agents/docs/qa-companion-run.md) in the
+Antfarm repo.
+
+## Usage
+
+```powershell
+python -m qacompanion record --sig "test_parse :: assertionerror: expected 2 got 3" --err "AssertionError: 2 != 3" --diag "off-by-one in parser index" --by tess
+python -m qacompanion lookup --sig "test_parse :: assertionerror: expected 2 got 3"
+python -m qacompanion report
+python -m qacompanion accuracy
+```
+
+- Case base: `cases.jsonl` in the repo root (override with `QA_CASES_FILE`).
+- Holdout: `seed/holdout.jsonl`, frozen at creation (override
+  `QA_HOLDOUT_FILE`). Mutating it invalidates every future accuracy
+  comparison — see [docs/SEEDING.md](docs/SEEDING.md).
+- Baseline (S4, verbatim): `accuracy: 100% (4/4)` against the four seeded
+  lore lessons. Regressions must be justified or reverted.
+- Exit codes: 0 success, 1 operational failure. `lookup` exits 0 even on
+  a miss — it prints exactly `no matching case` rather than failing.
 
 ## Roles in this repo
 

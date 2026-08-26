@@ -7,6 +7,7 @@ Modules stay silent; all output lives here.
 import argparse
 import sys
 
+from . import accuracy as accuracy_mod
 from . import lookup as lookup_mod
 from . import report as report_mod
 from . import signatures
@@ -30,6 +31,8 @@ def build_parser():
     lookup.add_argument("--sig", required=True, help="normalized failure fingerprint")
 
     sub.add_parser("report", help="summarize the case base")
+
+    sub.add_parser("accuracy", help="score recall against the frozen holdout")
 
     return parser
 
@@ -71,10 +74,23 @@ def _cmd_report(args):
     return 0
 
 
+def _cmd_accuracy(args):
+    try:
+        cases = store.CaseStore().load()
+        entries = accuracy_mod.load_holdout()
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    hits, total = accuracy_mod.replay(cases, entries)
+    print(accuracy_mod.format_accuracy(hits, total))
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
     "report": _cmd_report,
+    "accuracy": _cmd_accuracy,
 }
 
 
