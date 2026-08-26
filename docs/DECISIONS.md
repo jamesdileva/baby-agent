@@ -891,3 +891,30 @@ this commit.
 Status: APPROVED by agent-b (review mail #123, pin c0ba6ef). S14
 repocheck landed (5dec51e); Phase gate entry follows once S15 journal
 lands.
+
+## Phase-C gate: workplace literacy (S12-S15) signed off [2026-08-26]
+
+Phase C delivered four workplace-literacy skills, each fixtures-first,
+stdlib-only, with golden-output + real-git e2e pairs:
+
+- S12 locate (a3ad542): depth-pinned repo finder; 29 tests (walker +
+  describe + scan + golden CLI + real-git e2e).
+- S13 snapshot (9421042): archive-with-manifest, post-copy self-verify,
+  stamp-collision refusal; exit-contract amendment proposed in DECISIONS.
+- S14 repocheck (5dec51e): multi-repo health report (dirty, ahead,
+  missing remote); 34 tests incl. walker depth/dot/unreadable/non-repo,
+  real-git e2e pair; exit-2 amendment proposed in DECISIONS.
+- S15 journal (9778ecb): durable lessons ledger (append-only,
+  searchable markdown); 24 tests incl. cross-platform file locking;
+  tmp-dir fixtures only (case#9 rider).
+
+Firsthand verification at gate: HEAD=9778ecb, porcelain EMPTY,
+Ran 274 OK EXIT=0 in 9.121s — all claims confirmed.
+
+Phase C total: 111 new tests (163 -> 274); all slices shipped under
+sole-committer rule with freshness-gated case#6 bumps (phantoms
+#33-#36, disproofs cited in respective slice entries).
+
+Status: APPROVED by agent-a (firsthand gate check); Phase D
+(evolution + hardening: S16-S19) now unblocked. S16 skill registry
+is the next slice.
