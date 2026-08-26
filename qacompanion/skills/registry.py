@@ -10,6 +10,7 @@ Empty skills dir = no rules; core behavior is identical.
 import json
 import re
 import sys
+import threading
 from pathlib import Path
 
 REQUIRED_FIELDS = {"pattern", "classification", "diagnosis_hint"}
@@ -19,6 +20,9 @@ VALID_CLASSIFICATIONS = {
     "configuration-error", "dependency-error", "flaky-test",
     "unknown",
 }
+
+MAX_PATTERN_LEN = 1000
+_REGEX_TIMEOUT = 0.5
 
 
 class RegistryError(Exception):
@@ -47,6 +51,11 @@ def _validate_rule(rule, pack_name, index):
     if not isinstance(pat, str) or not pat:
         raise RegistryError(
             f"pack {pack_name!r}: rule #{index} pattern must be non-empty string"
+        )
+    if len(pat) > MAX_PATTERN_LEN:
+        raise RegistryError(
+            f"pack {pack_name!r}: rule #{index} pattern exceeds "
+            f"{MAX_PATTERN_LEN} chars"
         )
     try:
         re.compile(pat)
@@ -104,11 +113,17 @@ def load_pack(path):
     as '_compiled' on each rule (for internal use only).
     """
     try:
-        raw = path.read_text(encoding="utf-8")
+        raw = path.read_bytes()
     except OSError as exc:
         raise RegistryError(f"cannot read {path}: {exc}")
+    if raw[:3] == b'\xef\xbb\xbf':
+        raw = raw[3:]
     try:
-        pack = json.loads(raw)
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise RegistryError(f"non-UTF-8 in {path.name}: {exc}")
+    try:
+        pack = json.loads(text)
     except json.JSONDecodeError as exc:
         raise RegistryError(f"malformed JSON in {path.name}: {exc}")
     _validate_pack(pack, path.name)
@@ -137,18 +152,38 @@ def load_all(skills_dir):
     return packs, errors
 
 
+def _match_one_pattern(compiled, text, timeout):
+    """Run compiled.search(text) in a thread with a timeout guard.
+
+    Returns True if the pattern matched within the timeout, False otherwise.
+    A timeout degrades to 'unsure' (no match) — never hangs.
+    """
+    result = [False]
+    def _run():
+        result[0] = bool(compiled.search(text))
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        return False
+    return result[0]
+
+
 def match_rules(packs, error_text, exit_code=None):
     """Match error text (and optional exit code) against all rules.
 
     Returns a list of matched rules (each is a dict with '_compiled'
     removed). Empty list = no matches. Multiple matches = caller decides
     how to present (AMBIGUOUS if >1).
+
+    Each pattern is executed with a timeout guard — a runaway regex
+    degrades to 'unsure' (no match) instead of hanging lookup.
     """
     matches = []
     for pack in packs:
         pack_name = pack.get("name", "unnamed")
         for rule in pack["rules"]:
-            if not rule["_compiled"].search(error_text):
+            if not _match_one_pattern(rule["_compiled"], error_text, _REGEX_TIMEOUT):
                 continue
             if "exit_code" in rule and rule["exit_code"] != exit_code:
                 continue

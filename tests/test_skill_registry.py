@@ -7,7 +7,9 @@ import unittest
 from pathlib import Path
 
 from qacompanion.skills.registry import (
+    MAX_PATTERN_LEN,
     RegistryError,
+    _match_one_pattern,
     _validate_pack,
     _validate_rule,
     format_rule_matches,
@@ -123,6 +125,15 @@ class TestValidateRule(unittest.TestCase):
                      "configuration-error", "dependency-error", "flaky-test",
                      "unknown"):
             _validate_rule(_make_rule(classification=cls), "test", 1)
+
+    def test_pattern_exceeds_size_cap(self):
+        long_pat = "a" * (MAX_PATTERN_LEN + 1)
+        with self.assertRaises(RegistryError):
+            _validate_rule(_make_rule(pattern=long_pat), "test", 1)
+
+    def test_pattern_at_size_cap_ok(self):
+        pat = "a" * MAX_PATTERN_LEN
+        _validate_rule(_make_rule(pattern=pat), "test", 1)
 
 
 # --- Pack validation ---
@@ -406,6 +417,101 @@ class TestTeachCLI(unittest.TestCase):
         rule = json.dumps({"pattern": "", "classification": "test-failure", "diagnosis_hint": "x"})
         rc = self._run("teach", "--rule", rule, "--pack", str(self.pack_path))
         self.assertEqual(rc, 1)
+
+
+# --- S19: Pack-file I/O robustness ---
+
+class TestPackFileRobustness(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.pack_path = Path(self.tmpdir) / "test.json"
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _write_raw(self, data):
+        self.pack_path.write_bytes(data)
+
+    def test_bom_prefix_stripped(self):
+        obj = _make_pack(rules=[_make_rule()])
+        raw = json.dumps(obj).encode("utf-8")
+        self._write_raw(b'\xef\xbb\xbf' + raw)
+        pack = load_pack(self.pack_path)
+        self.assertEqual(len(pack["rules"]), 1)
+
+    def test_crlf_line_endings_ok(self):
+        obj = _make_pack(rules=[_make_rule()])
+        raw = json.dumps(obj).encode("utf-8").replace(b'\n', b'\r\n')
+        self._write_raw(raw)
+        pack = load_pack(self.pack_path)
+        self.assertEqual(len(pack["rules"]), 1)
+
+    def test_no_trailing_newline_ok(self):
+        obj = _make_pack(rules=[_make_rule()])
+        raw = json.dumps(obj).encode("utf-8").rstrip(b'\n')
+        self._write_raw(raw)
+        pack = load_pack(self.pack_path)
+        self.assertEqual(len(pack["rules"]), 1)
+
+    def test_bom_crlf_combined(self):
+        obj = _make_pack(rules=[_make_rule()])
+        raw = json.dumps(obj).encode("utf-8").replace(b'\n', b'\r\n')
+        self._write_raw(b'\xef\xbb\xbf' + raw)
+        pack = load_pack(self.pack_path)
+        self.assertEqual(len(pack["rules"]), 1)
+
+    def test_non_utf8_bytes_rejected(self):
+        self._write_raw(b'\xff\xfe')
+        with self.assertRaises(RegistryError) as ctx:
+            load_pack(self.pack_path)
+        self.assertIn("non-UTF-8", str(ctx.exception))
+
+
+# --- S19: Regex timeout guard ---
+
+class TestRegexTimeout(unittest.TestCase):
+    def test_hostile_regex_does_not_hang(self):
+        import re as _re
+        compiled = _re.compile("(a+)+$")
+        text = "a" * 25 + "!"
+        t0 = __import__("time").time()
+        result = _match_one_pattern(compiled, text, timeout=0.5)
+        elapsed = __import__("time").time() - t0
+        self.assertFalse(result)
+        self.assertLess(elapsed, 5.0)
+
+    def test_normal_regex_still_matches(self):
+        import re as _re
+        compiled = _re.compile("^Error: .*")
+        self.assertTrue(_match_one_pattern(compiled, "Error: boom", timeout=0.5))
+
+    def test_normal_regex_no_match(self):
+        import re as _re
+        compiled = _re.compile("^SyntaxError")
+        self.assertFalse(_match_one_pattern(compiled, "Error: boom", timeout=0.5))
+
+    def test_match_rules_with_hostile_pattern_completes(self):
+        hostile_rule = _make_rule(
+            pattern="(a+)+$",
+            rule_id="hostile",
+        )
+        hostile_rule["_compiled"] = __import__("re").compile(hostile_rule["pattern"])
+        pack = _make_pack(name="bad", rules=[hostile_rule])
+        t0 = __import__("time").time()
+        result = match_rules([pack], "a" * 25 + "!")
+        elapsed = __import__("time").time() - t0
+        self.assertEqual(result, [])
+        self.assertLess(elapsed, 5.0)
+
+    def test_match_rules_normal_pattern_still_works(self):
+        import re as _re
+        rule = _make_rule(pattern="^Error: .*", rule_id="r1")
+        rule["_compiled"] = _re.compile(rule["pattern"])
+        pack = _make_pack(name="good", rules=[rule])
+        result = match_rules([pack], "Error: boom")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["id"], "r1")
 
 
 if __name__ == "__main__":
