@@ -5,8 +5,13 @@ echoes the child's merged stdout+stderr verbatim to qacompanion's stderr
 (nothing swallowed - the FAIL(0.0s) lesson), and on nonzero exit records
 exactly one case:
 
-- signature: normalized command line + last non-empty output line
-  (the generic-command adaptation of "test name + first error line")
+- signature: normalized command line + error part chosen by the hybrid
+  parse rule (D-0007 Amendment 1): summary-shaped lines (^OK / ^FAILED /
+  ^Ran N) are stripped first and never key a signature; the FIRST
+  ^FAIL/^ERROR marker line then wins (test identity - "test name + first
+  error line"); marker-less generic commands fall back to the last
+  remaining non-empty line. This keeps signatures stable when only a
+  runner's summary counts vary between otherwise identical failures.
 - error_excerpt: merged output tail, bounded to MAX_EXCERPT_CHARS
 - diagnosis: honest placeholder naming exit code and command; never a
   fabricated diagnosis. Teacher review turns it into real lore.
@@ -17,6 +22,7 @@ the wrapper, exactly like running the command by hand.
 """
 
 import os
+import re
 import subprocess
 
 from .. import signatures, store
@@ -25,6 +31,9 @@ GUARD_ENV = "QA_RUN_ACTIVE"
 CONFIRMED_BY = "auto-capture"
 MAX_EXCERPT_CHARS = 4000
 NO_OUTPUT_PLACEHOLDER = "(no output)"
+
+_SUMMARY_LINE = re.compile(r"^(?:OK|FAILED|Ran [0-9]+)")
+_ERROR_MARKER = re.compile(r"^(?:FAIL|ERROR):?\s")
 
 
 def execute(cmd):
@@ -40,15 +49,23 @@ def execute(cmd):
     )
 
 
+def _error_part(output_text):
+    """Hybrid D-0007 Amendment 1 rule -> error-part string. Pure."""
+    lines = [line.strip() for line in output_text.splitlines() if line.strip()]
+    eligible = [line for line in lines if not _SUMMARY_LINE.match(line)]
+    for line in eligible:
+        if _ERROR_MARKER.match(line):
+            return line
+    return eligible[-1] if eligible else NO_OUTPUT_PLACEHOLDER
+
+
 def parse_failure(argv_text, output_text):
     """Deterministic parse rule -> (signature, excerpt). Pure."""
-    non_empty = [line.strip() for line in output_text.splitlines() if line.strip()]
-    last_line = non_empty[-1] if non_empty else NO_OUTPUT_PLACEHOLDER
     truncated = len(output_text) > MAX_EXCERPT_CHARS
     excerpt = ("[truncated] " if truncated else "") + output_text[
         -MAX_EXCERPT_CHARS:
     ]
-    signature = signatures.canonical(f"{argv_text} :: {last_line}")
+    signature = signatures.canonical(f"{argv_text} :: {_error_part(output_text)}")
     return signature, excerpt
 
 

@@ -32,6 +32,45 @@ class AutoCaptureUnitTests(unittest.TestCase):
         self.assertIn(auto_capture.NO_OUTPUT_PLACEHOLDER, signature)
         self.assertEqual("", excerpt)
 
+    def test_signature_stable_across_volatile_summary_counts(self):
+        """Regression for the S8 hard-gate failure mode: the SAME failing
+        cmd must yield an identical signature even when only the runner's
+        summary counts differ between runs (FAIL-volatile @e1322f3)."""
+        body = (
+            "FAIL: test_a (__main__.T.test_a)\n"
+            "Traceback (most recent call last):\n"
+            "AssertionError: boom\n"
+        )
+        two = body + "\nRan 2 tests in 0.001s\nFAILED (failures=2)\n"
+        three = body + "\nRan 3 tests in 0.001s\nFAILED (failures=3)\n"
+        sig_two, _ = auto_capture.parse_failure("python -m unittest", two)
+        sig_three, _ = auto_capture.parse_failure("python -m unittest", three)
+        self.assertEqual(sig_two, sig_three)
+        self.assertIn("fail: test_a", sig_two)
+
+    def test_summary_only_output_never_keys_the_summary_line(self):
+        """Strip-before-scan ordering keeps '^FAILED (failures=N)' from
+        being misread as a FAIL marker."""
+        one, _ = auto_capture.parse_failure("cmd", "FAILED (failures=1)\n")
+        two, _ = auto_capture.parse_failure("cmd", "FAILED (failures=2)\n")
+        self.assertEqual(one, two)
+        self.assertIn(auto_capture.NO_OUTPUT_PLACEHOLDER, one)
+
+    def test_first_error_marker_line_wins_over_later_noise(self):
+        out = (
+            "starting suite\n"
+            "ERROR: test_z (__main__.T.test_z)\n"
+            "FAIL: test_a (__main__.T.test_a)\n"
+            "Ran 5 tests in 0.002s\nFAILED (failures=2)\n"
+        )
+        signature, _ = auto_capture.parse_failure("cmd", out)
+        self.assertIn("error: test_z", signature)
+
+    def test_markerless_generic_commands_keep_last_line_rule(self):
+        out = "progress 40%\nE   AssertionError: nope\n"
+        signature, _ = auto_capture.parse_failure("pytest -k boom", out)
+        self.assertIn("assertionerror: nope", signature)
+
     def test_parse_failure_bounds_excerpt_and_flags_truncation(self):
         big = "x" * (auto_capture.MAX_EXCERPT_CHARS + 50)
         _, excerpt = auto_capture.parse_failure("cmd", big)

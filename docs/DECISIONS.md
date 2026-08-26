@@ -297,4 +297,34 @@ hang policy):
 - Provenance: Phase B authorization (human mail #56) + reviewer
   green-light with binding riders (mail #61, criteria 6-8).
 
-Provenance: digest + mail #56 + mail #61.
+### Amendment 1: hybrid signature parse rule [2026-08-26, mail #68 ruling]
+
+The original last-non-empty-line rule proved FAIL-volatile: the same
+failing command run twice produced tails `FAILED (failures=2)` vs
+`FAILED (failures=3)`, so signatures diverged and the S8 flaky skill's
+flake-rate denominator was unsound (hard gate #65; firsthand
+disconfirmation at e1322f3). Human-side ruling via agent-b REVIEW mail
+#68 replaces the parse rule with an ordered hybrid:
+
+1. Summary-shaped lines matching `^(?:OK|FAILED|Ran [0-9]+)` are never
+   eligible to key a signature; they are stripped first.
+2. The FIRST remaining line matching `^FAIL:? ` or `^ERROR:? ` (colon or
+   space form) wins as the error part - it names the failing test.
+3. Marker-less generic commands fall back to the LAST remaining
+   non-empty line after stripping (prior behavior preserved).
+
+Pure summary-stripping was rejected (unknown runner formats would
+silently reintroduce volatility); pure first-error-line was rejected
+(marker-less tools lose their working path). Strip-before-scan ordering
+keeps `^FAILED (failures=N)` from being misread as a FAIL marker.
+
+Compatibility audit (firsthand, live store @2478b04): all 6 cases read
+verbatim; confirmed_by values are seeded-lore x4, human x1, agent-b x1 -
+ZERO auto-capture-sourced cases exist, so amending parse_failure orphans
+no existing case match and no dual-signature/migration machinery is
+needed.
+
+Provenance: digest + mail #56 + mail #61 + REVIEW mails #68/#70;
+regression tests test_signature_stable_across_volatile_summary_counts /
+test_first_error_marker_line_wins_over_later_noise; disconfirmer rerun
+IDENTICAL=True post-fix.
