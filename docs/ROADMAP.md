@@ -320,7 +320,7 @@ base, digested docs, and journal become TRAINING DATA; a small open base
 model (Qwen2.5-0.5b / gemma-2-2b class) gets LoRA-tuned on them, producing
 `baby-agent:<checkpoint>` models importable straight into Ollama.
 
-### S29 — Training-data pipeline
+### S30 — Training-data pipeline
 
 `qa export-training --out train.jsonl` — converts cases, corrections,
 journal entries, and digested doc Q&A into instruction-format pairs
@@ -328,7 +328,7 @@ journal entries, and digested doc Q&A into instruction-format pairs
 
 **Exit:** exported file trains without format errors; holdout excluded.
 
-### S30 — First checkpoint: `baby-agent:ep1`
+### S31 — First checkpoint: `baby-agent:ep1`
 
 One LoRA fine-tune pass over the exported data (tooling choice open:
 unsloth / LLaMA-Factory / MLX depending on hardware). Import to Ollama,
@@ -337,7 +337,7 @@ benchmark against S26's RAG answers AND the frozen holdout.
 **Exit:** `baby-agent:ep1` exists in Ollama; benchmark table compares it vs
 base model vs RAG-vs-stock, honestly including where it got worse.
 
-### S31 — Generational loop
+### S32 — Generational loop
 
 Re-train on schedule or when the case base grows by a threshold. Every
 checkpoint preserved (`ep1`, `ep2`, ...) with its accuracy report — a
@@ -348,8 +348,6 @@ silently.
 **Exit:** two generations exist; gen2 measurably improves on gen1's weak
 categories without regressing strong ones — or the attempt is honestly
 recorded as failed.
-
-## Deferred
 
 ## Deferred
 
