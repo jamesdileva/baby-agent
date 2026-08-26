@@ -183,6 +183,13 @@ boundary between evolution and self-modification; stay on the right side.
 **Exit:** one example module passes discovery + suite gate; an intentionally
 failing module is demonstrably blocked from loading.
 
+## Deferred
+
+- Interactive teach/watch console (TUI): stream failures, confirm diagnoses,
+  watch accuracy live. Revisit after tess uses lookup daily — build the
+  interactions the teaching loop actually needs.
+- Per-project case bases with merge-up (QA_CASES_FILE already enables this).
+
 ### S18 — `merge`: teacher dedup tool
 
 Teachers spot two signatures that are really one failure. `merge --into A
