@@ -108,7 +108,13 @@ artifact SHA256 quoted-in-transcript before probe (R3), no BOM in configs,
 clean tree before claiming done. `qa preflight` runs the checklist.
 
 **Exit:** each rule has a violation fixture and a passing fixture; checklist
-output names the rule violated.
+output names the rule violated. **Met:** tests/test_preflight_skill.py
+(17 tests: violation+passing fixture per rule incl. explicit R3
+quote-before-probe ordering and utf-8-sig BOM lore, golden checklist naming
+each violated rule, hermetic mocked-git units, one real temp-repo e2e pair +
+real non-repo honest environment abort); exit contract 0/1/2 proposed as a
+spec amendment (DECISIONS 2026-08-26, QUESTION mailed - frozen Subcommands
+table has no preflight row), shipped 2026-08-26 (S11 slice).
 
 ## Workplace skills (v1.x) — general competence, taught by real asks
 

@@ -1,12 +1,14 @@
 """argv dispatch -> subcommand modules; exit-code policy.
 
-0 success, 1 operational failure (bad input, unreadable/corrupt store).
+0 success, 1 operational failure (bad input, unreadable/corrupt store);
+preflight adds 2 environment error (proposed amendment, docs/DECISIONS.md).
 Modules stay silent; all output lives here.
 """
 
 import argparse
 import os
 import sys
+from pathlib import Path
 
 from . import accuracy as accuracy_mod
 from . import lookup as lookup_mod
@@ -14,7 +16,7 @@ from . import report as report_mod
 from . import signatures
 from . import store
 from . import transport
-from .skills import auto_capture, flaky, regression
+from .skills import auto_capture, flaky, preflight, regression
 
 
 def build_parser():
@@ -72,6 +74,25 @@ def build_parser():
         nargs=argparse.REMAINDER,
         metavar="-- CMD [ARGS ...]",
         help="command to wrap, passed as an argv list (no shell)",
+    )
+
+    checker = sub.add_parser(
+        "preflight",
+        help="run the colony QA checklist (R3 sha256 order, BOMs, clean tree)",
+        epilog=(
+            "Exit contract (proposed amendment, docs/DECISIONS.md): "
+            "0 all checked rules pass, 1 rule violation found, 2 "
+            "environment error (not a git work tree / git missing / "
+            "unreadable transcript)."
+        ),
+    )
+    checker.add_argument(
+        "--transcript",
+        default=None,
+        help=(
+            "transcript text file for the R3 sha256-ordering check "
+            "(omitting it skips that rule honestly)"
+        ),
     )
 
     return parser
@@ -206,6 +227,23 @@ def _cmd_run(args):
     return result["returncode"]
 
 
+def _cmd_preflight(args):
+    transcript_text = None
+    if args.transcript:
+        try:
+            transcript_text = Path(args.transcript).read_text(encoding="utf-8-sig")
+        except OSError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+    try:
+        results = preflight.run_checks(Path.cwd(), transcript_text)
+    except preflight.PreflightEnvError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(preflight.format_results(results))
+    return 1 if any(r["status"] == "FAIL" for r in results) else 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -215,6 +253,7 @@ _COMMANDS = {
     "export": _cmd_export,
     "import": _cmd_import,
     "run": _cmd_run,
+    "preflight": _cmd_preflight,
 }
 
 

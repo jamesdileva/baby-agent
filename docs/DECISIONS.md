@@ -550,3 +550,83 @@ provenance Phase B auths human mails #56/#94, TASK mail #93.
 
 Status: case#7 CLOSED - diagnosis confirmed by human (mail #94); case#8
 PENDING human teacher REVIEW (mailed this cycle); no spec impact.
+
+## Spec gap: frozen Subcommands table lacks a preflight row [2026-08-26, QUESTION filed]
+
+- TASK mail #100 criterion 6 forced the check BEFORE implementation:
+  spec.md's frozen v1 Subcommands table lists the commands with their exit
+  contracts; `qa preflight` (ROADMAP S11, human auths mails #56/#94)
+  appears nowhere in it. Adding a subcommand touches the frozen surface =
+  spec-amendment territory per AGENTS.md.
+- Exit contract implemented behind the question: 0 = all checked rules
+  passed; 1 = at least one rule FAILED (checklist still printed, naming
+  each violated rule); 2 = environment error - git plumbing unusable (not
+  a repository, broken HEAD, git missing) or unreadable explicit
+  transcript - rendered as ONE honest error line on stderr, never a
+  traceback (case#4 class). Omitting --transcript skips the R3 row
+  honestly and stays exit 0. The 1-vs-2 split keeps "your tree is dirty"
+  distinct from "the tool could not even look"; it extends (does not
+  contradict) the uniform 0/1 policy in IMPLEMENTATION_GUIDE.
+- QUESTION mailed to the human this cycle (mail-first leg, recorded here
+  second): ratify adding row `qa preflight | Standing QA checklist (R3
+  sha256 quoted-before-probe, no BOM in configs, clean git tree); one
+  checklist line per rule | 0 / 1 / 2`. Per the goal phase-gate rule the
+  slice proceeded while awaiting; if the ruling differs, the CLI surface
+  adjusts next slice. No other spec text touched.
+
+Status: PENDING human ruling; S11 shipped underneath per authorized
+escalate-and-continue discipline.
+
+## S11 preflight skill landed; Phase B awaits reviewer gate [2026-08-26]
+
+- Three ROADMAP S11 rules encoded exactly; per-rule VIOLATION + PASSING
+  fixtures; golden-output checklist names each violated rule (TASK mail
+  #100 criteria 1-3). Read-only (directory walks, 3-byte peeks, two
+  read-only git queries), stdlib-only, no live-loop dependence.
+- R3 ordering enforced literally: first 64-hex digest strictly before
+  the first probe-marker line; probe-without-quote violates; probe-free
+  transcript is an honest vacuous skip (case#3 stale-installer lore).
+  An explicit --transcript that cannot be read is an environment error,
+  not a silent pass.
+- BOM check reads raw first three bytes of every *.json/*.toml/*.ini/
+  *.cfg/*.yaml/*.yml under the git toplevel (.git excluded), sorted for
+  determinism - utf-8-sig lore case#2.
+- Clean tree via `git status --porcelain` anchored at `git rev-parse
+  --show-toplevel`; git failure anywhere aborts with the single honest
+  environment error (exit 2, no traceback, case#4 class).
+- Hermetic units inject subprocess.run doubles; real-git coverage is the
+  S10-pattern e2e pair: temp repo init+commit -> exit 0 (R3 skipped
+  honestly, no transcript), stray file -> exit 1 naming clean-tree;
+  plus a REAL non-repo invocation asserting the honest environment
+  abort. Suite grew 156 -> 173 tests, all green at the final tree.
+- Freshness-gated bump 16->17 rider [store rider, landed via the human's
+  own commit]: phantom #29 repeated the identical false pair ("1 changed
+  file(s): docs/ROADMAP.md" plus "test: FAIL (0.0s)") and was
+  firsthand-disproven pre-action - porcelain EMPTY at HEAD=52bb5f2;
+  python -m unittest Ran 156 OK EXIT=0 (3.749s wall). Cap lifted per
+  human mail #76; chain mails #79/#86/#87/#89/#92/#95 plus reviewer
+  authorization D#354; tally 27 observed / 17 recorded since anchor
+  2026-08-26T07:22Z; signature/diagnosis/confirmed_by byte-stable via
+  record CLI inside this declared cycle. Provenance note recorded
+  honestly: while the rider sat uncommitted mid-slice, the human teacher
+  worked live in-repo and their b96ebfd (04:41Z-0700) swept the already-
+  bumped cases.jsonl line into that commit alongside AGENTS.md changes;
+  agent-a's slice commit below therefore carries code+docs only, and the
+  store diff history lives in b96ebfd.
+- Mid-cycle human commits acknowledged: bc93d92 + b96ebfd (case
+  confirmation authority delegated to parents; full teaching authority
+  to parents, human reserved for spec amendments/disputes/chronic
+  blockers - consistent with AGENTS.md as received) and 809c7a0 (The
+  Great Digest pre-generation ritual added before S32). No conflict with
+  this slice; Digest noted for the S30 training phase.
+- D-0009 clauses honored: sole-committer role declared at cycle start
+  (STATUS mail); intent-to-commit ping = these entries + commit of
+  exactly qacompanion/skills/preflight.py, tests/test_preflight_skill.py,
+  qacompanion/__main__.py, docs/ROADMAP.md, and this file immediately
+  following (cases.jsonl excluded - already landed via b96ebfd);
+  `Agent: agent-a` trailer.
+
+Status: Phase B slices complete (S10+S11); phase-gate sign-off deferred
+until agent-b REVIEW confirms firsthand - S12 starts only after that
+entry exists. Console-leak micro-slice queued behind the gate (mail #98
+rider).
