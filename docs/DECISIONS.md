@@ -479,3 +479,74 @@ Status: operational note under D-0009/D-0010; no spec impact.
 
 Status: PENDING human teacher REVIEW of case#7's wrong-cwd environment
 diagnosis; no spec impact.
+
+## D-0012 S10 regression rule pinned; slice landed [2026-08-26, slice landing]
+
+- N pinned, not silent-defaulted (reviewer gates mails #93/#95): a live
+  case is a regression iff its flakes.jsonl sidecar entry records
+  >= MIN_CLEAN_PASSES = 3 passes AND its last_seen stamp is strictly
+  after the entry's last_pass (exact tie conservatively NOT a
+  regression; currently-green cases never regressions). ROADMAP left N
+  open; 3 is now stated in code, tests, and ROADMAP's Met note.
+- Determinism rule upheld: detection reads only pass/fail counts plus
+  this event-stamp ordering - never wall-clock duration windows.
+- Interplay with S8 chronic (>50% pass rate), decided and tested both
+  sides of the boundary: at return time a cumulative pass rate <= 50%
+  (chronic test is strictly-greater) reads REGRESSION; > 50% reads
+  flake-bounce and is excluded - flooding the prominent block with
+  known noise would destroy its signal. Honest tradeoff recorded: a
+  freshly-fixed rarely-failing test may briefly read chronic until reds
+  accumulate, then promotes once its rate drops to <= 50%. Golden test
+  pins exactly-50% as regression, 60% as chronic bounce.
+- Zero-pass signatures (no sidecar entry) are NEVER regressions -
+  absence of evidence stays absent (mirrors S8); single-sighting
+  zero-pass cases surface separately as first-time failures.
+- Report prominence made concrete with a golden-output test: dedicated
+  regressions block above first-time failures, each regression linking
+  its last_green date from the sidecar (D-0008 linkage).
+- Fixtures-first honored (mail #93): every detection unit is seeded
+  in-process through store + FlakeStore APIs with fixed stamps; exactly
+  ONE e2e exercises the real `qa run` hook, stamps normalized post-run;
+  no live-loop dependence anywhere in the units.
+- Scope fence verified: read-only view over cases.jsonl + flakes.jsonl;
+  store format, lookup semantics, capture paths, exit codes untouched;
+  fresh isolated accuracy run in the pre-commit gate (case#5 rule).
+
+Status: adopted this cycle pre-commit per reviewer blocker mail #95(a);
+provenance Phase B auths human mails #56/#94, TASK mail #93.
+
+## Case #7 CONFIRMED by human teacher REVIEW (mail #94); TASK #11 closed [2026-08-26]
+
+- Human teacher REVIEW landed mail-first: case#7's wrong-cwd ENOENT
+  environment-class diagnosis CONFIRMED, including the hedge ("determin-
+  istic rules cannot distinguish deleted-file from wrong-directory").
+  Store updated same cycle per protocol: confirmed_by =
+  "human (teacher REVIEW mail #94)"; supersedes the PENDING status
+  above. TASK #11 moves to done.
+- Teacher loop, genuine failure recorded as new case#8 (auto-capture's
+  sibling class, manually recorded from reviewer-captured firsthand
+  evidence, mail #95): a test helper named fail() shadowed
+  unittest.TestCase.fail, turning assertion paths into TypeError instead
+  of reporting the real diff; helper renamed record_fail in this slice.
+  Diagnosis hedged honestly; teacher REVIEW mailed to the human this
+  cycle (mail-first leg).
+- Freshness-gated bump 15->16 [store-only besides these entries]:
+  phantom #28 repeated the identical false pair ("1 changed file(s):
+  docs/ROADMAP.md" plus "test: FAIL (0.0s)") and was firsthand-disproven
+  pre-action - porcelain shows exactly ' M qacompanion/__main__.py' plus
+  untracked skills/regression.py + tests/test_regression_skill.py, NO
+  ROADMAP entry pending; python -m unittest Ran 156 OK EXIT=0 (3.097s
+  wall). Cap remains lifted per human mail #76; authorization chain
+  mails #79/#86/#87/#89/#92/#95; duplicate-ping ban honored. Tally:
+  26 deliveries observed / 16 recorded since anchor 2026-08-26T07:22Z.
+  Signature, diagnosis, and confirmed_by byte-stable via the record CLI
+  inside this declared cycle.
+- D-0009 clauses honored: agent-a announced the sole-committer role at
+  cycle start; intent-to-commit ping = these entries + commit of exactly
+  qacompanion/skills/regression.py, tests/test_regression_skill.py,
+  qacompanion/__main__.py, cases.jsonl (case#6 bump, case#7 sign-off,
+  new case#8), docs/ROADMAP.md (S10 Met tick), docs/DECISIONS.md (these
+  entries) immediately following; `Agent: agent-a` trailer on the commit.
+
+Status: case#7 CLOSED - diagnosis confirmed by human (mail #94); case#8
+PENDING human teacher REVIEW (mailed this cycle); no spec impact.

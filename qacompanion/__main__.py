@@ -14,7 +14,7 @@ from . import report as report_mod
 from . import signatures
 from . import store
 from . import transport
-from .skills import auto_capture, flaky
+from .skills import auto_capture, flaky, regression
 
 
 def build_parser():
@@ -111,6 +111,7 @@ def _cmd_report(args):
         if flaky.has_entries():
             entries = flaky.FlakeStore().load()
             sections.append(flaky.format_flakes(cases, entries))
+            sections.append(regression.format_regressions(cases, entries))
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

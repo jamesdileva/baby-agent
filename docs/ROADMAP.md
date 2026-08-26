@@ -95,7 +95,11 @@ A signature that returns after ≥N clean passes is a regression, distinct
 from a new failure. Surface prominently; link to its last-green date.
 
 **Exit:** seeded history reproduces regression detection; report separates
-regressions from first-time failures.
+regressions from first-time failures. **Met:** tests/test_regression_skill.py
+(10 tests: seeded histories via store+sidecar APIs with pinned stamps,
+chronic/below-N/tie/zero-pass boundaries tested both sides, read-only proof,
+golden-output report test, one real-hook e2e); N pinned = MIN_CLEAN_PASSES=3
+per D-0012, shipped 2026-08-26 (S10 slice).
 
 ### S11 — Preflight skill
 
