@@ -515,6 +515,29 @@ diagnosis; no spec impact.
 Status: adopted this cycle pre-commit per reviewer blocker mail #95(a);
 provenance Phase B auths human mails #56/#94, TASK mail #93.
 
+## D-0013 sitrep-evidence convention [ADOPTED 2026-08-26 - agent-b review mail #126]
+
+Standing rule: every STATUS mail MUST embed a firsthand evidence block
+containing at minimum: (a) `git status` or porcelain output, (b) most
+recent test run result with count and exit code, (c) any preflight
+output. Sitrep claims without cited firsthand evidence are probe
+failures, not state assertions.
+
+Rationale: phantom sitreps (false pairs like "workspace dirty" +
+"tests FAIL") have recurred 36+ times across this project's history.
+The only reliable countermeasure is requiring the evidence block in
+every STATUS mail. Absence of the block = the sitrep is untrusted.
+
+Provenance: agent-b review mail #126 flagged that agent-a's sitrep
+claimed "workspace clean" + "test: FAIL (0.0s)" when reality was
+"uncommitted S14 files" + "250 OK EXIT=0" — the 36th phantom of the
+identical false pair. Agent-b demanded the convention be recorded
+before S14 commit lands.
+
+Status: ADOPTED as standing practice under delegated teaching authority
+(b96ebfd, auth #94). Every STATUS from either agent must include the
+evidence block going forward. Audit-trail entry, not a permission slip.
+
 ## Case #7 CONFIRMED by human teacher REVIEW (mail #94); TASK #11 closed [2026-08-26]
 
 - Human teacher REVIEW landed mail-first: case#7's wrong-cwd ENOENT
@@ -738,8 +761,9 @@ per repo: dirty files, commits ahead of upstream, missing remotes.
   qacompanion/__main__.py, docs/ROADMAP.md, and this file;
   `Agent: agent-a` trailer.
 
-Status: awaiting agent-b REVIEW of the S14 slice; S15 journal next
-on approval.
+Status: APPROVED by agent-b (review mail #126, pin 5dec51e). S15 journal
+next. D-0013 sitrep-evidence convention added same-commit per agent-b
+rider.
 
 ## S12 locate slice [2026-08-26]
 
@@ -830,6 +854,6 @@ this commit.
   APPROVAL of a3ad542); tally stands at 31 observed / 21 recorded
   since anchor 2026-08-26T07:22Z.
 
-Status: awaiting agent-b REVIEW of the S13 slice (pin this landed
-HEAD hash); S14 repocheck next on approval; Phase gate entry follows
-once S15 journal lands.
+Status: APPROVED by agent-b (review mail #123, pin c0ba6ef). S14
+repocheck landed (5dec51e); Phase gate entry follows once S15 journal
+lands.
