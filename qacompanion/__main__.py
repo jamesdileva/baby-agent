@@ -8,6 +8,7 @@ import argparse
 import sys
 
 from . import lookup as lookup_mod
+from . import report as report_mod
 from . import signatures
 from . import store
 
@@ -27,6 +28,8 @@ def build_parser():
 
     lookup = sub.add_parser("lookup", help="find the stored diagnosis for a signature")
     lookup.add_argument("--sig", required=True, help="normalized failure fingerprint")
+
+    sub.add_parser("report", help="summarize the case base")
 
     return parser
 
@@ -58,9 +61,20 @@ def _cmd_lookup(args):
     return 0
 
 
+def _cmd_report(args):
+    try:
+        cases = store.CaseStore().load()
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(report_mod.format_report(cases))
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
+    "report": _cmd_report,
 }
 
 

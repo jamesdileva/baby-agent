@@ -1,5 +1,7 @@
 """Lookup honesty states: known, unknown, ambiguous; plus CLI wiring."""
 
+import contextlib
+import io
 import os
 import tempfile
 import unittest
@@ -101,10 +103,17 @@ class CrossPathE2eTests(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def test_record_windows_spelling_lookup_posix_hits_same_case(self):
-        code = main(["record", "--sig", self.WIN_SIG, "--err", "no file", "--diag", "check cwd"])
-        self.assertEqual(0, code)
-        hit = main(["lookup", "--sig", self.POSIX_SIG])
+        record_code = main(
+            ["record", "--sig", self.WIN_SIG, "--err", "no file", "--diag", "check cwd"]
+        )
+        self.assertEqual(0, record_code)
+        # lookup exits 0 even on a miss (sentinel), so exit code alone
+        # proves nothing; assert stdout is a real hit.
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            hit = main(["lookup", "--sig", self.POSIX_SIG])
         self.assertEqual(0, hit)
+        self.assertTrue(buffer.getvalue().startswith("case #"), buffer.getvalue())
 
     def test_stored_signature_is_canonical_and_bumps_across_spellings(self):
         main(["record", "--sig", self.WIN_SIG, "--err", "e", "--diag", "d"])

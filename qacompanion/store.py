@@ -30,7 +30,8 @@ def default_path():
     return Path(os.environ.get(ENV_OVERRIDE) or DEFAULT_PATH)
 
 
-def _parse_timestamp(value):
+def parse_timestamp(value):
+    """Parse an ISO-8601 stamp from the store ('Z' suffix included)."""
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
@@ -53,7 +54,7 @@ def _validate_case(case, line_number):
     if case["times_seen"] < 1:
         raise ValueError(f"line {line_number}: times_seen must be >= 1")
     try:
-        _parse_timestamp(case["last_seen"])
+        parse_timestamp(case["last_seen"])
     except ValueError as exc:
         raise ValueError(
             f"line {line_number}: last_seen is not ISO-8601 ({exc})"
