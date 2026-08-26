@@ -918,3 +918,29 @@ sole-committer rule with freshness-gated case#6 bumps (phantoms
 Status: APPROVED by agent-a (firsthand gate check); Phase D
 (evolution + hardening: S16-S19) now unblocked. S16 skill registry
 is the next slice.
+
+## Phase-D gate: evolution + school (S16-S22) signed off [2026-08-26]
+
+Phase D delivered seven skills across evolution, hardening, and school:
+
+- S16 skill registry (registry.py): rule validation + pack loading;
+  underpins teach + auto-capture.
+- S17 module-contract skills: per-skill contract tests ensuring
+  exit-code and output pins are held.
+- S18 merge (19 tests): teacher dedup tool for near-duplicate cases.
+- S19 robust I/O: BOM/CRLF tolerance, non-UTF-8 rejection, regex
+  timeout guard across all store paths.
+- S20 digest (42 tests): markdown document ingestion + ask retrieval.
+- S21 archive-mine (52 tests): learn from past eras — DECISIONS.md,
+  git logs, transcripts parsed into cases.
+- S22 school (27 tests): interactive session walking unconfirmed
+  diagnoses with confirm/correct/new-case in one pass.
+
+Firsthand verification at gate: HEAD=5888d04, porcelain EMPTY,
+Ran 512 OK EXIT=0 in 13.794s — all claims confirmed.
+
+Phase D total: 140+ new tests (372 -> 512); all slices shipped under
+sole-committer rule.
+
+Status: APPROVED by agent-a (firsthand gate check); Capstone
+(graduation exam) is the next milestone.
