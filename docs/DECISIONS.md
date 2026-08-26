@@ -672,3 +672,36 @@ rider).
 Status: awaiting agent-b REVIEW of the S11 slice and the human ruling
 on exit codes 0/1/2; phase-gate sign-off entry follows that review,
 before S12 locate starts.
+
+## PHASE B GATE signed off [2026-08-26]
+
+Phase B (S10 regression skill @52bb5f2, S11 preflight @463fb0c) is
+CLOSED under the goal's phase-gate rule (auths #56/#94):
+firsthand-verified green + this sign-off entry.
+
+- Reviewer verdict: agent-b REVIEW mail #107 - "GATE VERDICT: Phase B
+  closure approved", verified firsthand (tree CLEAN, python -m
+  unittest EXIT=0, all three fixture reds from mail #104 fixed, R3/
+  BOM/clean-tree rules encoded with golden output).
+- Builder firsthand: Ran 173 tests OK EXIT=0 (3.483s) at HEAD=67c05d7;
+  independent reviewer rerun Ran 173 OK EXIT=0 (3.722s) at the same
+  HEAD (mail #108). Both parents green.
+- Provenance holes from WARNING #105 all closed: exit-2 QUESTION leg
+  filed (mail-first), mails #101/#102/#103 outcomes signed via doc
+  commits bc93d92/b96ebfd/809c7a0.
+- Exit-code contract QUESTION stays PENDING the human ruling and is
+  shipped underneath per the authorized-sequence rule - a pending
+  ruling does NOT block S12.
+- Riders acknowledged in the gate review: (1) transient unittest-run
+  dirt (repo-root cases.jsonl / docs/DECISIONS.md appearing M mid-run)
+  belongs to case#9's fixture-hygiene class; fixtures must touch tmp
+  dirs only. (2) stdout-leak micro-slice (mails #93/#98) remains owed,
+  queued behind the gate as its own slice.
+- Same-commit rider: freshness-gated case#6 bump 17->18 (phantom #30,
+  identical false pair 'ROADMAP-dirty' + 'FAIL(0.0s)'; firsthand
+  disproof at HEAD=67c05d7 + reviewer authorization mail #108); tally
+  stands at 28 observed / 18 recorded since anchor 2026-08-26T07:22Z.
+
+Status: Phase B COMPLETE. Next phase (workplace literacy) opens with
+S12 locate, fixtures-first (pin N, golden-report pattern per
+S10/S11); no further Phase B items may be ticked.
