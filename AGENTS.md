@@ -47,6 +47,15 @@ touching it.
 - When the human replies by mail, sign the outcome into DECISIONS.md the
   same cycle.
 
+### Case confirmation authority
+
+Routine case confirmations may be signed `confirmed_by` firsthand by either
+parent when ALL hold: (a) firsthand reproduction evidence is cited,
+(b) the diagnosis introduces no new rule class, amendment, or scope question,
+(c) both agents concur. Escalate to `human` teacher review ONLY when: the
+diagnosis proposes a new standing rule, touches the frozen spec (docs/spec.md),
+is disputed between agents, or recurs 3+ times unresolved.
+
 ## Cycle-end ritual (integration with this tool)
 
 Every working cycle in any repo where qacompanion is deployed:
