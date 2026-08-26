@@ -2,7 +2,7 @@
 
 import unittest
 
-from qacompanion.signatures import baseline_paths, normalize
+from qacompanion.signatures import baseline_paths, canonical, normalize
 
 
 class NormalizeTests(unittest.TestCase):
@@ -44,6 +44,31 @@ class NormalizeTests(unittest.TestCase):
     def test_format_is_test_then_separator_then_error(self):
         sig = normalize("TestName", "Boom")
         self.assertEqual("testname :: boom", sig)
+
+
+class CanonicalTests(unittest.TestCase):
+    WIN_SIG = "tests/test_config.py::test_load :: FileNotFoundError: C:\\Users\\j\\proj\\config.json"
+    POSIX_SIG = "tests/test_config.py::test_load :: filenotfounderror: /home/j/proj/config.json"
+
+    def test_idempotent(self):
+        once = canonical(self.WIN_SIG)
+        self.assertEqual(once, canonical(once))
+
+    def test_already_canonical_passes_through(self):
+        self.assertEqual("testname :: boom", canonical("testname :: boom"))
+
+    def test_matches_two_arg_normalize_of_parts(self):
+        self.assertEqual(
+            normalize("TestName", "Boom"), canonical("TestName :: Boom")
+        )
+
+    def test_windows_and_posix_spellings_collide_after_composition(self):
+        self.assertEqual(canonical(self.WIN_SIG), canonical(self.POSIX_SIG))
+
+    def test_no_separator_still_idempotent(self):
+        once = canonical("just an error line")
+        self.assertEqual("just an error line :: ", once)
+        self.assertEqual(once, canonical(once))
 
 
 class BaselinePathsTests(unittest.TestCase):

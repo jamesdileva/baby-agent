@@ -83,5 +83,39 @@ class LookupCliTests(unittest.TestCase):
         self.assertEqual(1, main(["lookup", "--sig", "s"]))
 
 
+class CrossPathE2eTests(unittest.TestCase):
+    """Teacher-loop failure mode: record and lookup spellings must not
+    have to agree; canonical() is the one gate both commands pass through."""
+
+    WIN_SIG = "tests/test_config.py::test_load :: FileNotFoundError: C:\\Users\\j\\proj\\data\\config.json"
+    POSIX_SIG = "tests/test_config.py::test_load :: filenotfounderror: /home/j/proj/data/config.json"
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.store_path = Path(self._tmp.name) / "cases.jsonl"
+        patcher = mock.patch.dict(
+            os.environ, {store.ENV_OVERRIDE: str(self.store_path)}
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_record_windows_spelling_lookup_posix_hits_same_case(self):
+        code = main(["record", "--sig", self.WIN_SIG, "--err", "no file", "--diag", "check cwd"])
+        self.assertEqual(0, code)
+        hit = main(["lookup", "--sig", self.POSIX_SIG])
+        self.assertEqual(0, hit)
+
+    def test_stored_signature_is_canonical_and_bumps_across_spellings(self):
+        main(["record", "--sig", self.WIN_SIG, "--err", "e", "--diag", "d"])
+        main(["record", "--sig", self.POSIX_SIG, "--err", "e", "--diag", "d"])
+        (case,) = store.CaseStore(self.store_path).load()
+        self.assertEqual(
+            "test_config.py::test_load :: filenotfounderror: config.json",
+            case["signature"],
+        )
+        self.assertEqual(2, case["times_seen"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -8,6 +8,7 @@ import argparse
 import sys
 
 from . import lookup as lookup_mod
+from . import signatures
 from . import store
 
 
@@ -33,7 +34,7 @@ def build_parser():
 def _cmd_record(args):
     try:
         case, created = store.CaseStore().record(
-            signature=args.sig,
+            signature=signatures.canonical(args.sig),
             error_excerpt=args.err,
             diagnosis=args.diag,
             by=args.by,
@@ -52,7 +53,8 @@ def _cmd_lookup(args):
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    print(lookup_mod.format_matches(lookup_mod.select(cases, args.sig)))
+    query = signatures.canonical(args.sig)
+    print(lookup_mod.format_matches(lookup_mod.select(cases, query)))
     return 0
 
 

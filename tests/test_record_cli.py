@@ -24,7 +24,9 @@ class RecordCliTests(unittest.TestCase):
         code = main(["record", "--sig", "s", "--err", "e", "--diag", "d"])
         self.assertEqual(0, code)
         cases = store.CaseStore(self.store_path).load()
-        self.assertEqual("s", cases[0]["signature"])
+        # canonical() gate: bare "s" has no separator, so it normalizes to
+        # test-part "s" with an empty error part.
+        self.assertEqual("s :: ", cases[0]["signature"])
 
     def test_record_attribution_lands_in_store(self):
         main(["record", "--sig", "s", "--err", "e", "--diag", "d", "--by", "tess"])
