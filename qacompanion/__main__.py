@@ -16,7 +16,7 @@ from . import report as report_mod
 from . import signatures
 from . import store
 from . import transport
-from .skills import auto_capture, flaky, locate, preflight, regression, repocheck, snapshot
+from .skills import auto_capture, flaky, journal, locate, preflight, regression, repocheck, snapshot
 
 
 def build_parser():
@@ -160,6 +160,34 @@ def build_parser():
         nargs="?",
         default=".",
         help="parent directory to scan (default: cwd)",
+    )
+
+    journ = sub.add_parser(
+        "journal",
+        help="durable lessons ledger (append-only, searchable)",
+        epilog=(
+            "Append-only markdown ledger with auto-timestamped entries. "
+            "Subcommands: add <text> appends an entry, grep <pattern> "
+            "searches entries. Exit contract: 0 success, 1 operational "
+            "failure."
+        ),
+    )
+    journ.add_argument(
+        "action",
+        choices=["add", "grep"],
+        help="add: append entry; grep: search entries",
+    )
+    journ.add_argument(
+        "text",
+        nargs="?",
+        default=None,
+        help="entry text (add) or search pattern (grep)",
+    )
+    journ.add_argument(
+        "--ledger",
+        default=None,
+        metavar="FILE",
+        help="ledger file path (default: JOURNAL.md in cwd)",
     )
 
     return parser
@@ -365,6 +393,24 @@ def _cmd_repocheck(args):
     return 1 if issues > 0 else 0
 
 
+def _cmd_journal(args):
+    if not args.text:
+        print("error: journal requires text argument (entry or pattern)", file=sys.stderr)
+        return 1
+    try:
+        if args.action == "add":
+            entry = journal.add(args.text, ledger=args.ledger)
+            print(journal.render_add(entry))
+            return 0
+        else:
+            results = journal.grep(args.text, ledger=args.ledger)
+            print(journal.render_grep(results, args.text))
+            return 0 if results else 1
+    except journal.JournalError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -378,6 +424,7 @@ _COMMANDS = {
     "locate": _cmd_locate,
     "snapshot": _cmd_snapshot,
     "repocheck": _cmd_repocheck,
+    "journal": _cmd_journal,
 }
 
 

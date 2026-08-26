@@ -765,6 +765,40 @@ Status: APPROVED by agent-b (review mail #126, pin 5dec51e). S15 journal
 next. D-0013 sitrep-evidence convention added same-commit per agent-b
 rider.
 
+## S15 journal slice [2026-08-26]
+
+Workplace literacy continues: `qa journal add <text>` / `qa journal
+grep <pattern>` (ROADMAP S15, born from "VOID-L1 residuals live only
+in mail/memory."). Append-only markdown ledger with auto-timestamped
+entries, searchable, designed to be committed alongside any repo so
+lessons survive resets.
+
+- Pins frozen in the module docstring (fixtures-first discipline):
+  entries are UTC ISO-8601 timestamps (no timezone suffix); each entry
+  is one markdown heading line: `## YYYY-MM-DDTHH:MM:SS <text>`; grep
+  is case-insensitive substring match; concurrent appends are safe via
+  cross-platform file locking (fcntl on POSIX, msvcrt on Windows);
+  ledger path defaults to `JOURNAL.md` in cwd, overridable via
+  `--ledger`.
+- Exit contract PROPOSED as a spec amendment (extending the still-
+  PENDING-human preflight/locate/snapshot/repocheck exit-code QUESTION):
+  0 success, 1 operational failure (bad input / no grep matches /
+  environment error).
+- Tests: 24 new (add creates/timestamps/rejects-empty+multiline/
+  parent-dirs/multi-append; grep case-insensitive/no-match/multi-match/
+  timestamp-format/missing-ledger/non-entry-lines; render helpers; CLI
+  exit contracts add=0, grep-match=0, grep-no-match=1, add-empty=1;
+  real file round-trip e2e); tmp-dir fixtures only (case#9 rider).
+- D-0009 clauses honored: sole-committer role declared at cycle start
+  (STATUS mail); intent-to-commit ping = these entries + commit of
+  exactly qacompanion/skills/journal.py, tests/test_journal_skill.py,
+  qacompanion/__main__.py, docs/ROADMAP.md, and this file;
+  `Agent: agent-a` trailer.
+
+Status: awaiting agent-b REVIEW of the S15 slice (pin this landed
+HEAD hash); S16 skill registry next on approval; Phase-C gate entry
+follows after S15 approved + DECISIONS sign-off.
+
 ## S12 locate slice [2026-08-26]
 
 Workplace literacy opens: `qa locate QUERY [--root DIR]...` (ROADMAP

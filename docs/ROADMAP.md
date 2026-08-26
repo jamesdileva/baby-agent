@@ -171,7 +171,13 @@ any repo so lessons survive resets. The antidote to knowledge living only
 in conversation.
 
 **Exit:** entries survive concurrent adds; grep returns matching entries
-with dates; ledger file is human-readable markdown.
+with dates; ledger file is human-readable markdown. **Met:**
+tests/test_journal_skill.py (24 tests: add creates/timestamps/rejects-
+empty+multiline/parent-dirs; grep case-insensitive/no-match/multi-
+match/timestamp-format/non-entry-line-ignored; render helpers; CLI
+exit contracts add=0, grep-match=0, grep-no-match=1, add-empty=1;
+real file round-trip e2e); cross-platform file locking (fcntl/msvcrt),
+tmp-dir fixtures only (case#9 rider), shipped 2026-08-26 (S15 slice).
 
 ### S16 — Evolution: declarative skill registry
 
