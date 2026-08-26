@@ -157,3 +157,29 @@ in conversation.
 **Exit:** entries survive concurrent adds; grep returns matching entries
 with dates; ledger file is human-readable markdown.
 
+### S16 — Evolution: declarative skill registry
+
+Born from: *"can skills be auto-learned from what parents teach?"*
+
+Skills become **data**: `skills/*.json` rule packs loaded at runtime — each
+rule maps a pattern (regex on error text, exit-code class, timing anomaly)
+to a classification/diagnosis/action hint. New rules take effect on next
+run, no code changes, no restart. Parents teach by adding rule entries (a
+`qa teach --rule ...` helper writes validated JSON); tess's corrections can
+propose rules for parent sign-off.
+
+**Exit:** a rule pack added at runtime is honored by the next lookup without
+code edits; malformed packs rejected loudly; core behavior identical when
+the skills dir is empty.
+
+### S17 — Module-contract skills (guarded)
+
+For capabilities too complex for declarative rules: Python modules satisfying
+a fixed Skill interface, auto-discovered from `skills/modules/`. Guardrails:
+must ship with tests, must pass the full suite, and land only through the
+normal slice/review discipline — never auto-executed unreviewed. This is the
+boundary between evolution and self-modification; stay on the right side.
+
+**Exit:** one example module passes discovery + suite gate; an intentionally
+failing module is demonstrably blocked from loading.
+
