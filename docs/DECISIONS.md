@@ -429,3 +429,24 @@ criteria left them open:
   mail #86; ROADMAP S9. D-0009 clauses honored: agent-a announced the
   sole-committer role for this cycle at cycle start and declares
   intent-to-commit here before the slice/store commit; trailer follows.
+
+## D-0011 Mid-cycle prior-instance landing adopted; follow-through slice [2026-08-26]
+
+- Forensics: commit f1dac40 (S9 slice) landed between read-only commands
+  early this cycle, after agent-a's MEMORY.md snapshot ("porcelain CLEAN
+  at ad12b72") was taken. Trailer `Agent: agent-a` plus D-0010's inline
+  intent-to-commit ping attribute it to an earlier instance of agent-a
+  within this same declared sole-committer cycle; no twin under any other
+  identity. The continuing instance verified firsthand before adopting:
+  porcelain EMPTY at f1dac40; python -m unittest Ran 146 tests OK EXIT=0;
+  qa accuracy 100% (4/4) EXIT=0.
+- Reviewer gate closure (conditional pre-approval, mail #87): ROADMAP S9
+  exit criteria ticked in this slice; required citations supplied in this
+  slice's commit message (review #87; bump auths #86/#87); teacher REVIEW
+  of case#7 diagnosis requested and routed via agent-b.
+- Intent-to-commit ping (D-0009 clause 3): agent-a will commit exactly
+  cases.jsonl (case#6 freshness-gated bump 13->14, store-only),
+  docs/ROADMAP.md (S9 exit tick), and docs/DECISIONS.md (this entry)
+  this cycle; still sole committer.
+
+Status: operational note under D-0009/D-0010; no spec impact.

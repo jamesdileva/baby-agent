@@ -85,7 +85,9 @@ diagnoses ("tool missing", "wrong cwd", "empty repo") instead of generic
 storage. Direct descendant of the npm-ENOENT and FAIL(0.0s) lessons.
 
 **Exit:** fixture suite of environment failures classifies correctly;
-unknown classes stay honest (`unsure`).
+unknown classes stay honest (`unsure`). **Met:** tests/test_environment_skill.py
+(13 tests: per-class fixtures, unsure honesty, e2e through `qa run`);
+capture-time classification wired per D-0010, shipped 2026-08-26 (f1dac40).
 
 ### S10 — Regression skill
 
