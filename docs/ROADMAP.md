@@ -219,6 +219,48 @@ during test runs, doc-digest for conventions, journal for decisions, case
 lookups for every failure. Success = the project ships with zero repeated
 diagnoses — everything new was taught, everything taught was recalled.
 
+## Autonomous learning track (v3 ambition) — the tool asks to be taught
+
+The long-run experiment: the tool stops being purely passive. It notices
+patterns across its case base, proposes new rules itself, and the parents
+adjudicate — approve, correct, or reject. Teaching effort shifts from
+"diagnose everything" to "judge proposals". Runs 24/7; every night compounds.
+
+### S23 — Candidate detection
+
+Offline pass over the case base: recurring co-occurrences, error clusters,
+timing anomalies → filed as RULE PROPOSED entries into a review queue (never
+auto-installed). Includes confidence estimate + supporting cases.
+
+**Exit:** seeded history produces at least one rule proposal a human agrees
+is correct; false candidates are labeled by parents and tracked.
+
+### S24 — Adjudication loop
+
+`qa review-rules` walks the queue with the parents: approve → rule installed
+to skills registry; correct → amended then installed; reject → recorded so
+the same candidate shape is not re-proposed (the tool learns what NOT to
+propose).
+
+**Exit:** full loop exercised live; rejection memory demonstrably suppresses
+repeat candidates.
+
+### S25 — Weakest-subject requests
+
+Tool ranks its own knowledge gaps (categories with low coverage or high
+escalation rate) and REQUESTS teaching: "I have no cases for network errors —
+please walk me through some."
+
+**Exit:** gap report generated; one requested lesson lands and measurably
+closes the reported gap.
+
+### Honest ceiling (documented, permanent)
+
+This track produces an increasingly capable **expert system**: broad recall of
+taught patterns, self-proposed refinements, measurable accuracy. It does not
+produce general reasoning. Novel situations still escalate — that escalation
+path IS part of the design, forever.
+
 ## Deferred
 
 - Interactive teach/watch console (TUI): stream failures, confirm diagnoses,
