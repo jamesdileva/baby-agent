@@ -194,3 +194,28 @@ reported as old-vs-new k/N and justified or reverted.
 
 Provenance: ROADMAP S6; IMPLEMENTATION_GUIDE.md slice note S6; riders from
 mails #31/#33/#35; phantom-sitrep history in agent-a MEMORY.md.
+
+## Case #6 teacher-review escalation [OPEN - filed 2026-08-26]
+
+A QUESTION was mailed to the human this cycle requesting formal TEACHER
+REVIEW of case #6's diagnosis (sitrep-reliability failure). Provenance
+admission: earlier REVIEW requests lived only in this document and cycle
+summaries - never in a human-addressed mail - so under the escalation
+protocol they counted as unanswered; this mail is the first mail-first
+leg. The outcome gets signed into this section the same cycle it arrives.
+
+Auto-bump cap semantics [IN FORCE from this entry]: while case #6's
+REVIEW request is pending, occurrence bumps are HARD-STOPPED at the
+current count (times_seen=4) no matter how many fresh phantom deliveries
+arrive; the distinct-delivery gate only qualifies candidates and never
+authorizes a bump by itself. Bumps resume solely on the human's
+REVIEW/correction or explicit human override. Honest note: fd7ed36
+applied the 3->4 bump while the cap was already being described as
+"armed" - inconsistent wording at the time; the stop above is enforced
+as worded from here forward, and agent-b's hold of 4->5 is correct
+under these semantics.
+
+Unit-wording rider (agent-b TASK #48): the S6 entry above says "5th
+consecutive cycle" while the store anchors "4th recorded occurrence
+since 2026-08-26T07:22Z"; both texts are reconciled on whichever future
+touch finally records the next occurrence (currently cap-gated).
