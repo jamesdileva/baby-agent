@@ -7,6 +7,7 @@ Modules stay silent; all output lives here.
 import argparse
 import sys
 
+from . import lookup as lookup_mod
 from . import store
 
 
@@ -22,6 +23,9 @@ def build_parser():
     record.add_argument("--err", required=True, help="error excerpt")
     record.add_argument("--diag", required=True, help="diagnosis text")
     record.add_argument("--by", default=None, help="who confirmed this diagnosis")
+
+    lookup = sub.add_parser("lookup", help="find the stored diagnosis for a signature")
+    lookup.add_argument("--sig", required=True, help="normalized failure fingerprint")
 
     return parser
 
@@ -42,8 +46,19 @@ def _cmd_record(args):
     return 0
 
 
+def _cmd_lookup(args):
+    try:
+        cases = store.CaseStore().load()
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(lookup_mod.format_matches(lookup_mod.select(cases, args.sig)))
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
+    "lookup": _cmd_lookup,
 }
 
 
