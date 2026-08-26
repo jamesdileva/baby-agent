@@ -118,6 +118,14 @@ class LoadHoldoutTests(unittest.TestCase):
             accuracy_mod.load_holdout(self.holdout_path)
         self.assertIn("empty", str(ctx.exception))
 
+    def test_empty_holdout_raises_dedicated_emptyholdout_valueerror(self):
+        # report.py must be able to tell absence/emptiness (honest n/a per
+        # D-0004) apart from malformed input (corruption -> exit 1).
+        self.holdout_path.write_text("", encoding="utf-8")
+        with self.assertRaises(accuracy_mod.EmptyHoldout):
+            accuracy_mod.load_holdout(self.holdout_path)
+        self.assertTrue(issubclass(accuracy_mod.EmptyHoldout, ValueError))
+
 
 class ReplayTests(unittest.TestCase):
     def test_exact_diagnosis_hits(self):

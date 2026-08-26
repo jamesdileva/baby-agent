@@ -83,10 +83,13 @@ def _cmd_lookup(args):
 def _cmd_report(args):
     try:
         cases = store.CaseStore().load()
+        output = "\n".join(
+            [report_mod.format_report(cases), report_mod.accuracy_line(cases)]
+        )
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    print(report_mod.format_report(cases))
+    print(output)
     return 0
 
 

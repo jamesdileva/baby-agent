@@ -1,17 +1,20 @@
 """Case-base summary rendering for the report subcommand (pure logic).
 
 Per docs/spec.md: total cases, top 5 by times_seen, stale cases (>30d
-since last_seen). Output is deterministic given (cases, now); empty
-sections print `none` rather than vanishing silently. Stale cases are
-reported, never deleted (retention is a human-approved act).
+since last_seen), and - since D-0004 was ratified (human mail #15) -
+an accuracy score line. Output is deterministic given (cases, now);
+empty sections print `none` rather than vanishing silently. Stale cases
+are reported, never deleted (retention is a human-approved act).
 """
 
 from datetime import datetime, timedelta, timezone
 
+from . import accuracy as accuracy_mod
 from .store import parse_timestamp
 
 TOP_LIMIT = 5
 STALE_AFTER_DAYS = 30
+ACCURACY_NA = "accuracy: n/a - holdout not yet created"
 
 
 def _as_utc(moment):
@@ -67,3 +70,20 @@ def format_report(cases, now=None):
         lines.append("none")
 
     return "\n".join(lines)
+
+
+def accuracy_line(cases):
+    """Accuracy score for report output (D-0004, ratified with condition).
+
+    Missing or unplayed (empty) holdout degrades honestly to ACCURACY_NA,
+    never a fabricated percentage. A malformed holdout is corruption, not
+    absence: its ValueError propagates so the uniform policy exits 1.
+    """
+    if not accuracy_mod.default_holdout_path().exists():
+        return ACCURACY_NA
+    try:
+        entries = accuracy_mod.load_holdout()
+    except accuracy_mod.EmptyHoldout:
+        return ACCURACY_NA
+    hits, total = accuracy_mod.replay(cases, entries)
+    return accuracy_mod.format_accuracy(hits, total)

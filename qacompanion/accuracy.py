@@ -24,6 +24,10 @@ ENV_OVERRIDE = "QA_HOLDOUT_FILE"
 _FIELD_TYPES = {"signature": str, "diagnosis": str}
 
 
+class EmptyHoldout(ValueError):
+    """An existing holdout file with zero scorable entries."""
+
+
 def default_holdout_path():
     """Env override (QA_HOLDOUT_FILE) > repo-root default.
 
@@ -54,8 +58,11 @@ def load_holdout(path=None):
 
     Same robustness contract as the case store: BOM prefix stripped, CRLF
     treated like LF, trailing newline optional. Raises ValueError naming
-    the offending line on malformed input. A missing or empty holdout is
-    an operational failure (exit 1), never silently a 100%.
+    the offending line on malformed input, and EmptyHoldout (a ValueError)
+    when the file exists but holds no entries. A missing or empty holdout
+    is an operational failure (exit 1) for `qa accuracy` - never silently
+    a 100%. `report` treats absence/emptiness as honest n/a instead
+    (D-0004).
     """
     holdout_path = Path(path) if path is not None else default_holdout_path()
     if not holdout_path.exists():
@@ -74,7 +81,7 @@ def load_holdout(path=None):
         _validate_entry(entry, line_number)
         entries.append(entry)
     if not entries:
-        raise ValueError("holdout file is empty: refusing to score")
+        raise EmptyHoldout("holdout file is empty: refusing to score")
     return entries
 
 
