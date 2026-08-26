@@ -343,6 +343,13 @@ benchmark against S26's RAG answers AND the frozen holdout.
 **Exit:** `baby-agent:ep1` exists in Ollama; benchmark table compares it vs
 base model vs RAG-vs-stock, honestly including where it got worse.
 
+#### The Great Digest (pre-generation ritual, every generation)
+
+Before any training run: a dedicated mass-teaching sprint. Parents comb
+EVERYTHING - mail threads, DECISIONS.md, archives, git logs, their own heads -
+and convert every unwritten lesson into cases, rules, and doc-digests via
+export-training. No filter on size; the dataset is the education. Each
+generation is only as good as its Digest.
 ### S32 — Generational loop
 
 Re-train on schedule or when the case base grows by a threshold. Every
