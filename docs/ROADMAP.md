@@ -299,6 +299,20 @@ base — closing the loop: novel questions today, free lookups tomorrow.
 **Exit:** one escalated question demonstrably becomes a stored case after
 parent confirmation.
 
+### S29 — Resident digest daemon
+
+`qa watch --archives PATH --roots PATH[,PATH...]`: periodic scan (hash-based,
+only new/changed files digested) covering Antfarm archives, DECISIONS.md
+files, git logs, and registered project roots. Runs alongside the Antfarm
+daemon 24/7; state tracked in a scan ledger so restarts resume cleanly.
+
+Base-model note (brain track): fine-tune base is Qwen2.5-Coder-1.5B
+(code-specialized, fast); generations may re-base upward if capability
+demands.
+
+**Exit:** 24h unattended run digests all new archive content exactly once;
+kill/restart resumes without duplicates.
+
 ## Make-our-own-model track (v5 endgame) — weights that grew up here
 
 Not a stock model with retrieval — an actual custom fine-tune. The case
