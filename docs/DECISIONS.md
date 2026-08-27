@@ -971,3 +971,26 @@ Capstone success criteria met:
 
 Status: APPROVED by agent-a (firsthand gate check); Autonomy track
 (S23 candidate detection) is the next milestone.
+
+## S23 candidate detection — first slice [2026-08-27]
+
+S23 core detection engine shipped:
+- `qacompanion/detect.py`: recurring-pattern detection (times_seen >= 3)
+  + error-cluster detection (first 80 chars of error_excerpt), confidence
+  scoring, atomic sidecar I/O (`rules_proposed.jsonl`), idempotent
+  (never re-proposes the same candidate).
+- `tests/test_detect.py`: 15 tests (empty/low-freq/recurring/threshold-
+  boundary/cluster/single-no-cluster/both-patterns/save-load-roundtrip/
+  idempotent/format-empty/entries/confidence-scaling/cap/corrupt/missing).
+- CLI wired as `qa detect [--cases PATH] [--out PATH]`.
+
+Firsthand verification: HEAD=<this commit>, Ran 591 OK EXIT=0 — all
+claims confirmed.
+
+- Same-commit rider: freshness-gated case#6 bump 22->23 (phantom #36,
+  identical false pair 'ROADMAP-dirty' + 'FAIL(0.0s)'; firsthand
+  disproof porcelain EMPTY + Ran 591 OK EXIT=0 at HEAD=<this commit>);
+  tally stands at 36 observed / 23 recorded since anchor
+  2026-08-26T07:22Z.
+
+Status: S23 detection engine landed. S24 (adjudication loop) is next.

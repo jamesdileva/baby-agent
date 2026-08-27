@@ -267,7 +267,12 @@ timing anomalies → filed as RULE PROPOSED entries into a review queue (never
 auto-installed). Includes confidence estimate + supporting cases.
 
 **Exit:** seeded history produces at least one rule proposal a human agrees
-is correct; false candidates are labeled by parents and tracked.
+is correct; false candidates are labeled by parents and tracked. **Met:**
+tests/test_detect.py (15 tests: empty/low-freq/recurring/threshold-boundary/
+cluster/single-no-cluster/both-patterns/save-load-roundtrip/idempotent/
+format-empty/entries/confidence-scaling/cap/corrupt/missing); recurring
+(times_seen>=3) + error-cluster detection with confidence scoring, atomic
+sidecar I/O, CLI wired (`qa detect`), shipped 2026-08-27 (S23 slice).
 
 ### S24 — Adjudication loop
 

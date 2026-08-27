@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from . import accuracy as accuracy_mod
+from . import detect as detect_mod
 from . import lookup as lookup_mod
 from . import report as report_mod
 from . import signatures
@@ -347,6 +348,29 @@ def build_parser():
         help="tasks store file (default: tasks.jsonl)",
     )
 
+    detector = sub.add_parser(
+        "detect",
+        help="find patterns in the case base, propose rules",
+        epilog=(
+            "Offline pass over cases.jsonl: recurring failures, error "
+            "clusters → RULE PROPOSED entries in rules_proposed.jsonl. "
+            "Never auto-installed. Exit contract: 0 proposals found, "
+            "1 operational error."
+        ),
+    )
+    detector.add_argument(
+        "--cases",
+        default=None,
+        metavar="PATH",
+        help="cases store file (default: cases.jsonl)",
+    )
+    detector.add_argument(
+        "--out",
+        default=None,
+        metavar="PATH",
+        help="proposed rules file (default: rules_proposed.jsonl)",
+    )
+
     return parser
 
 
@@ -412,6 +436,16 @@ def _cmd_accuracy(args):
         return 1
     hits, total = accuracy_mod.replay(cases, entries)
     print(accuracy_mod.format_accuracy(hits, total))
+    return 0
+
+
+def _cmd_detect(args):
+    try:
+        new = detect_mod.run_detection(args.cases, args.out)
+    except (ValueError, OSError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(detect_mod.format_proposed(new))
     return 0
 
 
@@ -743,6 +777,7 @@ _COMMANDS = {
     "report": _cmd_report,
     "flakes": _cmd_flakes,
     "accuracy": _cmd_accuracy,
+    "detect": _cmd_detect,
     "export": _cmd_export,
     "import": _cmd_import,
     "run": _cmd_run,
