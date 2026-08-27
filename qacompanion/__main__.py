@@ -15,6 +15,7 @@ from . import lookup as lookup_mod
 from . import report as report_mod
 from . import signatures
 from . import store
+from . import task
 from . import teach as teach_mod
 from . import transport
 from .skills import archive_mine, auto_capture, digest, flaky, journal, locate, merge, preflight, regression, repocheck, school, snapshot
@@ -317,6 +318,32 @@ def build_parser():
         default=None,
         metavar="PATH",
         help="journal ledger for session logging (default: none)",
+    )
+
+    tasklite = sub.add_parser(
+        "tasklite",
+        help="minimal task tracker (capstone project)",
+        epilog=(
+            "Subcommands: add <title>, list, done <id>, delete <id>, "
+            "show <id>. Exit contract: 0 success, 1 operational failure."
+        ),
+    )
+    tasklite.add_argument(
+        "action",
+        choices=["add", "list", "done", "delete", "show"],
+        help="task action to perform",
+    )
+    tasklite.add_argument(
+        "target",
+        nargs="?",
+        default=None,
+        help="title (add) or task id (done/delete/show)",
+    )
+    tasklite.add_argument(
+        "--file",
+        default=None,
+        metavar="PATH",
+        help="tasks store file (default: tasks.jsonl)",
     )
 
     return parser
@@ -638,6 +665,78 @@ def _cmd_school(args):
     return 0
 
 
+def _cmd_tasklite(args):
+    ts = task.TaskStore(args.file)
+    try:
+        if args.action == "add":
+            if not args.target:
+                print("error: add requires a title", file=sys.stderr)
+                return 1
+            t = ts.add(args.target)
+            print(f"created task #{t['id']} {t['title']}")
+            return 0
+        elif args.action == "list":
+            tasks = ts.list_all()
+            if not tasks:
+                print("(no tasks)")
+            for t in tasks:
+                print(f"#{t['id']} [{t['status']}] {t['title']}")
+            return 0
+        elif args.action == "done":
+            if args.target is None:
+                print("error: done requires a task id", file=sys.stderr)
+                return 1
+            try:
+                tid = int(args.target)
+            except ValueError:
+                print(f"error: invalid task id: {args.target}", file=sys.stderr)
+                return 1
+            try:
+                t = ts.mark_done(tid)
+            except ValueError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 1
+            print(f"done #{t['id']} {t['title']}")
+            return 0
+        elif args.action == "delete":
+            if args.target is None:
+                print("error: delete requires a task id", file=sys.stderr)
+                return 1
+            try:
+                tid = int(args.target)
+            except ValueError:
+                print(f"error: invalid task id: {args.target}", file=sys.stderr)
+                return 1
+            try:
+                ts.delete(tid)
+            except ValueError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 1
+            print(f"deleted task #{tid}")
+            return 0
+        elif args.action == "show":
+            if args.target is None:
+                print("error: show requires a task id", file=sys.stderr)
+                return 1
+            try:
+                tid = int(args.target)
+            except ValueError:
+                print(f"error: invalid task id: {args.target}", file=sys.stderr)
+                return 1
+            try:
+                t = ts.show(tid)
+            except ValueError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 1
+            import json as json_mod
+            print(json_mod.dumps(t, indent=2))
+            return 0
+    except (ValueError, OSError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -658,6 +757,7 @@ _COMMANDS = {
     "ask": _cmd_ask,
     "mine": _cmd_mine,
     "school": _cmd_school,
+    "tasklite": _cmd_tasklite,
 }
 
 

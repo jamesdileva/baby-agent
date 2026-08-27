@@ -1,0 +1,1 @@
+## 2026-08-27T01:30:11 Capstone Slice 1: tasklite storage core + add/list wired into CLI. tasks.jsonl format mirrors cases.jsonl conventions (JSONL, atomic writes, strict validation). 41 tests, 553 total OK.
