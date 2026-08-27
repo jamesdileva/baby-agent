@@ -47,21 +47,21 @@ Stale/duplicate IDs are rejected. Atomic writes (write-to-temp, rename).
 
 Each slice below uses at least one qacompanion skill:
 
-1. **Slice 1 — Storage core + `add`/`list`**
+1. **Slice 1 — Storage core + full CRUD** *(shipped)*
+   - All 5 subcommands implemented: `add`, `list`, `done`, `delete`, `show`
    - Skills exercised: `qa preflight` before commit, `qa run` to capture any
      test failures, `qa journal add` to record the design decision
-   - Exit: `tasklite add "test"` followed by `tasklite list` shows the task
+   - Exit: full lifecycle works; strict validation; atomic writes; BOM/CRLF
+     tolerance; corrupt-store errors honest (41 tests)
 
-2. **Slice 2 — `done` + `delete` + `show`**
-   - Skills exercised: `qa run` for test capture, `qa record` for any failures
-   - Exit: full lifecycle works; done-then-done errors honestly
-
-3. **Slice 3 — Robustness hardening**
+2. **Slice 3 — CLI integration + edge cases + concurrency** *(current)*
    - Skills exercised: `qa run` to capture failures, `qa lookup` to check
      if any failure is recognized
-   - Exit: corrupt store errors honestly; concurrent-write tolerance; BOM/CRLF
+   - Exit: CLI integration tests (exit codes, stderr, list ordering);
+     edge cases (unicode titles, huge titles, empty title via CLI);
+     concurrent-write tolerance verified; redundant import cleanup
 
-4. **Slice 4 — Report + accuracy**
+3. **Slice 4 — Report + accuracy**
    - Skills exercised: `qa report` on tasklite's own test suite
    - Exit: tasklite has a case base of its development failures
 

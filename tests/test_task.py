@@ -320,5 +320,206 @@ class EnvOverrideTests(TempDirTest):
             self.assertEqual(explicit, task.TaskStore(explicit).path)
 
 
+class UnicodeTests(TempDirTest):
+    def test_emoji_title_round_trips(self):
+        path = self.tmp / "tasks.jsonl"
+        store = task.TaskStore(path)
+        t = store.add("Fix the \U0001f4a9 bug")
+        loaded = task.TaskStore(path).load()
+        self.assertEqual("Fix the \U0001f4a9 bug", loaded[0]["title"])
+
+    def test_cjk_title_round_trips(self):
+        path = self.tmp / "tasks.jsonl"
+        store = task.TaskStore(path)
+        t = store.add("\u4fee\u590d\u5e03\u5c40\u9519\u8bef")
+        loaded = task.TaskStore(path).load()
+        self.assertEqual("\u4fee\u590d\u5e03\u5c40\u9519\u8bef", loaded[0]["title"])
+
+    def test_rtl_title_round_trips(self):
+        path = self.tmp / "tasks.jsonl"
+        store = task.TaskStore(path)
+        t = store.add("\u062a\u0635\u062d\u064a\u062d \u0627\u0644\u062e\u0637\u0623")
+        loaded = task.TaskStore(path).load()
+        self.assertEqual("\u062a\u0635\u062d\u064a\u062d \u0627\u0644\u062e\u0637\u0623", loaded[0]["title"])
+
+    def test_mixed_scripts_title(self):
+        path = self.tmp / "tasks.jsonl"
+        store = task.TaskStore(path)
+        t = store.add("Fix \u00e9motion \u4e16\u754c")
+        loaded = task.TaskStore(path).load()
+        self.assertEqual("Fix \u00e9motion \u4e16\u754c", loaded[0]["title"])
+
+
+class HugeTitleTests(TempDirTest):
+    def test_10k_char_title_accepted(self):
+        path = self.tmp / "tasks.jsonl"
+        big = "x" * 10000
+        t = task.TaskStore(path).add(big)
+        loaded = task.TaskStore(path).load()
+        self.assertEqual(big, loaded[0]["title"])
+
+    def test_100k_char_title_accepted(self):
+        path = self.tmp / "tasks.jsonl"
+        big = "y" * 100000
+        t = task.TaskStore(path).add(big)
+        loaded = task.TaskStore(path).load()
+        self.assertEqual(big, loaded[0]["title"])
+
+
+class ConcurrentWriteTests(TempDirTest):
+    def test_concurrent_adds_no_corruption(self):
+        import threading
+
+        path = self.tmp / "tasks.jsonl"
+        successes = []
+        failures = []
+
+        def add_task(n):
+            try:
+                task.TaskStore(path).add(f"task-{n}")
+                successes.append(n)
+            except (PermissionError, OSError):
+                failures.append(n)
+
+        threads = [threading.Thread(target=add_task, args=(i,)) for i in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        loaded = task.TaskStore(path).load()
+        self.assertGreaterEqual(len(loaded), 1)
+        ids = [t["id"] for t in loaded]
+        self.assertEqual(sorted(ids), ids)
+
+    def test_concurrent_adds_and_reads(self):
+        import threading
+
+        path = self.tmp / "tasks.jsonl"
+        task.TaskStore(path).add("seed")
+        read_errors = []
+
+        def add_task(n):
+            try:
+                task.TaskStore(path).add(f"task-{n}")
+            except (PermissionError, OSError):
+                pass
+
+        def read_tasks():
+            try:
+                task.TaskStore(path).load()
+            except (PermissionError, OSError):
+                read_errors.append(True)
+
+        threads = []
+        for i in range(10):
+            threads.append(threading.Thread(target=add_task, args=(i,)))
+            threads.append(threading.Thread(target=read_tasks))
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        loaded = task.TaskStore(path).load()
+        self.assertGreaterEqual(len(loaded), 1)
+
+
+class CLIIntegrationTests(unittest.TestCase):
+    """CLI exit-code and output tests through main()."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.store = os.path.join(self.tmpdir, "tasks.jsonl")
+        self.addCleanup(lambda: None)
+
+    def _run(self, *args):
+        from qacompanion.__main__ import main
+        return main(["tasklite", "--file", self.store] + list(args))
+
+    def test_add_empty_title_exit_1(self):
+        ret = self._run("add", "")
+        self.assertEqual(1, ret)
+
+    def test_add_no_target_exit_1(self):
+        ret = self._run("add")
+        self.assertEqual(1, ret)
+
+    def test_done_no_target_exit_1(self):
+        ret = self._run("done")
+        self.assertEqual(1, ret)
+
+    def test_done_non_int_exit_1(self):
+        ret = self._run("done", "abc")
+        self.assertEqual(1, ret)
+
+    def test_done_unknown_id_exit_1(self):
+        ret = self._run("done", "999")
+        self.assertEqual(1, ret)
+
+    def test_delete_no_target_exit_1(self):
+        ret = self._run("delete")
+        self.assertEqual(1, ret)
+
+    def test_delete_non_int_exit_1(self):
+        ret = self._run("delete", "abc")
+        self.assertEqual(1, ret)
+
+    def test_delete_unknown_id_exit_1(self):
+        ret = self._run("delete", "999")
+        self.assertEqual(1, ret)
+
+    def test_show_no_target_exit_1(self):
+        ret = self._run("show")
+        self.assertEqual(1, ret)
+
+    def test_show_non_int_exit_1(self):
+        ret = self._run("show", "abc")
+        self.assertEqual(1, ret)
+
+    def test_show_unknown_id_exit_1(self):
+        ret = self._run("show", "999")
+        self.assertEqual(1, ret)
+
+    def test_done_already_done_exit_1(self):
+        self._run("add", "task")
+        self._run("done", "0")
+        ret = self._run("done", "0")
+        self.assertEqual(1, ret)
+
+    def test_list_empty_exit_0(self):
+        ret = self._run("list")
+        self.assertEqual(0, ret)
+
+    def test_list_todo_before_done(self):
+        self._run("add", "todo-one")
+        self._run("add", "todo-two")
+        self._run("add", "will-be-done")
+        self._run("done", "2")
+        import io
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        from qacompanion.__main__ import main
+        with redirect_stdout(buf):
+            main(["tasklite", "--file", self.store, "list"])
+        output = buf.getvalue()
+        lines = [l for l in output.strip().splitlines() if l.strip()]
+        self.assertIn("[todo] todo-one", lines[0])
+        self.assertIn("[todo] todo-two", lines[1])
+        self.assertIn("[done] will-be-done", lines[2])
+
+    def test_show_json_output(self):
+        self._run("add", "show me")
+        import io
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        from qacompanion.__main__ import main
+        with redirect_stdout(buf):
+            main(["tasklite", "--file", self.store, "show", "0"])
+        import json as json_mod
+        data = json_mod.loads(buf.getvalue())
+        self.assertEqual("show me", data["title"])
+        self.assertEqual("todo", data["status"])
+
+
 if __name__ == "__main__":
     unittest.main()

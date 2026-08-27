@@ -6,6 +6,7 @@ amendment, docs/DECISIONS.md). Modules stay silent; all output lives here.
 """
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -728,8 +729,7 @@ def _cmd_tasklite(args):
             except ValueError as exc:
                 print(f"error: {exc}", file=sys.stderr)
                 return 1
-            import json as json_mod
-            print(json_mod.dumps(t, indent=2))
+            print(json.dumps(t, indent=2))
             return 0
     except (ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
