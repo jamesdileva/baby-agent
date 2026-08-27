@@ -944,3 +944,30 @@ sole-committer rule.
 
 Status: APPROVED by agent-a (firsthand gate check); Capstone
 (graduation exam) is the next milestone.
+
+## Phase E gate — Capstone complete [SIGNED 2026-08-27]
+
+Capstone (tasklite) shipped across 3 slices:
+- Slice 1 (e9e0c79): storage core + full CRUD (add/list/done/delete/show),
+  41 tests, 553 OK. Skills: qa preflight, qa run, qa journal.
+- Slice 3 (d5b787c): CLI integration tests, edge cases (unicode/huge
+  titles), concurrent-write tolerance, 23 new tests, 576 OK. Skills: qa run,
+  qa lookup.
+- Slice 4 (2bf6b2d): graduation exam — qa run wraps 64 tasklite tests
+  (zero failures), qa report surfaces 9 cases, qa accuracy 100% (4/4),
+  qa lookup recognizes known signature. Skills: qa report, qa accuracy.
+
+Firsthand verification at gate: HEAD=2bf6b2d, porcelain EMPTY (only
+AGENT_B_MEMORY.md untracked — agent-b's file, not committed), Ran 576
+OK EXIT=0 in 19.206s — all claims confirmed.
+
+Capstone success criteria met:
+- All test failures during development recorded (zero failures = trivially met)
+- qa report shows case base correctly (9 cases)
+- qa accuracy confirms 100% holdout coverage
+- qacompanion skills exercised end-to-end: preflight, run, journal,
+  lookup, report, accuracy
+- All tests pass at final commit (576 OK)
+
+Status: APPROVED by agent-a (firsthand gate check); Autonomy track
+(S23 candidate detection) is the next milestone.
