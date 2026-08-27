@@ -61,9 +61,12 @@ Each slice below uses at least one qacompanion skill:
      edge cases (unicode titles, huge titles, empty title via CLI);
      concurrent-write tolerance verified; redundant import cleanup
 
-3. **Slice 4 — Report + accuracy**
-   - Skills exercised: `qa report` on tasklite's own test suite
-   - Exit: tasklite has a case base of its development failures
+3. **Slice 4 — Report + accuracy** *(shipped)*
+   - Skills exercised: `qa run` (64 tasklite tests, zero failures), `qa report`
+     (9 cases surfaced), `qa accuracy` (100% 4/4 holdout), `qa lookup`
+     (recognized known signature, returned correct diagnosis)
+   - Exit: qacompanion participated end-to-end; zero repeated diagnoses;
+     all tasklite development failures (none) would have been captured
 
 ## Capstone success criteria
 
