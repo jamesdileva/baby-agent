@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from . import accuracy as accuracy_mod
+from . import adjudicate as adjudicate_mod
 from . import detect as detect_mod
 from . import lookup as lookup_mod
 from . import report as report_mod
@@ -371,6 +372,47 @@ def build_parser():
         help="proposed rules file (default: rules_proposed.jsonl)",
     )
 
+    reviewer = sub.add_parser(
+        "review-rules",
+        help="walk proposed rules queue: approve, correct, or reject",
+        epilog=(
+            "Walks rules_proposed.jsonl (from qa detect) interactively. "
+            "approve → install to skill registry; correct → amend then "
+            "install; reject → record in rejection memory so same shape "
+            "is not re-proposed. Exit contract: 0 session completed, "
+            "1 operational error."
+        ),
+    )
+    reviewer.add_argument(
+        "--proposed",
+        default=None,
+        metavar="PATH",
+        help="proposed rules file (default: rules_proposed.jsonl)",
+    )
+    reviewer.add_argument(
+        "--rejected",
+        default=None,
+        metavar="PATH",
+        help="rejection memory file (default: rules_rejected.jsonl)",
+    )
+    reviewer.add_argument(
+        "--pack",
+        default=teach_mod.DEFAULT_PACK,
+        metavar="PATH",
+        help=f"skill pack to install into (default: {teach_mod.DEFAULT_PACK})",
+    )
+    reviewer.add_argument(
+        "--by",
+        required=True,
+        help="who is adjudicating (e.g., 'human', 'agent-a')",
+    )
+    reviewer.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="max candidates to process (default: all pending)",
+    )
+
     return parser
 
 
@@ -446,6 +488,28 @@ def _cmd_detect(args):
         print(f"error: {exc}", file=sys.stderr)
         return 1
     print(detect_mod.format_proposed(new))
+    return 0
+
+
+def _cmd_review_rules(args):
+    try:
+        result = adjudicate_mod.run_session(
+            proposed_path=args.proposed,
+            rejected_path=args.rejected,
+            pack_path=args.pack,
+            by=args.by,
+            limit=args.limit,
+        )
+    except (ValueError, OSError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(adjudicate_mod.format_summary(
+        result["approved"],
+        result["corrected"],
+        result["rejected"],
+        result["skipped"],
+        result["remaining"],
+    ))
     return 0
 
 
@@ -778,6 +842,7 @@ _COMMANDS = {
     "flakes": _cmd_flakes,
     "accuracy": _cmd_accuracy,
     "detect": _cmd_detect,
+    "review-rules": _cmd_review_rules,
     "export": _cmd_export,
     "import": _cmd_import,
     "run": _cmd_run,

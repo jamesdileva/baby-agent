@@ -994,3 +994,28 @@ claims confirmed.
   2026-08-26T07:22Z.
 
 Status: S23 detection engine landed. S24 (adjudication loop) is next.
+
+## S24 adjudication loop — first slice [2026-08-27]
+
+S24 core adjudication engine shipped:
+- `qacompanion/adjudicate.py`: interactive session walking proposed rules
+  queue (approve → install to skill registry, correct → amend then install,
+  reject → record in rejection memory so same shape not re-proposed, skip →
+  kept in queue). Atomic I/O on both `rules_proposed.jsonl` and
+  `rules_rejected.jsonl` sidecars. Rejection memory keyed on
+  `(type, sorted(supporting_cases))` tuple for shape-level suppression.
+- `tests/test_adjudicate.py`: 29 tests (rejected-io/validate-missing/
+  validate-bad-type/validate-bad-supporting/roundtrip/candidate-key-same/
+  candidate-key-different/is-rejected/not-rejected/rejected-different-type/
+  empty-rejected/filter-all/filter-none/filter-mixed/format-candidate/
+  format-summary-zero/format-summary/basic/approve/reject/skip/quit/
+  empty-queue/limit/rejection-suppresses-repeat/adjudicated-removed/
+  unrecognized-choice/reject-default-reason/approve-incomplete/
+  correct-install).
+- CLI wired as `qa review-rules --by NAME [--proposed PATH] [--rejected PATH]
+  [--pack PATH] [--limit N]`.
+
+Firsthand verification: HEAD=<this commit>, Ran 620 OK EXIT=0 — all
+claims confirmed.
+
+Status: S24 adjudication loop landed. S25 (weakest-subject requests) is next.
