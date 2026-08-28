@@ -1122,3 +1122,28 @@ Firsthand verification: HEAD=ad254f1, Ran 779 OK EXIT=0 — all
 claims confirmed.
 
 Status: S28 escalation handshake landed. S29 (resident digest daemon) is next.
+
+---
+
+### S29 — Resident digest daemon
+
+**Decision:** Build `qa watch` daemon per `docs/s29-spec.md`.
+
+Design choices (spec-driven, addressing agent-b WARNING #186):
+- Scan ledger: JSON at `<data_dir>/scan-ledger.json`, atomic write via
+  tmp+os.replace(). Corruption → re-scan from scratch (digest is idempotent).
+- Per-file SHA-256 hashes stored in the ledger `files` dict.
+- Signal handling: `shutdown_requested` flag, finish current file, write
+  ledger, exit 0. `KeyboardInterrupt` fallback.
+- Edge cases: mid-scan changes picked up next cycle; symlinks followed;
+  non-UTF-8 skipped with warning; missing files pruned from ledger.
+- Testing: unit tests for ledger/scan/digest/daemon, `--once` mode for
+  deterministic verification. 24h run is manual validation, not CI gate.
+
+Files: `qacompanion/watch.py` (231 lines), `tests/test_watch_daemon.py`
+(24 tests), `qacompanion/__main__.py` (CLI wired), `docs/s29-spec.md`.
+
+Firsthand verification: HEAD=781deb4, Ran 803 OK EXIT=0 — all
+claims confirmed.
+
+Status: S29 watch daemon landed. S30 (training-data pipeline) is next.

@@ -24,6 +24,7 @@ from . import teach as teach_mod
 from . import transport
 from .skills import archive_mine, auto_capture, digest, flaky, journal, locate, merge, preflight, regression, repocheck, school, snapshot, weak_subjects
 from . import ollama_bridge
+from . import watch as watch_mod
 
 
 def build_parser():
@@ -485,6 +486,57 @@ def build_parser():
         default=None,
         metavar="PATH",
         help="digest store file (default: digest.jsonl)",
+    )
+
+    watcher = sub.add_parser(
+        "watch",
+        help="resident digest daemon — periodic hash-based file scanning",
+        epilog=(
+            "Scans archives and project roots for new/changed files, "
+            "digesting only what's new. State tracked in a scan ledger "
+            "so restarts resume cleanly. Exit contract: 0 clean shutdown, "
+            "1 unrecoverable error."
+        ),
+    )
+    watcher.add_argument(
+        "--archives",
+        required=True,
+        metavar="PATH",
+        help="directory containing Antfarm archives to scan",
+    )
+    watcher.add_argument(
+        "--roots",
+        required=True,
+        metavar="PATH",
+        help="comma-separated project root directories to scan",
+    )
+    watcher.add_argument(
+        "--interval",
+        type=int,
+        default=300,
+        help="seconds between scans (default: 300)",
+    )
+    watcher.add_argument(
+        "--once",
+        action="store_true",
+        help="scan once and exit (for testing / cron)",
+    )
+    watcher.add_argument(
+        "--data-dir",
+        default=None,
+        metavar="PATH",
+        help="where to store scan-ledger.json (default: archives dir)",
+    )
+    watcher.add_argument(
+        "--store",
+        default=None,
+        metavar="PATH",
+        help="digest store file (default: digest.jsonl)",
+    )
+    watcher.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="enable verbose logging",
     )
 
     return parser
@@ -950,6 +1002,24 @@ def _cmd_escalate(args):
     return 0
 
 
+def _cmd_watch(args):
+    try:
+        result = watch_mod.watch(
+            archives=args.archives,
+            roots=args.roots.split(","),
+            interval=args.interval,
+            once=args.once,
+            data_dir=args.data_dir,
+            store_path=args.store,
+            verbose=args.verbose,
+        )
+    except watch_mod.WatchError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(f"watch: {result['status']}")
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -975,6 +1045,7 @@ _COMMANDS = {
     "tasklite": _cmd_tasklite,
     "gaps": _cmd_gaps,
     "escalate": _cmd_escalate,
+    "watch": _cmd_watch,
 }
 
 
