@@ -21,6 +21,7 @@ from . import signatures
 from . import store
 from . import task
 from . import teach as teach_mod
+from . import training as training_mod
 from . import transport
 from .skills import archive_mine, auto_capture, digest, flaky, journal, locate, merge, preflight, regression, repocheck, school, snapshot, weak_subjects
 from . import ollama_bridge
@@ -54,6 +55,16 @@ def build_parser():
 
     exporter = sub.add_parser("export", help="atomic copy of the case base")
     exporter.add_argument("--out", required=True, help="destination path for the copy")
+
+    train_exporter = sub.add_parser(
+        "export-training",
+        help="export instruction-format pairs for fine-tuning",
+    )
+    train_exporter.add_argument("--out", required=True, help="output JSONL path")
+    train_exporter.add_argument("--cases", default=None, help="cases.jsonl path")
+    train_exporter.add_argument("--holdout", default=None, help="holdout.jsonl path")
+    train_exporter.add_argument("--digest", default=None, help="digest.jsonl path")
+    train_exporter.add_argument("--journal", default=None, help="JOURNAL.md path")
 
     importer = sub.add_parser(
         "import", help="validate a case file, then atomically replace the store"
@@ -659,6 +670,26 @@ def _cmd_export(args):
     return 0
 
 
+def _cmd_export_training(args):
+    try:
+        result = training_mod.export_training(
+            args.out,
+            cases_path=args.cases,
+            holdout_path=args.holdout,
+            digest_path=args.digest,
+            journal_path=args.journal,
+        )
+    except (ValueError, OSError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(
+        f"exported {result['pairs']} pair(s) "
+        f"({result['cases']} cases, {result['digest']} digest, "
+        f"{result['journal']} journal) -> {args.out}"
+    )
+    return 0
+
+
 def _cmd_import(args):
     try:
         added, merged, total = transport.import_cases(
@@ -1029,6 +1060,7 @@ _COMMANDS = {
     "detect": _cmd_detect,
     "review-rules": _cmd_review_rules,
     "export": _cmd_export,
+    "export-training": _cmd_export_training,
     "import": _cmd_import,
     "run": _cmd_run,
     "preflight": _cmd_preflight,
