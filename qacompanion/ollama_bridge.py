@@ -1,8 +1,12 @@
-"""S26 Ollama bridge: local model integration with retrieval context.
+"""S26/S27 Ollama bridge: local model integration with retrieval context + tools.
 
 `qa ask "<question>"` retrieves relevant cases/doc-passages/skills, feeds
 them as context to a local Ollama model, returns a grounded answer WITH
 citations. Falls back to plain lookup when Ollama is absent.
+
+The model may invoke research tools mid-answer by outputting tool calls
+in the format [TOOL: tool_name(query="...")]. A loop guard prevents
+infinite tool-calling (max 3 iterations by default).
 
 Pins (fixtures-first discipline):
 - Ollama endpoint is http://localhost:11434 by default (OLLAMA_URL env).
@@ -12,6 +16,9 @@ Pins (fixtures-first discipline):
 - Fallback: when Ollama unreachable, returns raw lookup results.
 - generate endpoint: POST /api/generate, stream=false.
 - All HTTP via stdlib urllib (no third-party deps, per spec).
+- S27 tools: case_search, doc_grep, journal_read (see tools.py).
+- Tool call format: [TOOL: name(query="value")] in model output.
+- Loop guard: MAX_TOOL_CALLS=3 per ask() invocation.
 """
 
 import json
@@ -187,7 +194,20 @@ def _format_digest_context(entries):
     return "\n".join(lines)
 
 
-def _build_prompt(query, context):
+TOOL_INSTRUCTIONS = (
+    "\n\n## Research Tools\n"
+    "If you need more information before answering, you may call a tool by "
+    "outputting exactly one of these lines:\n"
+    '  [TOOL: case_search(query="search terms")]  -- search past failure cases\n'
+    '  [TOOL: doc_grep(query="search terms")]  -- search digested documentation\n'
+    '  [TOOL: journal_read(pattern="search terms")]  -- search the journal ledger\n'
+    "Tool results will be injected as additional context. You may call at most "
+    "3 tools per answer. After receiving tool results, give your final answer "
+    "without any more [TOOL: ...] lines."
+)
+
+
+def _build_prompt(query, context, use_tools=False):
     """Build the full prompt with system instruction and retrieval context."""
     parts = [
         "You are a QA companion assistant. Answer the question using ONLY "
@@ -197,11 +217,13 @@ def _build_prompt(query, context):
         "rather than guessing.",
         "",
     ]
+    if use_tools:
+        parts[0] += TOOL_INSTRUCTIONS
 
     cases_text = _format_cases_context(context["cases"])
     digest_text = _format_digest_context(context["digest"])
 
-    if cases_text or digest_text:
+    if cases_text or digest_text or context.get("tool_results"):
         parts.append("## Retrieved Context")
         parts.append("")
         if cases_text:
@@ -210,6 +232,11 @@ def _build_prompt(query, context):
         if digest_text:
             parts.append("### Documentation")
             parts.append(digest_text)
+        if context.get("tool_results"):
+            parts.append("### Tool Results")
+            for tr in context["tool_results"]:
+                parts.append(tr)
+            parts.append("")
         parts.append("")
     else:
         parts.append("No relevant context found in the case base or documentation.")
@@ -229,8 +256,13 @@ def _build_prompt(query, context):
 def ask(query, cases_path=None, digest_path=None, model=None, url=None):
     """Orchestrate: check Ollama, build context, ask or fallback.
 
+    Supports a tool-calling loop: if the model outputs [TOOL: ...] calls,
+    they are dispatched and results injected as context, up to MAX_TOOL_CALLS.
+
     Returns dict with keys: answer, used_ollama, citations, model, context_used.
     """
+    from . import tools as tools_mod
+
     model = model or os.environ.get("OLLAMA_MODEL") or DEFAULT_MODEL
     context = build_retrieval_context(query, cases_path, digest_path)
 
@@ -240,8 +272,32 @@ def ask(query, cases_path=None, digest_path=None, model=None, url=None):
 
     if _is_ollama_available(model=model, url=url):
         try:
-            prompt = _build_prompt(query, context)
-            answer = _ollama_generate(prompt, model=model, url=url)
+            tool_results_extra = []
+            for _tool_step in range(tools_mod.MAX_TOOL_CALLS + 1):
+                # Build extended context with any tool results
+                ctx_for_prompt = dict(context)
+                if tool_results_extra:
+                    ctx_for_prompt["tool_results"] = tool_results_extra
+                prompt = _build_prompt(query, ctx_for_prompt, use_tools=True)
+                answer = _ollama_generate(prompt, model=model, url=url)
+
+                # Parse tool calls from response
+                tool_calls = tools_mod.parse_tool_calls(answer)
+                if not tool_calls or _tool_step == tools_mod.MAX_TOOL_CALLS:
+                    break
+
+                # Dispatch each tool, collect results
+                for tool_name, tool_query in tool_calls:
+                    kwargs = {}
+                    if tool_name == "case_search":
+                        kwargs["cases_path"] = cases_path
+                    elif tool_name == "doc_grep":
+                        kwargs["digest_path"] = digest_path
+                    result = tools_mod.dispatch_tool(tool_name, tool_query, **kwargs)
+                    tool_results_extra.append(
+                        f"[{tool_name}({tool_query})] => {result}"
+                    )
+
             used_ollama = True
             context_used = _format_cases_context(
                 context["cases"]
