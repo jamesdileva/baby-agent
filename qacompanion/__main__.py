@@ -21,7 +21,7 @@ from . import store
 from . import task
 from . import teach as teach_mod
 from . import transport
-from .skills import archive_mine, auto_capture, digest, flaky, journal, locate, merge, preflight, regression, repocheck, school, snapshot
+from .skills import archive_mine, auto_capture, digest, flaky, journal, locate, merge, preflight, regression, repocheck, school, snapshot, weak_subjects
 
 
 def build_parser():
@@ -372,6 +372,22 @@ def build_parser():
         help="proposed rules file (default: rules_proposed.jsonl)",
     )
 
+    gapster = sub.add_parser(
+        "gaps",
+        help="rank knowledge gaps and request teaching for weak subjects",
+        epilog=(
+            "Scans cases.jsonl, classifies each case into subject "
+            "categories, and reports which areas lack coverage. "
+            "Exit contract: 0 report generated, 1 operational error."
+        ),
+    )
+    gapster.add_argument(
+        "--cases",
+        default=None,
+        metavar="PATH",
+        help="cases store file (default: cases.jsonl)",
+    )
+
     reviewer = sub.add_parser(
         "review-rules",
         help="walk proposed rules queue: approve, correct, or reject",
@@ -488,6 +504,16 @@ def _cmd_detect(args):
         print(f"error: {exc}", file=sys.stderr)
         return 1
     print(detect_mod.format_proposed(new))
+    return 0
+
+
+def _cmd_gaps(args):
+    try:
+        gaps, cases = weak_subjects.run_analysis(args.cases)
+    except (ValueError, OSError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(weak_subjects.format_gap_report(gaps))
     return 0
 
 
@@ -858,6 +884,7 @@ _COMMANDS = {
     "mine": _cmd_mine,
     "school": _cmd_school,
     "tasklite": _cmd_tasklite,
+    "gaps": _cmd_gaps,
 }
 
 
