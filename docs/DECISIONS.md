@@ -1019,3 +1019,28 @@ Firsthand verification: HEAD=<this commit>, Ran 620 OK EXIT=0 — all
 claims confirmed.
 
 Status: S24 adjudication loop landed. S25 (weakest-subject requests) is next.
+
+## S25 weakest-subject requests [2026-08-27]
+
+S25 core gap-analysis engine shipped:
+- `qacompanion/skills/weak_subjects.py`: regex-based case classifier
+  mapping cases to registry-aligned subject categories (test-failure,
+  environment-error, build-failure, configuration-error, dependency-error,
+  flaky-test, unknown). Gap analyzer ranks categories by case count
+  (empty < thin < covered); gap-fill tracker detects when new lessons
+  close previously reported gaps. Teaching requests generated for
+  weak subjects.
+- `tests/test_weak_subjects.py`: 42 tests (classify 13 patterns incl.
+  enoent/permission/git-repo/bom/json/syntax/import/version/assert/type/
+  flaky/unknown-fallback/empty/signature-first-match; analyze_gaps 5
+  tests incl. empty/thin/covered/mixed/sorted; format_report 3 tests;
+  track_gap_fill 6 tests incl. empty->thin/thin->covered/no-change/
+  no-regression/multiple/order; format_fill 2 tests; run_analysis 2
+  tests; CLI wiring 3 tests; CLI integration 3 tests incl. empty/cases/
+  corrupt; constants 3 tests; patterns 1 test); 662 OK EXIT=0.
+- CLI wired as `qa gaps [--cases PATH]`.
+
+Firsthand verification: HEAD=ae3b5a8, Ran 662 OK EXIT=0 — all
+claims confirmed.
+
+Status: S25 weakest-subject requests landed. S26 (Ollama bridge) is next.
