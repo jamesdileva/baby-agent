@@ -1018,7 +1018,7 @@ S24 core adjudication engine shipped:
 Firsthand verification: HEAD=<this commit>, Ran 620 OK EXIT=0 — all
 claims confirmed.
 
-Status: S24 adjudication loop landed. S25 (weakest-subject requests) is next.
+Status: S24 adjudication loop landed. S25 landed and signed off.
 
 ## S25 weakest-subject requests [2026-08-27]
 
@@ -1044,3 +1044,27 @@ Firsthand verification: HEAD=ae3b5a8, Ran 662 OK EXIT=0 — all
 claims confirmed.
 
 Status: S25 weakest-subject requests landed. S26 (Ollama bridge) is next.
+
+## S26 Ollama bridge + retrieval context [2026-08-27]
+
+S26 local model integration shipped:
+- `qacompanion/ollama_bridge.py`: Ollama HTTP client (stdlib urllib),
+  retrieval context builder (cases + digest), prompt engineering with
+  system instruction, grounded answer generation with citations, fallback
+  to raw lookup when Ollama absent. Configurable model/endpoint via
+  args or env vars (OLLAMA_MODEL, OLLAMA_URL).
+- `tests/test_ollama_bridge.py`: 35 tests (is_ollama_available with
+  mock/unavailable/custom-url; build_retrieval_context empty/matching/
+  sorted/missing/total/max-cases/max-digest; format_cases_context empty/
+  single/multiple; format_digest_context empty/single; build_prompt basic/
+  with-cases/with-digest/both/system-instruction; ollama_generate success/
+  with-url/error; ask with-ollama/fallback-no-ollama/fallback-with-cases/
+  ollama-fails-falls-back/citations; format_ask_output ollama/fallback/
+  no-match; edge cases empty-response/None/max-context); 697 OK EXIT=0.
+- CLI wired as `qa ask QUERY [--cases PATH] [--digest PATH]
+  [--model NAME] [--url URL]`.
+
+Firsthand verification: HEAD=<this commit>, Ran 697 OK EXIT=0 — all
+claims confirmed.
+
+Status: S26 Ollama bridge landed. S27 (research tools) is next.

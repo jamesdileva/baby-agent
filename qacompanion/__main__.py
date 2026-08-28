@@ -22,6 +22,7 @@ from . import task
 from . import teach as teach_mod
 from . import transport
 from .skills import archive_mine, auto_capture, digest, flaky, journal, locate, merge, preflight, regression, repocheck, school, snapshot, weak_subjects
+from . import ollama_bridge
 
 
 def build_parser():
@@ -249,19 +250,39 @@ def build_parser():
 
     asker = sub.add_parser(
         "ask",
-        help="search digested documents for a query",
+        help="ask a question using cases + docs + local Ollama model",
         epilog=(
-            "Search digest entries by case-insensitive keywords. Returns "
-            "cited passages from ingested markdown. Exit contract: 0 "
-            "matches found, 1 no matches."
+            "Retrieves relevant cases and digested docs, feeds them as "
+            "context to a local Ollama model, returns a grounded answer "
+            "with citations. Falls back to raw lookup when Ollama is "
+            "absent. Exit contract: 0 answer generated, 1 no matches "
+            "or Ollama unavailable."
         ),
     )
-    asker.add_argument("query", help="search keywords")
+    asker.add_argument("query", help="question to ask")
     asker.add_argument(
-        "--store",
+        "--cases",
+        default=None,
+        metavar="PATH",
+        help="cases store file (default: cases.jsonl)",
+    )
+    asker.add_argument(
+        "--digest",
         default=None,
         metavar="PATH",
         help="digest store file (default: digest.jsonl)",
+    )
+    asker.add_argument(
+        "--model",
+        default=None,
+        metavar="NAME",
+        help="Ollama model name (default: qwen2.5-coder:1.5b)",
+    )
+    asker.add_argument(
+        "--url",
+        default=None,
+        metavar="URL",
+        help="Ollama endpoint (default: http://localhost:11434)",
     )
 
     miner = sub.add_parser(
@@ -743,14 +764,19 @@ def _cmd_digest(args):
 
 
 def _cmd_ask(args):
-    results = digest.search(args.query, args.store)
-    print(format_results_ask(results, args.query))
-    return 0 if results else 1
-
-
-def format_results_ask(results, query):
-    """Render ask results as human-readable cited output."""
-    return digest.format_results(results, query)
+    try:
+        result = ollama_bridge.ask(
+            args.query,
+            cases_path=args.cases,
+            digest_path=args.digest,
+            model=args.model,
+            url=args.url,
+        )
+    except ollama_bridge.OllamaError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(ollama_bridge.format_ask_output(result))
+    return 0 if result["answer"] != "no matching case" else 1
 
 
 def _cmd_mine(args):
