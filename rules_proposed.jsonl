@@ -1,0 +1,1 @@
+{"id": 1, "type": "recurring", "description": "Case #6 seen 23 times", "confidence": 1.0, "supporting_cases": [6], "proposed_rule": "Recurring failure pattern: sitrep claims :: phantom dirty-tree or failing-tests report", "created": "2026-08-27T03:06:37Z"}
