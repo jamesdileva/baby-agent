@@ -1067,4 +1067,30 @@ S26 local model integration shipped:
 Firsthand verification: HEAD=<this commit>, Ran 697 OK EXIT=0 — all
 claims confirmed.
 
-Status: S26 Ollama bridge landed. S27 (research tools) is next.
+Status: S26 Ollama bridge landed. S27 (research tools) landed and signed.
+
+## S27 research tools [2026-08-27]
+
+S27 callable tools for the brain layer shipped:
+- `qacompanion/tools.py`: three stateless tools — case_search (keyword
+  search over cases.jsonl), doc_grep (keyword search over digest store),
+  journal_read (pattern search over journal ledger). Tool call parser
+  extracts [TOOL: name(query="value")] from model output. Dispatch
+  function routes calls with error handling. Loop guard: MAX_TOOL_CALLS=3.
+- `tests/test_research_tools.py`: 39 tests (parse_tool_calls single/
+  quotes/multiple/none/journal/extra-spaces/insensitive/middle/unknown;
+  dispatch_tool unknown/correct-function/kwargs/exception; case_search
+  matching/no-match/empty/missing; doc_grep matching/no-match/empty/
+  missing; journal_read matching/no-match/missing; ask tool loop
+  no-tools/single/loop-guard/error/fallback/multiple-one-turn; registry
+  three-tools/callable/constant; tool instructions prompt-excluded/
+  prompt-included/tool-results-injected).
+- `qacompanion/ollama_bridge.py` updated: tool-calling loop in ask(),
+  TOOL_INSTRUCTIONS constant, _build_prompt accepts use_tools flag,
+  tool_results injected into context. Lazy import of tools module
+  (intentional: keeps tools optional per separation-of-concerns).
+
+Firsthand verification: HEAD=312d875, Ran 733 OK EXIT=0 — all
+claims confirmed.
+
+Status: S27 research tools landed. S28 (escalation handshake) is next.
