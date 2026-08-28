@@ -378,6 +378,90 @@ class TestFormatAskOutput(unittest.TestCase):
         self.assertIn("no matching case", output)
 
 
+# --- S28 confidence detection ---
+
+class TestAskConfidence(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    @patch("qacompanion.ollama_bridge._is_ollama_available")
+    @patch("qacompanion.ollama_bridge._ollama_generate")
+    def test_confident_answer_flagged(self, mock_gen, mock_avail):
+        mock_avail.return_value = True
+        mock_gen.return_value = "Based on case #3, the fix is to update config."
+        cases_path = Path(self.tmpdir) / "cases.jsonl"
+        digest_path = Path(self.tmpdir) / "digest.jsonl"
+        cases_path.write_text("")
+        digest_path.write_text("")
+        result = ask("what is config", cases_path=cases_path, digest_path=digest_path)
+        self.assertIn("confidence", result)
+        self.assertTrue(result["confidence"]["confident"])
+
+    @patch("qacompanion.ollama_bridge._is_ollama_available")
+    @patch("qacompanion.ollama_bridge._ollama_generate")
+    def test_low_confidence_answer_flagged(self, mock_gen, mock_avail):
+        mock_avail.return_value = True
+        mock_gen.return_value = "I'm not sure about this, no relevant cases found."
+        cases_path = Path(self.tmpdir) / "cases.jsonl"
+        digest_path = Path(self.tmpdir) / "digest.jsonl"
+        cases_path.write_text("")
+        digest_path.write_text("")
+        result = ask("obscure question", cases_path=cases_path, digest_path=digest_path)
+        self.assertFalse(result["confidence"]["confident"])
+        self.assertGreater(len(result["confidence"]["markers"]), 0)
+
+    @patch("qacompanion.ollama_bridge._is_ollama_available")
+    def test_fallback_confidence_default(self, mock_avail):
+        mock_avail.return_value = False
+        cases_path = Path(self.tmpdir) / "cases.jsonl"
+        digest_path = Path(self.tmpdir) / "digest.jsonl"
+        c = _make_case(id=1, sig="err foo", diag="fix foo")
+        _cases_file(cases_path, [c])
+        digest_path.write_text("")
+        result = ask("foo", cases_path=cases_path, digest_path=digest_path)
+        self.assertTrue(result["confidence"]["confident"])
+
+    @patch("qacompanion.ollama_bridge._is_ollama_available")
+    def test_fallback_no_match_low_confidence(self, mock_avail):
+        mock_avail.return_value = False
+        cases_path = Path(self.tmpdir) / "cases.jsonl"
+        digest_path = Path(self.tmpdir) / "digest.jsonl"
+        cases_path.write_text("")
+        digest_path.write_text("")
+        result = ask("q", cases_path=cases_path, digest_path=digest_path)
+        self.assertFalse(result["confidence"]["confident"])
+
+
+class TestFormatAskOutputConfidence(unittest.TestCase):
+    def test_low_confidence_shows_escalation_hint(self):
+        from qacompanion.ollama_bridge import format_ask_output
+        result = {
+            "answer": "I'm not sure and cannot determine the cause.",
+            "used_ollama": True,
+            "citations": {"cases": 0, "digest": 0},
+            "model": "qwen2.5-coder:1.5b",
+            "confidence": {"confident": False, "markers": ["i'm not sure"]},
+        }
+        output = format_ask_output(result)
+        self.assertIn("low confidence", output.lower())
+        self.assertIn("escalat", output.lower())
+
+    def test_confident_answer_no_hint(self):
+        from qacompanion.ollama_bridge import format_ask_output
+        result = {
+            "answer": "Based on case #3, the fix is clear.",
+            "used_ollama": True,
+            "citations": {"cases": 1, "digest": 0},
+            "model": "qwen2.5-coder:1.5b",
+            "confidence": {"confident": True, "markers": []},
+        }
+        output = format_ask_output(result)
+        self.assertNotIn("low confidence", output.lower())
+
+
 # --- Edge cases ---
 
 class TestEdgeCases(unittest.TestCase):

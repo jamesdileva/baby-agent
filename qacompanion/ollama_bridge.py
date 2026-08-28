@@ -1,4 +1,4 @@
-"""S26/S27 Ollama bridge: local model integration with retrieval context + tools.
+"""S26/S27/S28 Ollama bridge: local model integration with retrieval + tools + escalation.
 
 `qa ask "<question>"` retrieves relevant cases/doc-passages/skills, feeds
 them as context to a local Ollama model, returns a grounded answer WITH
@@ -7,6 +7,10 @@ citations. Falls back to plain lookup when Ollama is absent.
 The model may invoke research tools mid-answer by outputting tool calls
 in the format [TOOL: tool_name(query="...")]. A loop guard prevents
 infinite tool-calling (max 3 iterations by default).
+
+S28 adds confidence detection: when the model's answer indicates low
+confidence, the result includes a `confidence` dict with `confident: False`
+and the matched markers, enabling the brain to escalate to a live agent.
 
 Pins (fixtures-first discipline):
 - Ollama endpoint is http://localhost:11434 by default (OLLAMA_URL env).
@@ -19,6 +23,7 @@ Pins (fixtures-first discipline):
 - S27 tools: case_search, doc_grep, journal_read (see tools.py).
 - Tool call format: [TOOL: name(query="value")] in model output.
 - Loop guard: MAX_TOOL_CALLS=3 per ask() invocation.
+- S28 confidence: detect_confidence() checks answer for uncertainty markers.
 """
 
 import json
@@ -312,6 +317,10 @@ def ask(query, cases_path=None, digest_path=None, model=None, url=None):
         else:
             answer = "no matching case"
 
+    # S28: detect confidence in the answer
+    from . import escalation as esc_mod
+    confidence = esc_mod.detect_confidence(answer)
+
     return {
         "answer": answer,
         "used_ollama": used_ollama,
@@ -321,6 +330,7 @@ def ask(query, cases_path=None, digest_path=None, model=None, url=None):
         },
         "model": model if used_ollama else None,
         "context_used": context_used,
+        "confidence": confidence,
     }
 
 
@@ -336,4 +346,16 @@ def format_ask_output(result):
         lines.append("[fallback: no Ollama — raw lookup]")
         lines.append("")
         lines.append(result["answer"])
+
+    # S28: flag low confidence
+    confidence = result.get("confidence", {})
+    if confidence and not confidence.get("confident", True):
+        lines.append("")
+        lines.append("[low confidence — consider escalation]")
+        lines.append(
+            "Run 'qa escalate' to draft a question for a live agent, "
+            "or 'qa record' to add the answer manually."
+
+        )
+
     return "\n".join(lines)

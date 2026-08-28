@@ -14,6 +14,7 @@ from pathlib import Path
 from . import accuracy as accuracy_mod
 from . import adjudicate as adjudicate_mod
 from . import detect as detect_mod
+from . import escalation as escalation_mod
 from . import lookup as lookup_mod
 from . import report as report_mod
 from . import signatures
@@ -448,6 +449,42 @@ def build_parser():
         type=int,
         default=None,
         help="max candidates to process (default: all pending)",
+    )
+
+    escalator = sub.add_parser(
+        "escalate",
+        help="escalate a low-confidence answer to a live agent",
+        epilog=(
+            "Formats a question with retrieval context for escalation "
+            "to a live agent session. When the local model's answer "
+            "indicates low confidence, this drafts the question so a "
+            "human or live agent can answer. The answer can then be "
+            "recorded with 'qa record'. Exit contract: 0 question "
+            "generated, 1 operational error."
+        ),
+    )
+    escalator.add_argument("query", help="the question that needs escalation")
+    escalator.add_argument(
+        "--context",
+        default=None,
+        help="retrieval context to include (cases, docs)",
+    )
+    escalator.add_argument(
+        "--answer",
+        default=None,
+        help="low-confidence answer from the model (optional)",
+    )
+    escalator.add_argument(
+        "--cases",
+        default=None,
+        metavar="PATH",
+        help="cases store file (default: cases.jsonl)",
+    )
+    escalator.add_argument(
+        "--digest",
+        default=None,
+        metavar="PATH",
+        help="digest store file (default: digest.jsonl)",
     )
 
     return parser
@@ -887,6 +924,32 @@ def _cmd_tasklite(args):
     return 0
 
 
+def _cmd_escalate(args):
+    # Build context from retrieval if not provided
+    context = args.context or ""
+    if not context and (args.cases or args.digest):
+        from . import ollama_bridge as bridge
+        ctx = bridge.build_retrieval_context(
+            args.query, args.cases, args.digest
+        )
+        context_parts = []
+        if ctx["cases"]:
+            context_parts.append(
+                ollama_bridge._format_cases_context(ctx["cases"])
+            )
+        if ctx["digest"]:
+            context_parts.append(
+                ollama_bridge._format_digest_context(ctx["digest"])
+            )
+        context = "\n".join(context_parts)
+
+    question = escalation_mod.format_escalation_question(
+        args.query, context, answer=args.answer
+    )
+    print(escalation_mod.format_escalation_output(question))
+    return 0
+
+
 _COMMANDS = {
     "record": _cmd_record,
     "lookup": _cmd_lookup,
@@ -911,6 +974,7 @@ _COMMANDS = {
     "school": _cmd_school,
     "tasklite": _cmd_tasklite,
     "gaps": _cmd_gaps,
+    "escalate": _cmd_escalate,
 }
 
 
