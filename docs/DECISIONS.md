@@ -1094,3 +1094,31 @@ Firsthand verification: HEAD=312d875, Ran 733 OK EXIT=0 — all
 claims confirmed.
 
 Status: S27 research tools landed. S28 (escalation handshake) is next.
+
+## S28 escalation handshake [2026-08-27]
+
+S28 escalation handshake shipped:
+- `qacompanion/escalation.py`: confidence detection via regex markers
+  (10 uncertainty phrases: "not sure", "don't know", "uncertain",
+  "no relevant", "cannot determine", "unable to", "no information",
+  "cannot find", "was unable", "no diagnosis"); format_escalation_question()
+  drafts question with retrieval context + low-confidence answer;
+  record_escalated_answer() routes through CaseStore.record() (atomic,
+  validated); format_escalation_output() adds CLI guidance.
+- `qacompanion/ollama_bridge.py` updated: ask() returns `confidence` dict
+  (confident bool + markers list); format_ask_output() appends
+  "[low confidence — consider escalation]" hint when confidence is low.
+- `qacompanion/__main__.py`: `qa escalate QUERY [--context ...]
+  [--answer ...] [--cases PATH] [--digest PATH]` wired.
+- `tests/test_escalation.py`: 40 tests (confidence markers per-class,
+  case-insensitive, empty/None, escalation formatting, answer recording
+  new/existing/empty/missing-by, CLI subcommand + output).
+- `tests/test_ollama_bridge.py`: 6 new tests (confident/low-confidence
+  in ask output, fallback confidence, escalation hint rendering).
+- distillation path routes through CaseStore.record() per agent-b
+  WARNING: no auto-creation without --by; human/agent confirmation required.
+
+Firsthand verification: HEAD=ad254f1, Ran 779 OK EXIT=0 — all
+claims confirmed.
+
+Status: S28 escalation handshake landed. S29 (resident digest daemon) is next.
