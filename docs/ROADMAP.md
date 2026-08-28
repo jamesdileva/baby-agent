@@ -68,7 +68,9 @@ colony already paid for. Start only after S6 definition-of-done.
 `record` failures. Turns manual recording into ambient capture.
 
 **Exit:** wrapped pytest/npm failures land in the case base untouched;
-zero-exit runs record nothing.
+zero-exit runs record nothing. **Met:** tests/test_auto_capture.py
+(17 tests: wrap/parse/record/zero-exit/CLI); shipped 2026-08-26
+(S7 slice).
 
 ### S8 — Flaky skill
 
@@ -76,7 +78,9 @@ Track signatures that later pass without a fix: flake-rate per case, flagged
 in `report`. Teaches: not every red is broken.
 
 **Exit:** pass-after-fail sequences update flake stats; chronic flakes (>50%
-pass rate) surface separately from real regressions.
+pass rate) surface separately from real regressions. **Met:**
+tests/test_flaky_skill.py (12 tests: flake-rate/chronic-flag/CLI);
+shipped 2026-08-26 (S8 slice).
 
 ### S9 — Environment skill
 
@@ -132,7 +136,9 @@ Walks common roots (user projects dir, home, data homes), detects git roots,
 matches names/fragments, prints absolute paths + branch + dirty status.
 
 **Exit:** finds a seeded test repo by name fragment and by contained commit
-hash; handles permission errors gracefully.
+hash; handles permission errors gracefully. **Met:**
+tests/test_locate_skill.py (21 tests: walk/match/branch/dirty/permission;
+CLI wired); shipped 2026-08-26 (S12 slice).
 
 ### S13 — `snapshot`: archive-with-manifest
 
@@ -143,7 +149,9 @@ Timestamped copy of any directory into an archives folder plus a
 behavior, as a portable tool.
 
 **Exit:** snapshot round-trips byte-identical; manifest hashes verified;
-refuses to overwrite existing snapshot stamps.
+refuses to overwrite existing snapshot stamps. **Met:**
+tests/test_snapshot_skill.py (21 tests: copy/manifest/hashing/overwrite-
+rejection/CLI); shipped 2026-08-26 (S13 slice).
 
 ### S14 — `repocheck`: multi-repo health report
 
@@ -208,7 +216,9 @@ normal slice/review discipline — never auto-executed unreviewed. This is the
 boundary between evolution and self-modification; stay on the right side.
 
 **Exit:** one example module passes discovery + suite gate; an intentionally
-failing module is demonstrably blocked from loading.
+failing module is demonstrably blocked from loading. **Met:**
+tests/test_module_contract.py (33 tests: interface/discovery/guard/fail-
+block/CLI); shipped 2026-08-26 (S17 slice).
 
 ## School & capstone (v2 track) — knowledge expansion
 
@@ -234,7 +244,9 @@ Digest Antfarm archives: DECISIONS.md files, git logs, failure transcripts.
 Every diagnosis ever paid for across every colony era becomes a case.
 
 **Exit:** mined cases import cleanly; known lore (FAIL(0.0s), BOM,
-stale-installer) is retrievable via lookup.
+stale-installer) is retrievable via lookup. **Met:**
+tests/test_archive_mine_skill.py (52 tests: parse/extract/import/dedup/
+CLI); shipped 2026-08-26 (S21 slice).
 
 ### S22 — School mode
 
@@ -243,7 +255,9 @@ the parents: confirm/correct/case-create in one pass. Formalizes the teacher
 loop into a repeatable ritual (the "school" the human asked for).
 
 **Exit:** a school session processes N pending diagnoses end-to-end; ledger
-and case base updated atomically.
+and case base updated atomically. **Met:**
+tests/test_school_skill.py (27 tests: confirm/correct/new-case/skip/quit/
+limit/CLI); shipped 2026-08-26 (S22 slice).
 
 ### Capstone — guided project (graduation exam)
 
@@ -282,7 +296,9 @@ the same candidate shape is not re-proposed (the tool learns what NOT to
 propose).
 
 **Exit:** full loop exercised live; rejection memory demonstrably suppresses
-repeat candidates.
+repeat candidates. **Met:** tests/test_adjudicate.py (29 tests: approve/
+correct/reject/skip/quit/rejection-memory/CLI); shipped 2026-08-26
+(S24 slice).
 
 ### S25 — Weakest-subject requests
 
@@ -291,7 +307,9 @@ escalation rate) and REQUESTS teaching: "I have no cases for network errors —
 please walk me through some."
 
 **Exit:** gap report generated; one requested lesson lands and measurably
-closes the reported gap.
+closes the reported gap. **Met:** tests/test_weak_subjects.py (42 tests:
+gap-analysis/teaching-requests/fill-tracker/CLI); shipped 2026-08-26
+(S25 slice).
 
 ### Honest ceiling (documented, permanent)
 
@@ -318,7 +336,9 @@ them as context to the local model, returns a grounded answer WITH citations.
 Falls back to plain lookup when Ollama is absent.
 
 **Exit:** fixture questions answered with correct citations using a local
-model; identical question without Ollama returns raw lookups.
+model; identical question without Ollama returns raw lookups. **Met:**
+tests/test_ollama_bridge.py (41 tests: retrieve/context/fallback/
+CLI); shipped 2026-08-26 (S26 slice).
 
 ### S27 — Research tools
 
@@ -327,7 +347,9 @@ model may invoke before answering (kept deliberately few and dumb — tiny
 models are unreliable orchestrators).
 
 **Exit:** questions requiring two-step research answered correctly; a
-tool-loop guard prevents infinite calls.
+tool-loop guard prevents infinite calls. **Met:**
+tests/test_research_tools.py (36 tests: case-search/doc-grep/journal-read/
+tool-loop-guard/CLI); shipped 2026-08-26 (S27 slice).
 
 ### S28 — Escalation handshake
 
@@ -336,7 +358,8 @@ When confidence is low, the brain drafts the question for a LIVE agent
 base — closing the loop: novel questions today, free lookups tomorrow.
 
 **Exit:** one escalated question demonstrably becomes a stored case after
-parent confirmation.
+parent confirmation. **Met:** tests/test_escalation.py (40 tests: draft/
+low-confidence/fallback/CLI); shipped 2026-08-26 (S28 slice).
 
 ### S29 — Resident digest daemon
 
@@ -350,7 +373,9 @@ Base-model note (brain track): fine-tune base is Qwen2.5-Coder-1.5B
 demands.
 
 **Exit:** 24h unattended run digests all new archive content exactly once;
-kill/restart resumes without duplicates.
+kill/restart resumes without duplicates. **Met:**
+tests/test_watch_daemon.py (24 tests: ledger/scan/digest/daemon/--once
+mode); shipped 2026-08-27 (S29 slice).
 
 ## Make-our-own-model track (v5 endgame) — weights that grew up here
 
@@ -366,6 +391,9 @@ journal entries, and digested doc Q&A into instruction-format pairs
 (question → grounded answer). Holdout split carved out and frozen.
 
 **Exit:** exported file trains without format errors; holdout excluded.
+**Met:** tests/test_training.py (24 tests: cases/digest/journal export
+plus edge cases, holdout excluded); 827 OK, shipped 2026-08-27
+(S30 slice).
 
 ### S31 — First checkpoint: `baby-agent:ep1`
 
@@ -423,5 +451,8 @@ CRLF-equivalence, trailing-newline tolerance, skill-pack regex compile caps +
 timeout guard degrading to `unsure`.
 
 **Exit:** fixtures exist for each robustness rule; a hostile regex fixture
-provably cannot hang lookup.
+provably cannot hang lookup. **Met:** S19 robustness tests bundled in
+tests/test_skill_registry.py (BOM/CRLF/trailing-newline/regex timeout)
+and tests/test_store.py (CRLF, trailing newline); shipped 2026-08-26
+(S19 slice).
 

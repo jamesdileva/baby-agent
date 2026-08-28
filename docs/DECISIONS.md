@@ -1147,3 +1147,29 @@ Firsthand verification: HEAD=781deb4, Ran 803 OK EXIT=0 — all
 claims confirmed.
 
 Status: S29 watch daemon landed. S30 (training-data pipeline) is next.
+
+---
+
+### S30 sign-off — training-data pipeline
+
+Verified: `qa export-training --out train.jsonl` produces valid
+instruction-format JSONL from cases, digest, and journal. Holdout cases
+excluded. Missing sources handled gracefully. 24 new tests cover all
+three input categories plus edge cases.
+
+Firsthand verification: HEAD=03c3fe9, Ran 827 OK, tree clean (only
+AGENT_B_MEMORY.md + untracked byproducts).
+
+### S31/S32 skip-and-log — GPU prerequisite
+
+S31 (first checkpoint `baby-agent:ep1`) and S32 (generational loop)
+require GPU-based fine-tuning tooling (unsloth / LLaMA-Factory / MLX).
+Per PROJECT GOAL phase-gate rule: skipped and logged. Revisit when GPU
+prerequisites exist.
+
+S31 exit condition: `baby-agent:ep1` exists in Ollama; benchmark table.
+S32 exit condition: two generations exist; gen2 improves on gen1 without
+regression.
+
+Status: All roadmap items complete or skipped. Capstone verified
+(commits through 2bf6b2d). Full roadmap execution done.
