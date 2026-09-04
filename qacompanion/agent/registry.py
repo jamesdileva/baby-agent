@@ -38,6 +38,12 @@ class RegistryError(Exception):
     """Programming error in registry use (duplicate name, bad metadata)."""
 
 
+class ToolOperationError(Exception):
+    """An expected tool failure (S34 seam): str(exc) becomes the structured
+    ToolResult error, without the 'handler failed' repr prefix reserved for
+    unexpected exceptions."""
+
+
 READ_ONLY = "READ_ONLY"
 SAFE_WRITE = "SAFE_WRITE"
 EXECUTION = "EXECUTION"
@@ -273,6 +279,8 @@ class ToolRegistry:
                     error=f"timed out after {tool.timeout_seconds}s",
                     timed_out=True,
                 )
+            except ToolOperationError as exc:
+                return _Outcome(ok=False, error=str(exc))
             except Exception as exc:
                 return _Outcome(ok=False, error=f"handler failed: {exc!r}")
         if output is None:
