@@ -177,6 +177,22 @@ class _Outcome:
     cancelled: bool = False
 
 
+def _emit_permission(event_stream, session_id, event_type, tool_name,
+                     decision, extra=None):
+    """S39: emit permission events where the decision actually happens."""
+    if event_stream is None:
+        return
+    payload = {
+        "tool": tool_name,
+        "mode": decision.mode,
+        "rule": decision.rule,
+        "reason": decision.reason,
+    }
+    if extra:
+        payload.update(extra)
+    event_stream.emit(event_type, session_id, payload)
+
+
 def _as_decision(tool_name: str, mode_or_decision, rule: str = "policy",
                  reason: str = "") -> PermissionDecision:
     """Normalize a policy's return value into a PermissionDecision."""
@@ -221,16 +237,20 @@ class ToolRegistry:
         cancel_event: Optional[threading.Event] = None,
         audit: Optional[Callable[[ToolResult], None]] = None,
         confirmer: Optional[Callable[[ToolCall, Any], bool]] = None,
+        event_stream=None,
+        session_id: Optional[str] = None,
     ) -> ToolResult:
         """Run the full pipeline. Never raises for model-facing outcomes.
 
         confirmer (S38): when the policy says ASK, confirmer(tool_call,
         decision) truthy approves the call, falsy denies it; absent
         confirmer keeps the S32 safe default (ASK = structured denial).
+        event_stream/session_id (S39): emit permission_requested/granted/
+        denied where the decision actually happens.
         """
         started = time.monotonic()
         outcome = self._run_pipeline(tool_call, policy, workspace, cancel_event,
-                                     confirmer)
+                                     confirmer, event_stream, session_id)
         duration_ms = int((time.monotonic() - started) * 1000)
         result = ToolResult(
             call_name=tool_call.name,
@@ -253,6 +273,8 @@ class ToolRegistry:
         workspace: Optional[Any],
         cancel_event: Optional[threading.Event],
         confirmer: Optional[Callable[[ToolCall, Any], bool]] = None,
+        event_stream=None,
+        session_id: Optional[str] = None,
     ) -> _Outcome:
         tool = self._tools.get(tool_call.name)
         if tool is None:
@@ -267,12 +289,16 @@ class ToolRegistry:
                 error="invalid arguments: " + "; ".join(validation_errors),
             )
 
-        raw_decision = (policy or ALLOW_ALL_POLICY).check(
-            tool_call.name, tool_call.arguments, tool
-        )
-        # normalize: policies return mode strings; the confirmer always
-        # receives a full PermissionDecision
-        decision = _as_decision(tool_call.name, raw_decision)
+        # prefer the engine's decide() (full PermissionDecision + audit);
+        # minimal policies expose only check() and are normalized
+        policy_obj = policy or ALLOW_ALL_POLICY
+        if hasattr(policy_obj, "decide"):
+            decision = policy_obj.decide(tool_call.name, tool_call.arguments, tool)
+        else:
+            decision = _as_decision(
+                tool_call.name,
+                policy_obj.check(tool_call.name, tool_call.arguments, tool),
+            )
         # pipeline guarantee: a tool's own requires_confirmation declaration
         # forces ASK even when the policy would allow (S36 posture: commits
         # are never autonomous, whatever the policy says)
@@ -282,9 +308,16 @@ class ToolRegistry:
                                     reason=f"{tool_call.name} declares "
                                            f"requires_confirmation")
         if decision.mode == "DENY":
+            _emit_permission(event_stream, session_id, "permission_denied",
+                             tool_call.name, decision)
             return _Outcome(ok=False, error="permission denied by policy")
         if decision.mode == "ASK":
+            _emit_permission(event_stream, session_id, "permission_requested",
+                             tool_call.name, decision)
             if confirmer is None:
+                _emit_permission(event_stream, session_id, "permission_denied",
+                                 tool_call.name, decision,
+                                 {"reason": "no confirmer available"})
                 return _Outcome(
                     ok=False,
                     error="permission ASK requires confirmation "
@@ -293,9 +326,18 @@ class ToolRegistry:
             try:
                 approved = confirmer(tool_call, decision)
             except Exception as exc:
+                _emit_permission(event_stream, session_id, "permission_denied",
+                                 tool_call.name, decision,
+                                 {"reason": f"confirmer crashed: {exc!r}"})
                 return _Outcome(ok=False, error=f"confirmer crashed: {exc!r}")
             if not approved:
+                _emit_permission(event_stream, session_id, "permission_denied",
+                                 tool_call.name, decision,
+                                 {"reason": "denied by confirmation"})
                 return _Outcome(ok=False, error="denied by confirmation")
+            _emit_permission(event_stream, session_id, "permission_granted",
+                             tool_call.name, decision,
+                             {"reason": "approved by confirmer"})
             # approved: fall through to workspace / cancellation / execution
 
         if tool.requires_workspace and workspace is None:

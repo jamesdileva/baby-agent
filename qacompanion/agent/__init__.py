@@ -47,6 +47,10 @@ from .session import (
     AgentState,
     SessionError,
 )
+from .events import (
+    Event,
+    EventStream,
+)
 from .execution import (
     DETECTED_COMMANDS,
     MAX_COMMAND_TIMEOUT,
@@ -135,6 +139,8 @@ __all__ = [
     "ExecutionToolkit",
     "detect_command",
     "execute_command",
+    "Event",
+    "EventStream",
     "GitError",
     "GitToolkit",
     "parse_branch_line",

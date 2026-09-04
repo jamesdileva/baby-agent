@@ -110,6 +110,7 @@ class AgentLoop:
         cancel_event=None,
         verifier: Optional[Callable[[AgentSession], Tuple[bool, str]]] = None,
         confirmer: Optional[Callable[[Any, Any], bool]] = None,
+        events=None,
     ):
         self.provider = provider
         self.registry = registry
@@ -119,22 +120,41 @@ class AgentLoop:
         self.cancel_event = cancel_event
         self.verifier = verifier
         self.confirmer = confirmer
+        self.events = events
 
     # -- helpers ----------------------------------------------------------
 
     def _cancelled(self) -> bool:
         return self.cancel_event is not None and self.cancel_event.is_set()
 
+    def _emit(self, event_type: str, session: AgentSession, **payload) -> None:
+        if self.events is not None:
+            self.events.emit(event_type, session.session_id, payload)
+
+    def _set_state(self, session: AgentSession, state: AgentState) -> None:
+        previous = session.state
+        session.transition(state)
+        self._emit("session_state_changed", session,
+                   **{"from": previous.value, "to": state.value})
+
     def _finish(self, session: AgentSession, state: AgentState, reason: str) -> AgentSession:
         try:
-            session.transition(state)
+            self._set_state(session, state)
         except SessionError:
             pass  # already terminal
         session.termination_reason = reason
+        terminal_event = {
+            AgentState.COMPLETED: "session_completed",
+            AgentState.CANCELLED: "session_cancelled",
+            AgentState.FAILED: "session_failed",
+        }.get(state)
+        if terminal_event:
+            self._emit(terminal_event, session, termination_reason=reason)
         return session
 
     def _record_failure(self, session: AgentSession, message: str) -> None:
         session.errors.append(message)
+        self._emit("failure_detected", session, message=message)
 
     # -- main loop --------------------------------------------------------
 
@@ -142,7 +162,9 @@ class AgentLoop:
         session = session or AgentSession(
             goal=goal, workspace_root=str(self.workspace.root)
         )
-        session.transition(AgentState.PLANNING)
+        self._emit("session_started", session, goal=goal,
+                   workspace_root=session.workspace_root)
+        self._set_state(session, AgentState.PLANNING)
         messages: List[ModelMessage] = [
             ModelMessage(role="system",
                          content=build_system_prompt(self.registry.schemas())),
@@ -151,7 +173,7 @@ class AgentLoop:
         session.messages.extend(messages)
 
         started = time.monotonic()
-        session.transition(AgentState.RUNNING)
+        self._set_state(session, AgentState.RUNNING)
 
         while True:
             if self._cancelled():
@@ -166,6 +188,7 @@ class AgentLoop:
                                     TERMINATION_MAX_RUNTIME)
 
             session.iterations += 1
+            self._emit("model_started", session, iteration=session.iterations)
             try:
                 response = self.provider.generate(
                     ModelRequest(messages=list(session.messages),
@@ -175,6 +198,12 @@ class AgentLoop:
                 self._record_failure(session, str(exc))
                 return self._finish(session, AgentState.FAILED,
                                     TERMINATION_PROVIDER_ERROR.format(exc))
+
+            self._emit("model_response", session,
+                       iteration=session.iterations,
+                       finish_reason=response.finish_reason,
+                       has_tool_calls=response.has_tool_calls(),
+                       tool_call_names=[c.name for c in response.tool_calls])
 
             if response.finish_reason == "error":
                 self._record_failure(session, response.text or "model error")
@@ -187,13 +216,17 @@ class AgentLoop:
                     self._record_failure(session, "empty model response")
                     continue
                 # final answer -> verify
-                session.transition(AgentState.VERIFYING)
+                self._set_state(session, AgentState.VERIFYING)
                 if self.verifier is not None:
+                    attempt = len(session.verification_results) + 1
+                    self._emit("verification_started", session, attempt=attempt)
                     ok, detail = self._verify(session)
                     session.verification_results.append({
                         "ok": ok, "detail": detail,
                         "at": session.updated_at,
                     })
+                    self._emit("verification_completed", session,
+                               attempt=attempt, ok=ok, detail=detail)
                     if ok:
                         session.final_result = response.text
                         return self._finish(session, AgentState.COMPLETED,
@@ -204,7 +237,8 @@ class AgentLoop:
                             session, AgentState.FAILED,
                             TERMINATION_VERIFICATION_FAILED.format(attempts),
                         )
-                    session.transition(AgentState.RECOVERING)
+                    self._set_state(session, AgentState.RECOVERING)
+                    self._emit("recovery_started", session, attempt=attempt)
                     session.messages.append(
                         ModelMessage(role="assistant", content=response.text))
                     session.messages.append(ModelMessage(
@@ -212,7 +246,7 @@ class AgentLoop:
                         content=f"Verification failed: {detail}. "
                                 "Diagnose, fix, and try again.",
                     ))
-                    session.transition(AgentState.RUNNING)
+                    self._set_state(session, AgentState.RUNNING)
                     continue
                 session.final_result = response.text
                 return self._finish(session, AgentState.COMPLETED,
@@ -225,6 +259,8 @@ class AgentLoop:
                 if self._cancelled():
                     return self._finish(session, AgentState.CANCELLED,
                                         TERMINATION_CANCELLED)
+                self._emit("tool_requested", session, tool=call.name,
+                           arguments=dict(call.arguments))
                 try:
                     result = self.registry.execute(
                         call,
@@ -232,6 +268,8 @@ class AgentLoop:
                         workspace=self.workspace,
                         cancel_event=self.cancel_event,
                         confirmer=self.confirmer,
+                        event_stream=self.events,
+                        session_id=session.session_id,
                     )
                 except Exception as exc:  # pipeline crash: feed back, continue
                     self._record_failure(
@@ -242,12 +280,21 @@ class AgentLoop:
                     )
                 session.tool_calls.append(call)
                 session.observations.append(result)
-                if not result.ok:
-                    self._record_failure(
-                        session, f"tool {call.name!r} failed: {result.error}")
                 changed = _extract_changed_path(result, self.registry)
                 if changed and changed not in session.files_changed:
                     session.files_changed.append(changed)
+                if not result.ok:
+                    self._record_failure(
+                        session, f"tool {call.name!r} failed: {result.error}")
+                    self._emit("tool_failed", session, tool=call.name,
+                               error=result.error,
+                               duration_ms=result.duration_ms)
+                else:
+                    self._emit("tool_completed", session, tool=call.name,
+                               duration_ms=result.duration_ms,
+                               changed_path=changed)
+                if changed:
+                    self._emit("file_changed", session, path=changed)
                 session.messages.append(ModelMessage(
                     role="tool",
                     content=json.dumps(result.to_dict(), ensure_ascii=False),
