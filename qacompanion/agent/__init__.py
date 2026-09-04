@@ -55,6 +55,16 @@ from .git_tools import (
     parse_log,
     parse_status,
 )
+from .loop import (
+    TERMINATION_CANCELLED,
+    TERMINATION_COMPLETED,
+    TERMINATION_MAX_ITERATIONS,
+    TERMINATION_MAX_RUNTIME,
+    TERMINATION_PROVIDER_ERROR,
+    TERMINATION_VERIFICATION_FAILED,
+    AgentLoop,
+    build_system_prompt,
+)
 from .workspace import (
     ProjectMetadata,
     PathError,
@@ -116,4 +126,12 @@ __all__ = [
     "parse_branch_line",
     "parse_log",
     "parse_status",
+    "TERMINATION_CANCELLED",
+    "TERMINATION_COMPLETED",
+    "TERMINATION_MAX_ITERATIONS",
+    "TERMINATION_MAX_RUNTIME",
+    "TERMINATION_PROVIDER_ERROR",
+    "TERMINATION_VERIFICATION_FAILED",
+    "AgentLoop",
+    "build_system_prompt",
 ]

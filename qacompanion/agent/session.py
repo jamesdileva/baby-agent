@@ -99,6 +99,7 @@ class AgentSession:
     observations: List[ToolResult] = field(default_factory=list)
     files_changed: List[str] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
+    verification_results: List[dict] = field(default_factory=list)
     created_at: str = field(default_factory=_utc_now)
     updated_at: str = field(default_factory=_utc_now)
     final_result: Optional[str] = None
@@ -133,6 +134,7 @@ class AgentSession:
             "observations": [o.to_dict() for o in self.observations],
             "files_changed": list(self.files_changed),
             "errors": list(self.errors),
+            "verification_results": list(self.verification_results),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "final_result": self.final_result,
@@ -159,6 +161,7 @@ class AgentSession:
             observations=[ToolResult.from_dict(o) for o in data.get("observations", [])],
             files_changed=list(data.get("files_changed", [])),
             errors=list(data.get("errors", [])),
+            verification_results=list(data.get("verification_results", [])),
             created_at=data.get("created_at", _utc_now()),
             updated_at=data.get("updated_at", _utc_now()),
             final_result=data.get("final_result"),
