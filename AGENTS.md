@@ -80,6 +80,15 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S33 Workspace Abstraction** — `qacompanion/agent/workspace.py`:
+  PathPolicy layered containment (strict ".." ban, symlink-following resolve,
+  normcase containment vs root + allowed paths, exclusion prefixes,
+  protected system locations — Windows `C:\Windows`-class and POSIX `/etc`-class),
+  Workspace (root/cwd/git_root/metadata/config), WorkspaceManager (normcase
+  cache + active), ProjectMetadata (languages/package-managers-from-lockfiles/
+  entrypoints/project_type). Integrates S32's `requires_workspace` gate.
+  Suite 932 → 979 OK (symlink tests skip honestly without OS symlink
+  privilege). Spec: docs/s33-spec.md.
 - 2026-09-04 — **S32 Tool Registry v2** — `qacompanion/agent/registry.py`:
   RegisteredTool metadata (side_effect_level, timeout, cancellable,
   requires_workspace/confirmation), ordered execution pipeline (lookup →
