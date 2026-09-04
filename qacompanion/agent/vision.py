@@ -45,7 +45,9 @@ from .workspace import PathError, Workspace
 
 GEMINI_ENDPOINT = ("https://generativelanguage.googleapis.com/v1beta/models/"
                    "{model}:generateContent")
-DEFAULT_VISION_MODEL = "gemini-flash-latest"
+# live smoke 2026-09-04: flash-latest / 3-flash-preview were 503
+# (high demand); 3.1-flash-lite served free multimodal immediately
+DEFAULT_VISION_MODEL = "gemini-3.1-flash-lite"
 VISION_TIMEOUT = 60.0
 DEFAULT_DIFF_THRESHOLD = 8
 DEFAULT_INSPECT_PROMPT = ("Describe this screenshot in detail: what "
