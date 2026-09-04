@@ -400,14 +400,16 @@ def agent_registry(
     ledger=None,
     change_ledger: Optional[ChangeLedger] = None,
     search_provider=None,
+    vision_provider=None,
 ) -> ToolRegistry:
     """Registry preloaded with knowledge + filesystem + execution + git +
-    environment + verification + web research tools."""
+    environment + verification + web research/fetch + vision tools."""
     from .environment import EnvironmentToolkit
     from .execution import ExecutionToolkit
     from .git_tools import GitToolkit
     from .registry import default_knowledge_registry
     from .verification import VerificationToolkit
+    from .vision import VisionToolkit
     from .webfetch import WebFetchToolkit
     from .websearch import WebResearchToolkit
 
@@ -428,5 +430,7 @@ def agent_registry(
     for tool in WebResearchToolkit(search_provider).tools():
         registry.register(tool)
     for tool in WebFetchToolkit(workspace).tools():
+        registry.register(tool)
+    for tool in VisionToolkit(workspace, vision_provider).tools():
         registry.register(tool)
     return registry
