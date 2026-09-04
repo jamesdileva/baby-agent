@@ -301,11 +301,11 @@ class TestRegistration(unittest.TestCase):
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
-    def test_agent_registry_now_twenty_one(self):
+    def test_agent_registry_now_twenty_two(self):
         tmp = Path(tempfile.mkdtemp())
         try:
             reg = agent_registry(Workspace(tmp))
-            self.assertEqual(len(reg.names()), 21)
+            self.assertEqual(len(reg.names()), 22)
             self.assertIn("git_commit", reg.names())
         finally:
             shutil.rmtree(tmp, ignore_errors=True)

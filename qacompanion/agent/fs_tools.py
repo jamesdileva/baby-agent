@@ -400,7 +400,9 @@ def agent_registry(
     ledger=None,
     change_ledger: Optional[ChangeLedger] = None,
 ) -> ToolRegistry:
-    """Registry preloaded with knowledge + filesystem + execution + git tools."""
+    """Registry preloaded with knowledge + filesystem + execution + git +
+    environment tools."""
+    from .environment import EnvironmentToolkit
     from .execution import ExecutionToolkit
     from .git_tools import GitToolkit
     from .registry import default_knowledge_registry
@@ -414,5 +416,7 @@ def agent_registry(
     for tool in ExecutionToolkit(workspace).tools():
         registry.register(tool)
     for tool in GitToolkit(workspace).tools():
+        registry.register(tool)
+    for tool in EnvironmentToolkit(workspace).tools():
         registry.register(tool)
     return registry

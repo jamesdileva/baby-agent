@@ -69,11 +69,12 @@ class TestRegistration(unittest.TestCase):
         tmp = Path(tempfile.mkdtemp())
         try:
             reg = agent_registry(Workspace(tmp))
-            self.assertEqual(len(reg.names()), 21)
+            self.assertEqual(len(reg.names()), 22)
             self.assertIn("case_search", reg.names())
             self.assertIn("write_file", reg.names())
             self.assertIn("run_command", reg.names())
             self.assertIn("git_commit", reg.names())
+            self.assertIn("get_environment_summary", reg.names())
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
