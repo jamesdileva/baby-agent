@@ -163,9 +163,8 @@ class TestRegistration(EnvTestBase):
         self.assertEqual(described["category"], "environment")
         self.assertTrue(described["requires_workspace"])
 
-    def test_agent_registry_grows_to_twenty_two(self):
+    def test_agent_registry_includes_environment_tool(self):
         reg = agent_registry(self.ws)
-        self.assertEqual(len(reg.names()), 22)
         self.assertIn("get_environment_summary", reg.names())
 
 
