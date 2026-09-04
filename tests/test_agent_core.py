@@ -321,6 +321,31 @@ class TestOllamaProvider(unittest.TestCase):
             resp = self.p.generate(self.req)
         self.assertEqual(resp.model, bridge.DEFAULT_MODEL)
 
+    @patch("qacompanion.ollama_bridge._ollama_generate")
+    @patch("qacompanion.ollama_bridge._is_ollama_available")
+    def test_textual_multi_arg_tool_call(self, mock_avail, mock_gen):
+        # found by the live smoke: the S27 single-argument parser could not
+        # express write_file(path=..., content=...)
+        mock_avail.return_value = True
+        mock_gen.return_value = (
+            'Working on it.\n'
+            '[TOOL: write_file(path="hello.txt", content="Hello from Baby-Agent")]'
+        )
+        resp = self.p.generate(self.req)
+        self.assertEqual(resp.finish_reason, "tool_calls")
+        call = resp.tool_calls[0]
+        self.assertEqual(call.name, "write_file")
+        self.assertEqual(call.arguments,
+                         {"path": "hello.txt", "content": "Hello from Baby-Agent"})
+
+    @patch("qacompanion.ollama_bridge._ollama_generate")
+    @patch("qacompanion.ollama_bridge._is_ollama_available")
+    def test_textual_bare_value_backward_compatible(self, mock_avail, mock_gen):
+        mock_avail.return_value = True
+        mock_gen.return_value = "[TOOL: case_search(\"disk full\")]"
+        resp = self.p.generate(self.req)
+        self.assertEqual(resp.tool_calls[0].arguments, {"query": "disk full"})
+
 
 class TestFlattenMessages(unittest.TestCase):
     def test_system_blocks_come_first(self):

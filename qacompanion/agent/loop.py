@@ -42,15 +42,28 @@ DEFAULT_SYSTEM_PROMPT = (
     "a concise final summary and no tool calls."
 )
 
+TOOL_PROTOCOL_PROMPT = (
+    "\n\n## Tool use\n"
+    "To call a tool, output a line exactly in this format:\n"
+    '[TOOL: tool_name(argument="value", another="value2")]\n'
+    "One call per line; arguments are double-quoted strings (no quotes or "
+    "newlines inside a value). After the tool results are returned, keep "
+    "working or give your final answer."
+)
+
 
 def build_system_prompt(tools, base: str = DEFAULT_SYSTEM_PROMPT) -> str:
-    """Render the tool catalog into the system prompt (the loop owns
-    tool prompt-engineering; providers stay generic)."""
-    if not tools:
-        return base
-    lines = [base, "", "Available tools:"]
-    for tool in tools:
-        lines.append(f"- {tool.name}: {tool.description}")
+    """Render the tool catalog + textual call protocol into the system
+    prompt (the loop owns tool prompt-engineering; providers stay generic).
+    Text-protocol models cannot call tools unless the exact syntax is
+    taught — found by the live smoke test."""
+    lines = [base]
+    if tools:
+        lines.append("")
+        lines.append("Available tools:")
+        for tool in tools:
+            lines.append(f"- {tool.name}: {tool.description}")
+        lines.append(TOOL_PROTOCOL_PROMPT)
     return "\n".join(lines)
 
 

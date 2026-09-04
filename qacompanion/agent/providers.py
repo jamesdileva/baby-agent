@@ -15,8 +15,9 @@ Live-provider tests are opt-in via QA_OLLAMA_LIVE=1 and never a CI gate
 """
 
 import os
+import re
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Any, Dict, List
 
 from .. import ollama_bridge as bridge
 from .. import tools as tools_mod
@@ -69,17 +70,36 @@ def _flatten_messages(messages: List[ModelMessage]) -> str:
 
 
 def _parse_textual_tool_calls(text: str) -> List[ToolCall]:
-    """Normalize S27 textual [TOOL: ...] output into structured ToolCalls.
+    """Normalize textual [TOOL: ...] output into structured ToolCalls.
 
-    The textual regex accepts query= or pattern= for any tool; the
-    structured arguments use each tool's canonical keyword (journal_read ->
-    pattern, everything else -> query).
+    Agent-layer format (one call per line, double-quoted string arguments):
+        [TOOL: name(key="value", key2="value2")]
+    Backward compatible with the S27 brain protocol: a single bare value
+    ("[TOOL: case_search(\"x\")]") or one query=/pattern= pair maps to the
+    tool's canonical keyword (journal_read -> pattern, else query).
+    Documented limits: no quotes or newlines inside argument values.
     """
-    calls = []
-    for tool_name, value in tools_mod.parse_tool_calls(text):
-        arg_name = "pattern" if tool_name == "journal_read" else "query"
-        calls.append(ToolCall(name=tool_name, arguments={arg_name: value}))
+    calls: List[ToolCall] = []
+    for line in text.splitlines():
+        match = _TOOL_LINE_RE.search(line.strip())
+        if not match:
+            continue
+        name, argstr = match.group(1), match.group(2).strip()
+        args: Dict[str, Any] = {}
+        for pair in _ARG_PAIR_RE.finditer(argstr):
+            key = pair.group(1) or pair.group(3)
+            args[key] = pair.group(2) if pair.group(1) else pair.group(4)
+        if not args:
+            bare = _BARE_VALUE_RE.match(argstr)
+            if bare:
+                args["pattern" if name == "journal_read" else "query"] = bare.group(1)
+        calls.append(ToolCall(name=name, arguments=args))
     return calls
+
+
+_TOOL_LINE_RE = re.compile(r"\[\s*TOOL:\s*(\w+)\s*\((.*)\)\s*\]")
+_ARG_PAIR_RE = re.compile(r"""(\w+)\s*=\s*"([^"]*)"|(\w+)\s*=\s*'([^']*)'""")
+_BARE_VALUE_RE = re.compile(r"""^["']([^"']*)["']$""")
 
 
 class OllamaProvider(ModelProvider):

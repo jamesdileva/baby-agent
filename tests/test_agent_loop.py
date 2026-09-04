@@ -29,6 +29,7 @@ from qacompanion.agent import (
     ModelProvider,
     ModelRequest,
     ModelResponse,
+    OllamaProvider,
     ProviderError,
     RegisteredTool,
     ToolCall,
@@ -323,6 +324,57 @@ class TestPromptAndSession(unittest.TestCase):
         prompt = build_system_prompt(reg.schemas())
         self.assertIn("- sample: does sample things", prompt)
         self.assertIn("Baby-Agent", prompt)
+
+    def test_system_prompt_teaches_textual_protocol(self):
+        # found by the live smoke: text-protocol models never called tools
+        # because the exact syntax was never taught
+        reg = ToolRegistry()
+        reg.register(RegisteredTool(
+            definition=ToolDefinition(
+                name="sample", description="d",
+                parameters_schema={"type": "object", "properties": {}}),
+            handler=lambda **kw: "ok",
+        ))
+        prompt = build_system_prompt(reg.schemas())
+        self.assertIn('[TOOL: tool_name(argument="value"', prompt)
+
+    def test_textual_ollama_path_end_to_end(self):
+        """Hermetic proof of the exact live wire format: scripted bridge
+        output parsed by the real OllamaProvider, driven by the real loop."""
+        from unittest.mock import patch
+        import shutil as _shutil
+
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            ws = Workspace(tmp)
+            reg = _registry(tmp, ws)
+            responses = [
+                # NOTE: _is_ollama_available is fully mocked, so no ping is
+                # made and every scripted entry is a real model turn
+                'I will create the file.\n'
+                '[TOOL: write_file(path="hello.txt", content="Hello from Baby-Agent")]',
+                "The file is created with the exact text.",
+            ]
+
+            def scripted_generate(prompt, model=None, url=None):
+                return responses.pop(0)
+
+            with patch("qacompanion.ollama_bridge._is_ollama_available",
+                       return_value=True), \
+                 patch("qacompanion.ollama_bridge._ollama_generate",
+                       side_effect=scripted_generate):
+                provider = OllamaProvider()
+                loop = AgentLoop(provider, reg, ws)
+                session = loop.run(
+                    "Create hello.txt containing: Hello from Baby-Agent")
+
+            self.assertEqual(session.state, AgentState.COMPLETED)
+            self.assertEqual(len(session.tool_calls), 1)
+            self.assertEqual(session.tool_calls[0].name, "write_file")
+            self.assertIn("Hello from Baby-Agent",
+                          (tmp / "hello.txt").read_text(encoding="utf-8"))
+        finally:
+            _shutil.rmtree(tmp, ignore_errors=True)
 
     def test_verification_results_round_trip(self):
         session = AgentSession(goal="g")
