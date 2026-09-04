@@ -80,6 +80,18 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S38 Permission & Safety** — `qacompanion/agent/permissions.py`:
+  PermissionPolicy engine (explicit rules w/ args_contains > tool-declared
+  requires_confirmation > side-effect-level defaults (DESTRUCTIVE→DENY,
+  EXTERNAL→ASK) > fallback w/ DENY-by-default mode) + PermissionDecision
+  audit trail; registry confirmer seam (ASK → approvable/deniable, absent =
+  safe denial) with decisions normalized to PermissionDecision; loop
+  confirmer passthrough; **pipeline guarantee**: a tool's own
+  requires_confirmation forces ASK regardless of policy. Git write verbs
+  unlocked (S36 deferral resolved): git_add (SAFE_WRITE) + git_commit
+  (ASK-gated; nothing-to-commit is an honest no-op — and git prints that
+  on stdout, not stderr). agent_registry → 21 tools. Suite 1080 → 1109 OK.
+  Spec: docs/s38-spec.md.
 - 2026-09-04 — **Live Ollama validation (manual smoke, not committed as
   tests)** — qwen2.5-coder:1.5b re-pulled; the S37 loop ran LIVE end-to-end
   (goal → taught textual tool call → S32 pipeline → atomic write → verifier
