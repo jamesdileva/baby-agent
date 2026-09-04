@@ -33,7 +33,9 @@ from .registry import EXTERNAL, RegisteredTool, ToolDefinition, ToolOperationErr
 
 GEMINI_ENDPOINT = ("https://generativelanguage.googleapis.com/v1beta/models/"
                    "{model}:generateContent")
-DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
+# gemini-2.0-flash was retired (live smoke 2026-09-04: 404); the
+# flash-latest alias tracks the current flash generation
+DEFAULT_GEMINI_MODEL = "gemini-flash-latest"
 GEMINI_TIMEOUT = 30.0
 MAX_SOURCES_DEFAULT = 5
 
