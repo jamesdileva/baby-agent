@@ -80,6 +80,18 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S39 Event Stream & Observability** —
+  `qacompanion/agent/events.py`: Event envelope (seq, uuid, session, Z-stamp,
+  type, payload) + EventStream (sync callback subscribers, bounded replay
+  history, raising subscribers recorded and never breaking a run). Loop is
+  the primary emitter (session_started/state_changed/model_started/
+  model_response/tool_requested/completed+failed/file_changed/
+  verification_started+completed/recovery_started/failure_detected/
+  session_completed+cancelled+failed); registry emits permission_requested/
+  granted/denied at the decision point via additive execute() params and
+  prefers the engine's decide() so events carry the real rule. Roadmap
+  verification: exact ordered event sequence asserted for a scripted run.
+  Suite 1109 → 1125 OK. Spec: docs/s39-spec.md.
 - 2026-09-04 — **S38 Permission & Safety** — `qacompanion/agent/permissions.py`:
   PermissionPolicy engine (explicit rules w/ args_contains > tool-declared
   requires_confirmation > side-effect-level defaults (DESTRUCTIVE→DENY,
