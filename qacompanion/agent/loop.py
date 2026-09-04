@@ -48,7 +48,10 @@ TOOL_PROTOCOL_PROMPT = (
     '[TOOL: tool_name(argument="value", another="value2")]\n'
     "One call per line; arguments are double-quoted strings (no quotes or "
     "newlines inside a value). After the tool results are returned, keep "
-    "working or give your final answer."
+    "working or give your final answer.\n"
+    "\n"
+    "Example — to create a file, output exactly this shape:\n"
+    '[TOOL: write_file(path="notes.txt", content="meeting at noon")]'
 )
 
 

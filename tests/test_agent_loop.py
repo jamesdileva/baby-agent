@@ -337,6 +337,9 @@ class TestPromptAndSession(unittest.TestCase):
         ))
         prompt = build_system_prompt(reg.schemas())
         self.assertIn('[TOOL: tool_name(argument="value"', prompt)
+        # few-shot example (live smoke: without it the 1.5B model invented
+        # its own call syntax)
+        self.assertIn('[TOOL: write_file(path="notes.txt"', prompt)
 
     def test_textual_ollama_path_end_to_end(self):
         """Hermetic proof of the exact live wire format: scripted bridge
