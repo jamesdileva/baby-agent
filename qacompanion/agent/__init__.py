@@ -39,6 +39,15 @@ from .session import (
     AgentState,
     SessionError,
 )
+from .workspace import (
+    ProjectMetadata,
+    PathError,
+    PathPolicy,
+    Workspace,
+    WorkspaceConfig,
+    WorkspaceError,
+    WorkspaceManager,
+)
 
 __all__ = [
     "FINISH_REASONS",
@@ -72,4 +81,11 @@ __all__ = [
     "ToolRegistry",
     "default_knowledge_registry",
     "validate_tool_arguments",
+    "ProjectMetadata",
+    "PathError",
+    "PathPolicy",
+    "Workspace",
+    "WorkspaceConfig",
+    "WorkspaceError",
+    "WorkspaceManager",
 ]
