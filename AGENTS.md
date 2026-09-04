@@ -80,6 +80,14 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S36 Git Intelligence** — `qacompanion/agent/git_tools.py`:
+  git_status/diff/log/branch over argv-list git (no shell), paths resolved
+  through PathPolicy, porcelain v1 parsing (renames with orig_path, C-quoted
+  paths incl. UTF-8 octal unquoting, ahead/behind, detached HEAD), \\x1f
+  log separators, clean failures (non-repo, missing binary). Write verbs
+  (git_add/commit) deliberately deferred to S38 pending confirmation
+  enforcement — no autonomous commits. agent_registry → 19 tools.
+  Suite 1039 → 1062 OK. Spec: docs/s36-spec.md.
 - 2026-09-04 — **S35 Terminal & Execution** — `qacompanion/agent/execution.py`:
   CommandResult (exit_code, capped stdout/stderr with truncation flags,
   duration, Z-stamps, pid, JSONL round-trip); five tools (run_command,
