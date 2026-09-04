@@ -65,14 +65,15 @@ class TestRegistration(unittest.TestCase):
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
-    def test_agent_registry_combines_knowledge_fs_and_execution(self):
+    def test_agent_registry_combines_all_tool_families(self):
         tmp = Path(tempfile.mkdtemp())
         try:
             reg = agent_registry(Workspace(tmp))
-            self.assertEqual(len(reg.names()), 15)
+            self.assertEqual(len(reg.names()), 19)
             self.assertIn("case_search", reg.names())
             self.assertIn("write_file", reg.names())
             self.assertIn("run_command", reg.names())
+            self.assertIn("git_status", reg.names())
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 

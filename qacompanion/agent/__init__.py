@@ -48,6 +48,13 @@ from .execution import (
     detect_command,
     execute_command,
 )
+from .git_tools import (
+    GitError,
+    GitToolkit,
+    parse_branch_line,
+    parse_log,
+    parse_status,
+)
 from .workspace import (
     ProjectMetadata,
     PathError,
@@ -104,4 +111,9 @@ __all__ = [
     "ExecutionToolkit",
     "detect_command",
     "execute_command",
+    "GitError",
+    "GitToolkit",
+    "parse_branch_line",
+    "parse_log",
+    "parse_status",
 ]
