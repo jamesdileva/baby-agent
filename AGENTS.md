@@ -80,6 +80,16 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S34 Filesystem Tools** — `qacompanion/agent/fs_tools.py`:
+  seven tools (list_directory, read_file, write_file, edit_file, search_code,
+  file_exists, file_metadata) bound to the S33 Workspace via
+  FilesystemToolkit, all resolving through PathPolicy — boundary escapes and
+  excluded paths return structured errors through the S32 pipeline. Atomic
+  no-clobber writes (temp + os.replace), unique-match edits, byte-faithful
+  reads (BOM stripped for the model, preserved by edit), binary/generated
+  awareness in search, ChangeLedger with sha256s per mutation, registry
+  ToolOperationError seam for clean structured failures. `agent_registry()`
+  = knowledge + filesystem tools. Suite 979 → 1017 OK. Spec: docs/s34-spec.md.
 - 2026-09-04 — **S33 Workspace Abstraction** — `qacompanion/agent/workspace.py`:
   PathPolicy layered containment (strict ".." ban, symlink-following resolve,
   normcase containment vs root + allowed paths, exclusion prefixes,
