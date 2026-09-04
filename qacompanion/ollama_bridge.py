@@ -314,6 +314,8 @@ def ask(query, cases_path=None, digest_path=None, model=None, url=None):
         from . import lookup as lookup_mod
         if context["cases"]:
             answer = lookup_mod.format_matches(context["cases"])
+        elif context["digest"]:
+            answer = _format_digest_context(context["digest"]).strip()
         else:
             answer = "no matching case"
 

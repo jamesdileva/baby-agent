@@ -359,7 +359,10 @@ class TestDigestCLI(unittest.TestCase):
     def test_ask_exit_0_match(self):
         _md(self.docs / "deploy.md", "# Deploy\nRun docker compose.\n")
         self._run("digest", str(self.docs), "--store", str(self.store_path))
-        rc = self._run("ask", "docker", "--digest", str(self.store_path))
+        # hermetic: fallback path must find the digest match without live Ollama
+        # (regression: case #10 — test silently required a running Ollama)
+        with patch("qacompanion.ollama_bridge._is_ollama_available", return_value=False):
+            rc = self._run("ask", "docker", "--digest", str(self.store_path))
         self.assertEqual(rc, 0)
 
     def test_ask_exit_1_no_match(self):

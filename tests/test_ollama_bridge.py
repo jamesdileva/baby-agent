@@ -310,6 +310,21 @@ class TestAsk(unittest.TestCase):
         self.assertIn("fix foo", result["answer"])
 
     @patch("qacompanion.ollama_bridge._is_ollama_available")
+    def test_ask_fallback_with_digest_match(self, mock_avail):
+        # regression for case #10: no-Ollama fallback dropped digest matches,
+        # so `qa ask` exited 1 despite a clear documentation hit
+        mock_avail.return_value = False
+        cases_path = Path(self.tmpdir) / "cases.jsonl"
+        digest_path = Path(self.tmpdir) / "digest.jsonl"
+        _cases_file(cases_path, [])
+        d = _make_digest(id=1, source="deploy.md", heading="Deploy",
+                         content="Run docker compose")
+        _digest_file(digest_path, [d])
+        result = ask("docker", cases_path=cases_path, digest_path=digest_path)
+        self.assertFalse(result["used_ollama"])
+        self.assertIn("docker compose", result["answer"])
+
+    @patch("qacompanion.ollama_bridge._is_ollama_available")
     @patch("qacompanion.ollama_bridge._ollama_generate")
     def test_ask_ollama_fails_falls_back(self, mock_gen, mock_avail):
         mock_avail.return_value = True
