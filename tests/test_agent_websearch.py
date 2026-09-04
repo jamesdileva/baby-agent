@@ -123,9 +123,38 @@ class TestGeminiProvider(unittest.TestCase):
 
         self.assertIn("5.1", result.answered)
         self.assertEqual(len(result.sources), 2)
-        self.assertEqual(result.provider, "gemini-google-search")
+        self.assertEqual(result.provider, "gemini:grounded")
+        self.assertTrue(result.grounded)
         self.assertEqual(captured["body"]["tools"], [{"google_search": {}}])
         self.assertIn("key=test-key-123", captured["url"])
+
+    def test_grounding_refusal_falls_back_to_plain_marked_unverified(self):
+        # human ruling 2026-09-04 (no billing): 429 on the grounding tool
+        # -> plain-mode retry, result honestly marked grounded=False
+        attempts = []
+
+        def fake_urlopen(request, timeout=None):
+            attempts.append(json.loads(request.data.decode("utf-8")))
+            if len(attempts) == 1:
+                raise urllib.error.HTTPError(request.full_url, 429,
+                                             "Too Many Requests", {},
+                                             io.BytesIO(b""))
+            return self._mock_urlopen({
+                "candidates": [{"content": {"parts": [
+                    {"text": "From model knowledge: 3.14"}]}}],
+            })
+
+        with patch("qacompanion.agent.websearch.urllib.request.urlopen",
+                   side_effect=fake_urlopen):
+            result = self.provider.search("latest python")
+
+        self.assertFalse(result.grounded)
+        self.assertEqual(result.provider, "gemini:plain")
+        self.assertEqual(result.sources, [])
+        self.assertIn("3.14", result.answered)
+        # first attempt carried the grounding tool, second did not
+        self.assertIn("google_search", attempts[0].get("tools", [{}])[0])
+        self.assertNotIn("tools", attempts[1])
 
     def test_http_error_is_structured_and_key_never_leaks(self):
         def fake_urlopen(request, timeout=None):

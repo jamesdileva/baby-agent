@@ -52,12 +52,18 @@ def _utc_stamp() -> str:
 
 @dataclass
 class SearchResult:
-    """Search evidence: the query, its sources, and provenance."""
+    """Search evidence: the query, its sources, and provenance.
+
+    grounded=True: the answer came from live Google Search results.
+    grounded=False (plain mode): the answer is MODEL KNOWLEDGE with no
+    live sources — consumers must treat it as unverified.
+    """
 
     query: str
     provider: str
     sources: List[Dict[str, str]] = field(default_factory=list)
     answered: Optional[str] = None
+    grounded: bool = False
     timestamp: str = field(default_factory=_utc_stamp)
 
     def to_dict(self):
@@ -66,6 +72,7 @@ class SearchResult:
             "provider": self.provider,
             "sources": [dict(source) for source in self.sources],
             "answered": self.answered,
+            "grounded": self.grounded,
             "timestamp": self.timestamp,
         }
 
@@ -76,6 +83,7 @@ class SearchResult:
             provider=data.get("provider", ""),
             sources=[dict(s) for s in data.get("sources", [])],
             answered=data.get("answered"),
+            grounded=bool(data.get("grounded", False)),
             timestamp=data.get("timestamp", ""),
         )
 
@@ -159,20 +167,10 @@ class GeminiSearchProvider(WebSearchProvider):
 
     @property
     def name(self) -> str:
-        return "gemini-google-search"
+        return "gemini"
 
-    def search(self, query: str, max_sources: int = MAX_SOURCES_DEFAULT
-               ) -> SearchResult:
-        if not self._api_key:
-            raise WebSearchError(
-                "no search provider configured: set GEMINI_API_KEY "
-                "(free key at aistudio.google.com)"
-            )
+    def _post(self, body: Dict[str, Any]) -> Dict[str, Any]:
         url = GEMINI_ENDPOINT.format(model=self.model)
-        body = {
-            "contents": [{"parts": [{"text": query}]}],
-            "tools": [{"google_search": {}}],
-        }
         request = urllib.request.Request(
             f"{url}?key={self._api_key}",
             data=json.dumps(body).encode("utf-8"),
@@ -180,20 +178,58 @@ class GeminiSearchProvider(WebSearchProvider):
         )
         try:
             with urllib.request.urlopen(request, timeout=GEMINI_TIMEOUT) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
+                return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
+            # the response body often carries the real quota detail
+            detail = ""
+            try:
+                detail = exc.read().decode("utf-8", errors="replace")[:200]
+            except Exception:
+                pass
             raise WebSearchError(
-                f"gemini request failed: HTTP {exc.code}"
+                f"gemini request failed: HTTP {exc.code} {detail}"
             ) from exc
         except (urllib.error.URLError, json.JSONDecodeError, OSError) as exc:
             raise WebSearchError(f"gemini request failed: {exc}") from exc
 
+    def search(self, query: str, max_sources: int = MAX_SOURCES_DEFAULT
+               ) -> SearchResult:
+        """Grounded search; on free-tier grounding refusal (429) falls back
+        to plain mode and marks the result grounded=False (model knowledge,
+        no live sources)."""
+        if not self._api_key:
+            raise WebSearchError(
+                "no search provider configured: set GEMINI_API_KEY "
+                "(free key at aistudio.google.com)"
+            )
+        try:
+            data = self._post({
+                "contents": [{"parts": [{"text": query}]}],
+                "tools": [{"google_search": {}}],
+            })
+        except WebSearchError as exc:
+            if "HTTP 429" not in str(exc):
+                raise
+            # human ruling 2026-09-04: no billing — grounding refusal falls
+            # back to plain model knowledge, honestly marked
+            data = self._post({
+                "contents": [{"parts": [{"text": query}]}],
+            })
+            answer, _ = _extract_grounding(data)
+            if not answer:
+                raise WebSearchError(
+                    "gemini plain-mode response missing usable content"
+                ) from exc
+            return SearchResult(
+                query=query, provider=f"{self.name}:plain",
+                sources=[], answered=answer, grounded=False,
+            )
         answer, sources = _extract_grounding(data)
         if answer is None and not sources:
             raise WebSearchError("gemini response missing usable content")
         return SearchResult(
-            query=query, provider=self.name,
-            sources=sources[:max_sources], answered=answer,
+            query=query, provider=f"{self.name}:grounded",
+            sources=sources[:max_sources], answered=answer, grounded=True,
         )
 
 
