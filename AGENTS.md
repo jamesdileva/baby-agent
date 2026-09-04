@@ -80,6 +80,16 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S32 Tool Registry v2** — `qacompanion/agent/registry.py`:
+  RegisteredTool metadata (side_effect_level, timeout, cancellable,
+  requires_workspace/confirmation), ordered execution pipeline (lookup →
+  strict mini-validation → permission seam → workspace gate → cancellation →
+  timeout execution → audit hook), every stage failure a structured
+  ToolResult; ToolResult gains timed_out/cancelled flags (additive);
+  default_knowledge_registry() serves case_search/doc_grep/journal_read
+  unchanged. Suite 891 → 932 OK. Spec: docs/s32-spec.md.
+- 2026-09-04 — housekeeping — removed docs/DRAFT_decisions-fhm.md (human-
+  directed: belongs to another project, not this repo's decision log).
 - 2026-09-04 — **S31 Agent Foundation** — `qacompanion/agent/` subpackage
   (contracts.py / providers.py / session.py): ModelProvider abstraction with
   FakeModelProvider (deterministic test backbone) + OllamaProvider (wraps S26
