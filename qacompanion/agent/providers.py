@@ -113,9 +113,10 @@ class OllamaProvider(ModelProvider):
 
     def generate(self, request: ModelRequest) -> ModelResponse:
         model = self.model or request.model
+        # no availability pre-check: the bridge's ping is itself a full
+        # generation (2x cost per turn) and one flaky ping would kill the
+        # loop — a dead Ollama surfaces naturally as ProviderError below
         try:
-            if not bridge._is_ollama_available(model=model, url=self.url):
-                raise ProviderError("ollama unavailable")
             prompt = _flatten_messages(request.messages)
             text = bridge._ollama_generate(prompt, model=model, url=self.url)
         except bridge.OllamaError as exc:

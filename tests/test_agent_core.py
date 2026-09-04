@@ -287,9 +287,11 @@ class TestOllamaProvider(unittest.TestCase):
         with self.assertRaises(ProviderError):
             self.p.generate(self.req)
 
-    @patch("qacompanion.ollama_bridge._is_ollama_available")
-    def test_unavailable_raises_provider_error(self, mock_avail):
-        mock_avail.return_value = False
+    @patch("qacompanion.ollama_bridge._ollama_generate")
+    def test_dead_ollama_raises_provider_error(self, mock_gen):
+        # no availability pre-check: a dead Ollama fails in the generate
+        # call itself and becomes a structured ProviderError
+        mock_gen.side_effect = OllamaError("connection refused")
         with self.assertRaises(ProviderError):
             self.p.generate(self.req)
 
