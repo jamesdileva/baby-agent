@@ -1,5 +1,11 @@
 # Baby-Agent Repository Audit & Agent-Lite Evolution Plan
 
+> **SUPERSEDED (2026-09-04):** the sprint roadmap in sections 42–73 has been
+> consolidated, re-scoped, and renumbered into
+> [docs/ROADMAP-agentlite.md](docs/ROADMAP-agentlite.md) (ruling filed in
+> docs/DECISIONS.md). This document remains as the historical audit of
+> record; do not work from the sprint numbers below.
+
 **Document:** `audit.md`  
 **Project:** Baby-Agent  
 **Purpose:** Audit the current repository, identify what already exists, define what is missing for an Agent-Lite autonomous coding agent, and establish a replacement/extension sprint roadmap with explicit verification end goals.

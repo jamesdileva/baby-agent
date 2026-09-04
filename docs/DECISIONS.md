@@ -1173,3 +1173,74 @@ regression.
 
 Status: All roadmap items complete or skipped. Capstone verified
 (commits through 2bf6b2d). Full roadmap execution done.
+
+---
+
+### No-Ollama fallback surfaces digest matches (case #10)
+
+**Decision:** Fix the red suite discovered 2026-09-04 at the start of the
+docs-consolidation cycle. Provenance: human-directed consolidation session;
+the failure predates every change in the cycle (docs-only work surfaced it).
+
+- Failure: tests.test_digest_skill.TestDigestCLI.test_ask_exit_0_match —
+  AssertionError: 1 != 0. Recorded as case #10.
+- Root cause (two layers): (a) the test left `_is_ollama_available` unmocked,
+  so it passed only while a live Ollama was running (as at S30 sign-off) and
+  failed once Ollama was absent; (b) underneath, the no-Ollama fallback in
+  `ollama_bridge.ask()` surfaced matched cases only and discarded matched
+  digest entries, so `qa ask` returned "no matching case" + exit 1 despite a
+  clear documentation hit.
+- Rulings (parents' teaching authority; no spec.md amendment):
+  1. Agent tests must be hermetic — no test may depend on a live Ollama
+     (consistent with the Agent-Lite testing strategy: live-provider tests
+     are separate suites, never CI gates).
+  2. The no-Ollama fallback surfaces digest citations when no case matches —
+     a digest hit is a "raw lookup" per S26's contract. Existing fallback
+     pins (all empty-digest scenarios) are unchanged.
+- Files: qacompanion/ollama_bridge.py; tests/test_digest_skill.py
+  (hermetic); tests/test_ollama_bridge.py (+ regression test
+  test_ask_fallback_with_digest_match, named after the failure mode).
+
+Firsthand verification: Ran 828 OK EXIT=0 (827 prior + 1 new).
+
+Status: Fixed. Docs consolidation proceeds on a green suite.
+
+---
+
+### Roadmap consolidation — Agent-Lite track (S31–S65+)
+
+**Decision:** Adopt `docs/ROADMAP-agentlite.md` as the canonical planning
+document for the Agent-Lite track. Provenance: audit.md (committed,
+repository audit + first sprint set), audit2.md (expanded sprint catalog),
+sprints51-60(before model training).md (Apprenticeship layer), consolidated
+at human direction 2026-09-04.
+
+Rulings:
+
+1. **Supersession.** audit2.md and sprints51-60(before model training).md
+   are retired (content folded into the consolidated doc). audit.md remains
+   the historical audit of record, marked superseded, pointing at the new
+   doc.
+2. **Numbering.** The v5-track S31/S32 (fine-tune sprints, skip-and-logged
+   above for GPU) are re-realized in the Agent-Lite track as S63 (Training
+   Dataset Pipeline 2.0) and S64 (Baby-Agent Ep1). All S31+ references now
+   mean ROADMAP-agentlite.md, not ROADMAP.md's v5 track.
+3. **Catalog.** S31–S58 take audit2.md's expanded specs unchanged.
+   The Apprenticeship layer (formerly "S51–S54" in the sprints file) is
+   inserted as S59–S62, immediately before training — honoring its founding
+   rationale: answer "what should Baby-Agent learn?" before "how do we train
+   it?" Only two sprints shifted (Training S59→S63, Ep1 S60→S64); S65+ are
+   the generational sprints.
+4. **Constraint amendment.** The qacompanion core engine stays stdlib-only,
+   deterministic, LLM-free (D1 stands). The agent runtime layer starts
+   stdlib-only (S31–S39); third-party dependencies are allowed only where a
+   sprint explicitly names them, only behind a provider abstraction, never
+   inside the qacompanion package (Ollama-over-localhost per the S26
+   precedent; policy-gated default-DENY cloud providers S42+; Electron S52;
+   Playwright S53). Live-provider tests are never CI gates. No GPU is
+   required anywhere in the track.
+
+Next slice: S31 Agent Foundation per ROADMAP-agentlite.md (spec:
+docs/s31-spec.md).
+
+Status: Adopted. S31 is the next working slice.
