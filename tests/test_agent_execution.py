@@ -212,12 +212,13 @@ class TestRegistrationAndPolicy(ExecTestBase):
         self.assertTrue(all(d["requires_workspace"] for d in described.values()))
         self.assertTrue(all(d["cancellable"] for d in described.values()))
 
-    def test_agent_registry_grew_to_twenty_two(self):
+    def test_agent_registry_covers_all_families(self):
         reg = agent_registry(self.ws)
-        self.assertEqual(len(reg.names()), 22)
         self.assertIn("run_command", reg.names())
         self.assertIn("write_file", reg.names())
         self.assertIn("git_commit", reg.names())
+        self.assertIn("get_environment_summary", reg.names())
+        self.assertIn("run_verification", reg.names())
 
     def test_permission_policy_can_deny_command_prefixes(self):
         class NoDelete:
