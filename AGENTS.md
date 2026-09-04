@@ -80,6 +80,15 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S35 Terminal & Execution** — `qacompanion/agent/execution.py`:
+  CommandResult (exit_code, capped stdout/stderr with truncation flags,
+  duration, Z-stamps, pid, JSONL round-trip); five tools (run_command,
+  run_tests, run_build, run_lint, run_typecheck) with metadata-based
+  detection table + explicit-command override; tree-kill timeouts (POSIX
+  killpg / Windows taskkill /T) proven by a grandchild-holding-stdout test;
+  ok="pipeline ran the command" so evidence survives for diagnosis;
+  cwd/env/cancellation operational errors structured; agent_registry →
+  15 tools. Suite 1017 → 1039 OK. Spec: docs/s35-spec.md.
 - 2026-09-04 — **S34 Filesystem Tools** — `qacompanion/agent/fs_tools.py`:
   seven tools (list_directory, read_file, write_file, edit_file, search_code,
   file_exists, file_metadata) bound to the S33 Workspace via
