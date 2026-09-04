@@ -80,6 +80,30 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S41 Verification Engine** —
+  `qacompanion/agent/verification.py`: data-driven VerificationPlan /
+  VerificationStep / VerificationResult / VerificationReport; sequential
+  command steps (BUILD/TEST/LINT/TYPECHECK/RUNTIME/HEALTHCHECK) at the
+  workspace root through the S35 executor (timeout, tree-kill, output
+  caps inherited); stop-on-first-failure with honest skipped steps (ok=
+  None); must_contain / must_not_contain / expect_exit; optional steps.
+  `run_verification` registry tool (the model verifies its own work,
+  EXECUTION-gated); `plan_verifier` adapts a plan into the S37 loop
+  verifier — fail → recover → pass proven end-to-end. GOAL predicates
+  stay the S37 seam; REGRESSION is a TEST rerun; VISUAL waits for S44.
+  agent_registry → 23 tools (exact-count assertion now lives in ONE test;
+  per-family tests assert membership — ends the per-sprint count churn).
+  Suite 1143 → 1161 OK. Spec: docs/s41-spec.md.
+- 2026-09-04 — **S40 Environment Intelligence** —
+  `qacompanion/agent/environment.py`: `get_environment_summary` with
+  section filters (os/cpu/memory/gpu/runtimes/package_managers/disk/
+  variables) — the roadmap's seven granular tools mapped to sections
+  (one prompt surface, S37 lesson). Mismatch check (`requires: {tool:
+  min_version}` → satisfied/mismatches) so the agent sees "node >= 20
+  unavailable" before retrying unfixable code. Variable metadata is
+  names+set-ness only — values never surface (tested). Every collector
+  degrades to unknown/null; binaries probed only after shutil.which.
+  Suite 1125 → 1143 OK. Spec: docs/s40-spec.md.
 - 2026-09-04 — **S39 Event Stream & Observability** —
   `qacompanion/agent/events.py`: Event envelope (seq, uuid, session, Z-stamp,
   type, payload) + EventStream (sync callback subscribers, bounded replay
