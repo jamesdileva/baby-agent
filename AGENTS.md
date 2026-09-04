@@ -80,6 +80,18 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **Live Ollama validation (manual smoke, not committed as
+  tests)** — qwen2.5-coder:1.5b re-pulled; the S37 loop ran LIVE end-to-end
+  (goal → taught textual tool call → S32 pipeline → atomic write → verifier
+  passed → COMPLETED, 2 iterations; hello.txt + files_changed recorded).
+  `qa ask` brain restored (grounded, 12 sources). Three fixes landed from
+  live findings: S37.1 loop prompt now teaches the textual tool protocol +
+  agent-layer parser upgraded to multi-arg `[TOOL: name(k="v", k2="v2")]`
+  (S27's single-arg parser couldn't express path/content); S37.2 few-shot
+  example added (1.5B model invented its own syntax without one);
+  S37.3 redundant availability ping removed from OllamaProvider.generate
+  (2x cost/turn, one flaky ping killed the loop). Suite 1076 → 1080 OK.
+  Commits 8552b6a, 74bde10, f8299b9.
 - 2026-09-04 — **S37 Agent Loop** — `qacompanion/agent/loop.py`: the first
   autonomous reasoning cycle, task-agnostic — goal → model → S32 tool
   pipeline → observation fed back as structured `tool` messages (denials,
