@@ -80,6 +80,26 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S44 Vision / Screenshot Analysis** —
+  `qacompanion/agent/vision.py`: minimal stdlib PNG codec (encode/decode,
+  8-bit RGB filter 0); ctypes GDI acquisition (capture_screen /
+  capture_window / capture_region — Windows, POSIX structured error);
+  VisionProvider (Fake + Gemini multimodal PLAIN request per the no-
+  billing ruling); inspect_image (EXTERNAL — the image leaves the
+  machine) + compare_images (READ_ONLY local pixel diff, threshold-based);
+  honest side-effect matrix across the five tools. agent_registry → 32
+  tools. **Live smoke**: captured the real 1920x1080 screen through GDI,
+  encoded via our PNG codec, and gemini-3.1-flash-lite (free) described
+  it — recognizing the baby-agent terminal itself. flash-latest/3-flash-
+  preview were 503 high-demand; lite is the pinned default.
+  Suite 1198 → 1222 OK. Spec: docs/s44-spec.md.
+- 2026-09-04 — **S42.1 plain-mode search fallback (human ruling: no
+  billing)** — GeminiSearchProvider falls back from grounding-429 to
+  plain model knowledge, marked grounded=false / provider gemini:plain /
+  no sources; live smoke: web_search through the gated registry path
+  (ASK -> confirmer) answered free. The answer itself demonstrated the
+  tradeoff (stale version info — extract_page is the recency escape
+  hatch). HTTPError bodies now surfaced in errors.
 - 2026-09-04 — **S43 URL Context & Retrieval** —
   `qacompanion/agent/webfetch.py`: URL safety policy checked before any
   request (scheme http/https, ports 80/443, EVERY resolved IP must be
