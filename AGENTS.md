@@ -80,6 +80,25 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S43 URL Context & Retrieval** —
+  `qacompanion/agent/webfetch.py`: URL safety policy checked before any
+  request (scheme http/https, ports 80/443, EVERY resolved IP must be
+  public — loopback/RFC1918/link-local/metadata endpoints unreachable;
+  DNS-rebinding residual risk documented); open_url (HTML→text via stdlib
+  parser, title/links/20k-char cap), extract_page (query-relevant
+  passages), download_artifact (≤10 MB strict cap, atomic, PathPolicy-
+  bound, sha256). All EXTERNAL (S38 ASK posture), urllib always mocked in
+  tests. agent_registry → 27 tools. Suite 1179 → 1197 OK.
+  Spec: docs/s43-spec.md.
+- 2026-09-04 — **S42 Web Research** — `qacompanion/agent/websearch.py`:
+  WebSearchProvider abstraction; FakeWebSearchProvider (hermetic backbone)
+  + GeminiSearchProvider (Google AI Studio generateContent with
+  google_search grounding — the human-directed "Google Search with AI"
+  provider; activates on GEMINI_API_KEY, defensive parsing, key never
+  logged). web_search tool = first EXTERNAL-side-effect tool.
+  **Registry default policy is now the S38 engine** (was minimal
+  allow-all): EXTERNAL→ASK and DESTRUCTIVE→DENY are the default posture,
+  not an opt-in. Suite 1161 → 1179 OK. Spec: docs/s42-spec.md.
 - 2026-09-04 — **S41 Verification Engine** —
   `qacompanion/agent/verification.py`: data-driven VerificationPlan /
   VerificationStep / VerificationResult / VerificationReport; sequential
