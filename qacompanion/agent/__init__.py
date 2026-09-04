@@ -39,6 +39,15 @@ from .session import (
     AgentState,
     SessionError,
 )
+from .execution import (
+    DETECTED_COMMANDS,
+    MAX_COMMAND_TIMEOUT,
+    CommandError,
+    CommandResult,
+    ExecutionToolkit,
+    detect_command,
+    execute_command,
+)
 from .workspace import (
     ProjectMetadata,
     PathError,
@@ -88,4 +97,11 @@ __all__ = [
     "WorkspaceConfig",
     "WorkspaceError",
     "WorkspaceManager",
+    "DETECTED_COMMANDS",
+    "MAX_COMMAND_TIMEOUT",
+    "CommandError",
+    "CommandResult",
+    "ExecutionToolkit",
+    "detect_command",
+    "execute_command",
 ]

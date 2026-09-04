@@ -400,7 +400,8 @@ def agent_registry(
     ledger=None,
     change_ledger: Optional[ChangeLedger] = None,
 ) -> ToolRegistry:
-    """Registry preloaded with knowledge tools + filesystem tools."""
+    """Registry preloaded with knowledge + filesystem + execution tools."""
+    from .execution import ExecutionToolkit
     from .registry import default_knowledge_registry
 
     registry = default_knowledge_registry(
@@ -408,5 +409,7 @@ def agent_registry(
     )
     toolkit = FilesystemToolkit(workspace, change_ledger=change_ledger)
     for tool in toolkit.tools():
+        registry.register(tool)
+    for tool in ExecutionToolkit(workspace).tools():
         registry.register(tool)
     return registry
