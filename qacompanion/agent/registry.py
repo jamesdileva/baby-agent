@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 from .contracts import ToolCall, ToolDefinition, ToolResult
+from .permissions import PermissionDecision
 
 
 class RegistryError(Exception):
@@ -108,13 +109,15 @@ class RegisteredTool:
 
 
 class PermissionPolicy:
-    """Minimal permission seam (real engine: S38).
+    """Minimal internal permission seam (the canonical engine lives in
+    qacompanion.agent.permissions since S38).
 
     check() returns ALLOW, DENY, or ASK. The default implementation allows
     everything; conservative deployments override it.
     """
 
-    def check(self, tool_name: str, arguments: Dict[str, Any]) -> str:
+    def check(self, tool_name: str, arguments: Dict[str, Any],
+              tool: Any = None) -> str:
         return "ALLOW"
 
 
@@ -174,6 +177,16 @@ class _Outcome:
     cancelled: bool = False
 
 
+def _as_decision(tool_name: str, mode_or_decision, rule: str = "policy",
+                 reason: str = "") -> PermissionDecision:
+    """Normalize a policy's return value into a PermissionDecision."""
+    if isinstance(mode_or_decision, PermissionDecision):
+        return mode_or_decision
+    return PermissionDecision(
+        tool_name=tool_name, mode=mode_or_decision, rule=rule, reason=reason,
+    )
+
+
 class ToolRegistry:
     """Registry + executor for agent tools."""
 
@@ -207,10 +220,17 @@ class ToolRegistry:
         workspace: Optional[Any] = None,
         cancel_event: Optional[threading.Event] = None,
         audit: Optional[Callable[[ToolResult], None]] = None,
+        confirmer: Optional[Callable[[ToolCall, Any], bool]] = None,
     ) -> ToolResult:
-        """Run the full pipeline. Never raises for model-facing outcomes."""
+        """Run the full pipeline. Never raises for model-facing outcomes.
+
+        confirmer (S38): when the policy says ASK, confirmer(tool_call,
+        decision) truthy approves the call, falsy denies it; absent
+        confirmer keeps the S32 safe default (ASK = structured denial).
+        """
         started = time.monotonic()
-        outcome = self._run_pipeline(tool_call, policy, workspace, cancel_event)
+        outcome = self._run_pipeline(tool_call, policy, workspace, cancel_event,
+                                     confirmer)
         duration_ms = int((time.monotonic() - started) * 1000)
         result = ToolResult(
             call_name=tool_call.name,
@@ -232,6 +252,7 @@ class ToolRegistry:
         policy: Optional[PermissionPolicy],
         workspace: Optional[Any],
         cancel_event: Optional[threading.Event],
+        confirmer: Optional[Callable[[ToolCall, Any], bool]] = None,
     ) -> _Outcome:
         tool = self._tools.get(tool_call.name)
         if tool is None:
@@ -246,16 +267,36 @@ class ToolRegistry:
                 error="invalid arguments: " + "; ".join(validation_errors),
             )
 
-        decision = (policy or ALLOW_ALL_POLICY).check(
-            tool_call.name, tool_call.arguments
+        raw_decision = (policy or ALLOW_ALL_POLICY).check(
+            tool_call.name, tool_call.arguments, tool
         )
-        if decision == "DENY":
+        # normalize: policies return mode strings; the confirmer always
+        # receives a full PermissionDecision
+        decision = _as_decision(tool_call.name, raw_decision)
+        # pipeline guarantee: a tool's own requires_confirmation declaration
+        # forces ASK even when the policy would allow (S36 posture: commits
+        # are never autonomous, whatever the policy says)
+        if decision.mode == "ALLOW" and tool.requires_confirmation:
+            decision = _as_decision(tool_call.name, "ASK",
+                                    rule="confirmation-required",
+                                    reason=f"{tool_call.name} declares "
+                                           f"requires_confirmation")
+        if decision.mode == "DENY":
             return _Outcome(ok=False, error="permission denied by policy")
-        if decision == "ASK":
-            return _Outcome(
-                ok=False,
-                error="permission ASK requires confirmation flow (S38)",
-            )
+        if decision.mode == "ASK":
+            if confirmer is None:
+                return _Outcome(
+                    ok=False,
+                    error="permission ASK requires confirmation "
+                          "but no confirmer is available",
+                )
+            try:
+                approved = confirmer(tool_call, decision)
+            except Exception as exc:
+                return _Outcome(ok=False, error=f"confirmer crashed: {exc!r}")
+            if not approved:
+                return _Outcome(ok=False, error="denied by confirmation")
+            # approved: fall through to workspace / cancellation / execution
 
         if tool.requires_workspace and workspace is None:
             return _Outcome(

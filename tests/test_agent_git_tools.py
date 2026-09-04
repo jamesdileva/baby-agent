@@ -278,28 +278,35 @@ class TestFailureModes(unittest.TestCase):
 
 
 class TestRegistration(unittest.TestCase):
-    def test_four_git_tools(self):
+    def test_six_git_tools(self):
         tmp = Path(tempfile.mkdtemp())
         try:
             reg = ToolRegistry()
             for tool in GitToolkit(Workspace(tmp)).tools():
                 reg.register(tool)
             self.assertEqual(
-                reg.names(), ["git_branch", "git_diff", "git_log", "git_status"]
+                reg.names(),
+                ["git_add", "git_branch", "git_commit", "git_diff",
+                 "git_log", "git_status"],
             )
             described = {d["name"]: d for d in reg.describe()}
             self.assertTrue(all(d["category"] == "git" for d in described.values()))
-            self.assertTrue(all(d["side_effect_level"] == "READ_ONLY"
-                                for d in described.values()))
+            for read_tool in ("git_status", "git_diff", "git_log", "git_branch"):
+                self.assertEqual(described[read_tool]["side_effect_level"], "READ_ONLY")
+            for write_tool in ("git_add", "git_commit"):
+                self.assertEqual(described[write_tool]["side_effect_level"], "SAFE_WRITE")
+            # the S36 posture: commits are the canonical ASK action
+            self.assertTrue(described["git_commit"]["requires_confirmation"])
+            self.assertFalse(described["git_add"]["requires_confirmation"])
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
-    def test_agent_registry_now_nineteen(self):
+    def test_agent_registry_now_twenty_one(self):
         tmp = Path(tempfile.mkdtemp())
         try:
             reg = agent_registry(Workspace(tmp))
-            self.assertEqual(len(reg.names()), 19)
-            self.assertIn("git_status", reg.names())
+            self.assertEqual(len(reg.names()), 21)
+            self.assertIn("git_commit", reg.names())
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 

@@ -21,7 +21,7 @@ import re
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple
 
-from .registry import READ_ONLY, RegisteredTool, ToolDefinition, ToolOperationError, ToolRegistry
+from .registry import READ_ONLY, SAFE_WRITE, RegisteredTool, ToolDefinition, ToolOperationError, ToolRegistry
 from .workspace import PathError, Workspace
 
 GIT_TIMEOUT_SECONDS = 30.0
@@ -225,23 +225,58 @@ class GitToolkit:
             "branches": branches,
         }, ensure_ascii=False)
 
+    def git_add(self, path: str = ".") -> str:
+        _require_repo(self.workspace)
+        try:
+            resolved = self.workspace.resolve(path)
+        except PathError as exc:
+            raise GitError(str(exc)) from exc
+        rel = self.workspace.relative(resolved)
+        rc, _, stderr = _run_git(self.workspace, "add", "--", rel)
+        if rc != 0:
+            raise GitError(f"git add failed: {stderr.strip()}")
+        return json.dumps({"staged": rel}, ensure_ascii=False)
+
+    def git_commit(self, message: str) -> str:
+        _require_repo(self.workspace)
+        if not isinstance(message, str) or not message.strip():
+            raise GitError("commit message must be a non-empty string")
+        rc, stdout, stderr = _run_git(self.workspace, "commit", "-m", message)
+        if rc != 0:
+            # git prints "nothing to commit" on STDOUT, not stderr
+            combined = ((stdout or "") + (stderr or "")).lower()
+            if "nothing to commit" in combined or \
+                    "nothing added to commit" in combined:
+                return json.dumps({
+                    "committed": False,
+                    "reason": "nothing to commit",
+                }, ensure_ascii=False)
+            raise GitError(f"git commit failed: {(stderr or stdout).strip()}")
+        rc, hash_raw, _ = _run_git(self.workspace, "rev-parse", "HEAD")
+        commit_hash = hash_raw.strip() if rc == 0 else None
+        rc, branch_raw, _ = _run_git(self.workspace, "branch", "--show-current")
+        branch = branch_raw.strip() or None
+        return json.dumps({
+            "committed": True,
+            "hash": commit_hash,
+            "branch": branch,
+            "message": message,
+        }, ensure_ascii=False)
+
     def tools(self) -> List[RegisteredTool]:
-        def _tool(name, description, schema, handler):
+        def _tool(name, description, schema, handler,
+                  side_effect=READ_ONLY, requires_confirmation=False):
             return RegisteredTool(
                 definition=ToolDefinition(
                     name=name, description=description, parameters_schema=schema
                 ),
                 handler=handler,
                 category="git",
-                side_effect_level=READ_ONLY,
+                side_effect_level=side_effect,
                 requires_workspace=True,
+                requires_confirmation=requires_confirmation,
             )
 
-        optional_path = {
-            "type": "object",
-            "properties": {"path": {"type": "string"}},
-            "required": [],
-        }
         return [
             _tool("git_status", "Working-tree status: branch, clean/dirty, entries.",
                   {"type": "object", "properties": {}, "required": []},
@@ -269,6 +304,24 @@ class GitToolkit:
             _tool("git_branch", "Current branch and branch list.",
                   {"type": "object", "properties": {}, "required": []},
                   self.git_branch),
+            # S38: write verbs unlocked (were deferred in S36 pending
+            # confirmation enforcement). Staging is reversible -> SAFE_WRITE;
+            # commits are the S36 posture's canonical ASK action.
+            _tool("git_add", "Stage a file (or the whole tree) for commit.",
+                  {
+                      "type": "object",
+                      "properties": {"path": {"type": "string"}},
+                      "required": [],
+                  },
+                  self.git_add, side_effect=SAFE_WRITE),
+            _tool("git_commit", "Create a commit with a message (requires confirmation).",
+                  {
+                      "type": "object",
+                      "properties": {"message": {"type": "string"}},
+                      "required": ["message"],
+                  },
+                  self.git_commit, side_effect=SAFE_WRITE,
+                  requires_confirmation=True),
         ]
 
 

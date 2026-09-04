@@ -109,6 +109,7 @@ class AgentLoop:
         policy: Optional[Any] = None,
         cancel_event=None,
         verifier: Optional[Callable[[AgentSession], Tuple[bool, str]]] = None,
+        confirmer: Optional[Callable[[Any, Any], bool]] = None,
     ):
         self.provider = provider
         self.registry = registry
@@ -117,6 +118,7 @@ class AgentLoop:
         self.policy = policy
         self.cancel_event = cancel_event
         self.verifier = verifier
+        self.confirmer = confirmer
 
     # -- helpers ----------------------------------------------------------
 
@@ -229,6 +231,7 @@ class AgentLoop:
                         policy=self.policy,
                         workspace=self.workspace,
                         cancel_event=self.cancel_event,
+                        confirmer=self.confirmer,
                     )
                 except Exception as exc:  # pipeline crash: feed back, continue
                     self._record_failure(

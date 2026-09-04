@@ -155,7 +155,7 @@ class TestFeedback(LoopTestBase):
 
     def test_denial_is_observation_not_exception(self):
         class DenyAll:
-            def check(self, tool_name, arguments):
+            def check(self, tool_name, arguments, tool=None):
                 return "DENY"
 
         provider = _RecordingProvider([

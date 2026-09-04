@@ -180,22 +180,58 @@ class TestPipelineStageFailures(_PipelineBase):
 
     def test_permission_denied(self):
         class DenyAll:
-            def check(self, tool_name, arguments):
+            def check(self, tool_name, arguments, tool=None):
                 return "DENY"
 
         result = self.reg.execute(ToolCall(name="echo", arguments={}), policy=DenyAll())
         self.assertFalse(result.ok)
         self.assertIn("permission denied by policy", result.error)
 
-    def test_permission_ask_is_structured_denial_until_s38(self):
+    def test_permission_ask_without_confirmer_is_denied(self):
         class Asker:
-            def check(self, tool_name, arguments):
+            def check(self, tool_name, arguments, tool=None):
                 return "ASK"
 
         result = self.reg.execute(ToolCall(name="echo", arguments={}), policy=Asker())
         self.assertFalse(result.ok)
         self.assertIn("ASK", result.error)
-        self.assertIn("S38", result.error)
+        self.assertIn("no confirmer", result.error)
+
+    def test_permission_ask_with_confirmer_approved(self):
+        class Asker:
+            def check(self, tool_name, arguments, tool=None):
+                return "ASK"
+
+        result = self.reg.execute(
+            ToolCall(name="echo", arguments={}), policy=Asker(),
+            confirmer=lambda call, decision: True)
+        self.assertTrue(result.ok)
+        self.assertEqual(result.output, "echo {}")
+
+    def test_permission_ask_with_confirmer_denied(self):
+        class Asker:
+            def check(self, tool_name, arguments, tool=None):
+                return "ASK"
+
+        result = self.reg.execute(
+            ToolCall(name="echo", arguments={}), policy=Asker(),
+            confirmer=lambda call, decision: False)
+        self.assertFalse(result.ok)
+        self.assertIn("denied by confirmation", result.error)
+
+    def test_confirmer_crash_is_structured(self):
+        class Asker:
+            def check(self, tool_name, arguments, tool=None):
+                return "ASK"
+
+        def bad_confirmer(call, decision):
+            raise RuntimeError("no ui")
+
+        result = self.reg.execute(
+            ToolCall(name="echo", arguments={}), policy=Asker(),
+            confirmer=bad_confirmer)
+        self.assertFalse(result.ok)
+        self.assertIn("confirmer crashed", result.error)
 
     def test_workspace_required_not_configured(self):
         self.reg.register(_tool("rooted", handler=lambda **kw: "ws", requires_workspace=True))
