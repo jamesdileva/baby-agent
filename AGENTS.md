@@ -80,6 +80,18 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S37 Agent Loop** — `qacompanion/agent/loop.py`: the first
+  autonomous reasoning cycle, task-agnostic — goal → model → S32 tool
+  pipeline → observation fed back as structured `tool` messages (denials,
+  unknown tools, timeouts are observations, never exceptions) → final
+  answer. Pluggable verifier (S41 preview): failure enters RECOVERING and
+  retries within limits; session gains verification_results (additive).
+  Iteration/runtime limits, cancellation, provider errors — every exit a
+  terminal state with a reason. Metadata-driven changed-file tracking
+  (write-level side effect + JSON path key). The roadmap verification
+  sequence (write buggy file → run fails → read error → edit fix → run
+  passes → final) passes via FakeModelProvider; feedback provably reaches
+  the next model iteration. Suite 1062 → 1076 OK. Spec: docs/s37-spec.md.
 - 2026-09-04 — **S36 Git Intelligence** — `qacompanion/agent/git_tools.py`:
   git_status/diff/log/branch over argv-list git (no shell), paths resolved
   through PathPolicy, porcelain v1 parsing (renames with orig_path, C-quoted
