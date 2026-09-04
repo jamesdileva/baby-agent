@@ -408,6 +408,7 @@ def agent_registry(
     from .git_tools import GitToolkit
     from .registry import default_knowledge_registry
     from .verification import VerificationToolkit
+    from .webfetch import WebFetchToolkit
     from .websearch import WebResearchToolkit
 
     registry = default_knowledge_registry(
@@ -425,5 +426,7 @@ def agent_registry(
     for tool in VerificationToolkit(workspace).tools():
         registry.register(tool)
     for tool in WebResearchToolkit(search_provider).tools():
+        registry.register(tool)
+    for tool in WebFetchToolkit(workspace).tools():
         registry.register(tool)
     return registry
