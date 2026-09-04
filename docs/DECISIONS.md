@@ -1244,3 +1244,20 @@ Next slice: S31 Agent Foundation per ROADMAP-agentlite.md (spec:
 docs/s31-spec.md).
 
 Status: Adopted. S31 is the next working slice.
+
+---
+
+### Standing cycle ritual — plan, scope, implement, verify, worklog
+
+**Decision:** Human-directed 2026-09-04, in force from S31 onward for every
+sprint in this repo:
+
+1. **Plan + scope** the sprint into a spec doc under docs/ (e.g.
+   docs/sNN-spec.md) before writing code.
+2. **Implement** exactly the scoped plan.
+3. **Verify** — full suite green; `qa preflight` run before claiming done.
+4. **Commit + push.**
+5. **Update the AGENTS.md Worklog** with a dated entry for the slice.
+
+Recorded as a standing rule (audit trail, not permission slip): the cycle
+ritual in AGENTS.md is amended by steps 1 and 5 above.

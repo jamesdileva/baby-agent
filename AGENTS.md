@@ -73,3 +73,23 @@ Every working cycle in any repo where qacompanion is deployed:
 3. If `cases.jsonl` changed: commit it alongside the slice.
 4. Report lookup hits in the cycle summary ("recognized: FAIL(0.0s), case #3")
    so the colony sees the tool earning its keep.
+
+## Worklog
+
+Dated history of landed slices, newest first. Standing cycle ritual
+(DECISIONS 2026-09-04): **plan + scope → implement → tests green →
+commit + push → worklog entry.**
+
+- 2026-09-04 — **S31 Agent Foundation** — `qacompanion/agent/` subpackage
+  (contracts.py / providers.py / session.py): ModelProvider abstraction with
+  FakeModelProvider (deterministic test backbone) + OllamaProvider (wraps S26
+  bridge, normalizes textual [TOOL: ...] output into structured ToolCalls),
+  AgentSession state machine (10 states, terminal states final), AgentConfig
+  limits, knowledge-tool ToolDefinitions. `qa ask` unchanged. Suite 828 →
+  891 OK (hermetic; live Ollama opt-in via QA_OLLAMA_LIVE=1). Spec:
+  docs/s31-spec.md. Roadmap: docs/ROADMAP-agentlite.md §S31.
+- 2026-09-04 — **Roadmap consolidation + case #10 fix** — Agent-Lite
+  roadmap consolidated into docs/ROADMAP-agentlite.md (S31–S65+), DECISIONS
+  rulings filed (renumbering, constraints amendment), audit.md superseded;
+  fixed pre-existing red test: no-Ollama fallback now surfaces digest
+  matches, digest ask test made hermetic (828 OK).
