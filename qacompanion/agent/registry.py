@@ -33,6 +33,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from .contracts import ToolCall, ToolDefinition, ToolResult
 from .permissions import PermissionDecision
+from .permissions import PermissionPolicy as _DefaultEnginePolicy
 
 
 class RegistryError(Exception):
@@ -208,6 +209,10 @@ class ToolRegistry:
 
     def __init__(self):
         self._tools: Dict[str, RegisteredTool] = {}
+        # canonical default policy: the S38 engine (EXTERNAL->ASK,
+        # DESTRUCTIVE->DENY) — the constraints amendment as the default,
+        # not an opt-in. Minimal allow-all remains available explicitly.
+        self._default_policy = _DefaultEnginePolicy(name="registry-default")
 
     def register(self, tool: RegisteredTool) -> None:
         name = tool.definition.name
@@ -249,8 +254,10 @@ class ToolRegistry:
         denied where the decision actually happens.
         """
         started = time.monotonic()
-        outcome = self._run_pipeline(tool_call, policy, workspace, cancel_event,
-                                     confirmer, event_stream, session_id)
+        outcome = self._run_pipeline(
+            tool_call,
+            policy if policy is not None else self._default_policy,
+            workspace, cancel_event, confirmer, event_stream, session_id)
         duration_ms = int((time.monotonic() - started) * 1000)
         result = ToolResult(
             call_name=tool_call.name,
