@@ -199,7 +199,8 @@ class ToolCall:
 
 @dataclass
 class ToolResult:
-    """The recorded outcome of one tool invocation (execution lands in S32)."""
+    """The recorded outcome of one tool invocation (S32 adds the executor
+    pipeline; timed_out/cancelled are the S32 structured outcome flags)."""
 
     call_name: str
     ok: bool
@@ -207,6 +208,8 @@ class ToolResult:
     call_id: Optional[str] = None
     error: Optional[str] = None
     duration_ms: Optional[int] = None
+    timed_out: bool = False
+    cancelled: bool = False
 
     def __post_init__(self):
         _require(isinstance(self.call_name, str) and self.call_name.strip(), "call_name required")
@@ -220,6 +223,8 @@ class ToolResult:
             "call_id": self.call_id,
             "error": self.error,
             "duration_ms": self.duration_ms,
+            "timed_out": self.timed_out,
+            "cancelled": self.cancelled,
         }
 
     @classmethod
@@ -236,6 +241,8 @@ class ToolResult:
             call_id=data.get("call_id"),
             error=data.get("error"),
             duration_ms=data.get("duration_ms"),
+            timed_out=bool(data.get("timed_out", False)),
+            cancelled=bool(data.get("cancelled", False)),
         )
 
 
