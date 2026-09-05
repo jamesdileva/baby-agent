@@ -80,6 +80,25 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S49 QA Brain Integration** —
+  `qacompanion/agent/qa_brain.py`: the architecture payoff — when a tool
+  fails, the colony's accumulated QA intelligence is injected into the
+  loop AUTOMATICALLY before the model's next action. QABrain: failure
+  signature via S2 normalize+canonical -> layered lookup (exact case
+  signature via lookup.select -> keyword match via bridge._match_cases
+  with punctuation-free end-weighted query terms -> S47 MemoryLayer
+  fallback) -> advice {source, case_id, diagnosis, times_seen} appended
+  as a system-role message + memory_advice event. **The brain owns
+  failure semantics**: failed ToolResults AND the S35 convention
+  (run_command ok=True with embedded CommandResult nonzero exit) — the
+  loop just asks. Honest silence on no match; degraded stores never
+  crash the loop. Read-only brain: no case auto-creation (case-#10
+  lore); writing cases is S50's job. Hermeticity lesson repeated twice
+  this sprint: MemoryLayer defaults to the repo's REAL cases.jsonl when
+  cases_path=None — tests must inject isolated paths. Loop wiring via
+  additive AgentLoop(qa_brain=None); agent_registry unchanged (49 — the
+  brain is loop-level, not a tool). Suite 1293 → 1306 OK. Spec:
+  docs/s49-spec.md.
 - 2026-09-05 — **S48 First Autonomous Coding Task** —
   `qacompanion/agent/benchmark.py`: the defect-fix benchmark harness —
   deterministic fixture (calculator.py with one intentional defect +
