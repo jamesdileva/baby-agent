@@ -499,6 +499,23 @@ def build_parser():
         help="digest store file (default: digest.jsonl)",
     )
 
+    server = sub.add_parser(
+        "serve",
+        help="dashboard API server — localhost UI for the agent runtime",
+        epilog=(
+            "Binds 127.0.0.1 only. Serves the built dashboard (app/dist) "
+            "plus the /api REST+SSE surface. Ctrl+C stops it. Exit "
+            "contract: 0 clean shutdown, 1 bind/config error."
+        ),
+    )
+    server.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        metavar="PORT",
+        help="localhost port to bind (default: 8765)",
+    )
+
     watcher = sub.add_parser(
         "watch",
         help="resident digest daemon — periodic hash-based file scanning",
@@ -1033,6 +1050,27 @@ def _cmd_escalate(args):
     return 0
 
 
+def _cmd_serve(args):
+    """S52: boot the localhost dashboard API and serve until Ctrl+C."""
+    from .agent.server import AgentServer, AgentServerApp
+    from .experience import ExperienceStore
+
+    app = AgentServerApp(experience_store=ExperienceStore())
+    try:
+        server = AgentServer(app, port=args.port)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(f"baby-agent dashboard: {server.url}", flush=True)
+    try:
+        server.serve(daemon=False).join()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.shutdown()
+    return 0
+
+
 def _cmd_watch(args):
     try:
         result = watch_mod.watch(
@@ -1078,6 +1116,7 @@ _COMMANDS = {
     "gaps": _cmd_gaps,
     "escalate": _cmd_escalate,
     "watch": _cmd_watch,
+    "serve": _cmd_serve,
 }
 
 

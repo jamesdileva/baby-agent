@@ -667,6 +667,13 @@ performs its verification step.
 
 **Objective.** Replace the manual CLI workflow with a polished application.
 
+**Status (2026-09-05).** Delivered API-first: `qa serve` boots the
+localhost REST+SSE server (stdlib) and serves the built Vite+React+TS
+dashboard from app/dist. **Deferred to an S52 packaging follow-up:**
+the Electron shell (window chrome, tray, packaging/installers) — the
+browser is the desktop shell until then; the API contract is unchanged
+when it lands.
+
 **Stack.** Electron + React + TypeScript + Vite; Python runtime behind
 FastAPI or local IPC; SQLite storage (existing JSONL stores remain behind
 repositories during migration).
