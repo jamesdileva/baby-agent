@@ -56,18 +56,22 @@ TOOL_PROTOCOL_PROMPT = (
 )
 
 
-def build_system_prompt(tools, base: str = DEFAULT_SYSTEM_PROMPT) -> str:
-    """Render the tool catalog + textual call protocol into the system
-    prompt (the loop owns tool prompt-engineering; providers stay generic).
-    Text-protocol models cannot call tools unless the exact syntax is
-    taught — found by the live smoke test."""
+def build_system_prompt(tools, base: str = DEFAULT_SYSTEM_PROMPT,
+                        native_tools: bool = False) -> str:
+    """Render the tool catalog into the system prompt (the loop owns
+    tool prompt-engineering; providers stay generic). Text-protocol
+    models need the exact [TOOL: ...] syntax taught; NATIVE-capable
+    providers get catalog-only prompting — teaching the textual syntax
+    alongside native tools conflicted them into zero tool calls
+    (S55 bake-off finding)."""
     lines = [base]
     if tools:
         lines.append("")
         lines.append("Available tools:")
         for tool in tools:
             lines.append(f"- {tool.name}: {tool.description}")
-        lines.append(TOOL_PROTOCOL_PROMPT)
+        if not native_tools:
+            lines.append(TOOL_PROTOCOL_PROMPT)
     return "\n".join(lines)
 
 
@@ -113,6 +117,7 @@ class AgentLoop:
         confirmer: Optional[Callable[[Any, Any], bool]] = None,
         events=None,
         qa_brain=None,
+        tool_catalog: Optional[List[str]] = None,
     ):
         self.provider = provider
         self.registry = registry
@@ -124,6 +129,10 @@ class AgentLoop:
         self.confirmer = confirmer
         self.events = events
         self.qa_brain = qa_brain
+        # S55 slice 5: optional model-facing catalog filter (the registry
+        # still holds every tool; the model only sees the listed subset)
+        self.tool_catalog = frozenset(tool_catalog) if tool_catalog else None
+        self.native_tools = bool(getattr(provider, "native_tools", False))
 
     # -- helpers ----------------------------------------------------------
 
@@ -168,9 +177,12 @@ class AgentLoop:
         self._emit("session_started", session, goal=goal,
                    workspace_root=session.workspace_root)
         self._set_state(session, AgentState.PLANNING)
+        offered = [t for t in self.registry.schemas()
+                   if self.tool_catalog is None or t.name in self.tool_catalog]
         messages: List[ModelMessage] = [
             ModelMessage(role="system",
-                         content=build_system_prompt(self.registry.schemas())),
+                         content=build_system_prompt(
+                             offered, native_tools=self.native_tools)),
             ModelMessage(role="user", content=goal),
         ]
         session.messages.extend(messages)
@@ -195,7 +207,7 @@ class AgentLoop:
             try:
                 response = self.provider.generate(
                     ModelRequest(messages=list(session.messages),
-                                 tools=self.registry.schemas())
+                                 tools=offered)
                 )
             except ProviderError as exc:
                 self._record_failure(session, str(exc))

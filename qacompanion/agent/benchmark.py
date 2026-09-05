@@ -72,6 +72,16 @@ BENCHMARK_GOAL = ("The tests in this project are failing. Find the bug, "
 PYTHON = f'"{sys.executable}"'
 
 
+# S55 slice 5: the model-facing catalog is LEAN (12 of the registry's
+# tools) — code-intelligence and memory tools remain registered for the
+# harness but halve the catalog weight the model processes per turn
+LEAN_MODEL_CATALOG = frozenset({
+    "list_directory", "read_file", "write_file", "edit_file",
+    "search_code", "file_exists", "file_metadata",
+    "run_command", "run_tests", "run_build", "run_lint", "run_typecheck",
+})
+
+
 def _verification_plan() -> VerificationPlan:
     return VerificationPlan(name="benchmark-tests-pass", steps=[
         VerificationStep(name="unit-tests", category="TEST",
@@ -151,7 +161,8 @@ def report_model(provider) -> str:
 def run_benchmark(provider, config=None, workspace_root=None,
                   experience_store: Optional[ExperienceStore] = None,
                   events: Optional[EventStream] = None,
-                  quiet: bool = True) -> BenchmarkReport:
+                  quiet: bool = True,
+                  tool_catalog=LEAN_MODEL_CATALOG) -> BenchmarkReport:
     """Run one autonomous defect-fix attempt and return honest metrics."""
     root = Path(workspace_root or tempfile.mkdtemp(prefix="benchmark-"))
     workspace = Workspace(root)

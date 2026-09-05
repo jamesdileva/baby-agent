@@ -82,6 +82,7 @@ class GeminiModelProvider(ModelProvider):
     brain."""
 
     name = "gemini"
+    native_tools = True  # class-level: Gemini natively emits functionCall
 
     def __init__(self, api_key=_UNSET, model: Optional[str] = None):
         import os as _os
@@ -258,16 +259,19 @@ class OllamaProvider(ModelProvider):
 
     name = "ollama"
 
-    def __init__(self, model=None, url=None):
+    def __init__(self, model=None, url=None, native_tools: bool = True):
         self.model = model
         self.url = url
+        # S55: qwen2.5-coder-class models lack Ollama native tool support
+        # — instantiate with native_tools=False to force the textual shim
+        self.native_tools = native_tools
 
     def generate(self, request: ModelRequest) -> ModelResponse:
         model = self.model or request.model
         # no availability pre-check: the bridge's ping is itself a full
         # generation (2x cost per turn) and one flaky ping would kill the
         # loop — a dead Ollama surfaces naturally as ProviderError below
-        if request.tools:
+        if request.tools and self.native_tools:
             # DECISIONS 2026-09-05: native tool calling is the primary
             # contract when tools are declared
             return self._generate_native(request, model)
