@@ -80,6 +80,20 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S45 Process & Runtime Management** —
+  `qacompanion/agent/processes.py`: ProcessManager owning long-lived
+  processes with daemon reader threads feeding bounded log rings (server
+  output must never block on a full pipe) and S35 tree-kill (promoted to
+  public kill_process_tree) for stops. Nine tools: start/stop/restart
+  (EXECUTION), list/status/wait_for_process, check_port / wait_for_port
+  (semantic split pinned: bind test = free, connect poll = serving),
+  health_check (localhost-only by construction — READ_ONLY, remote is
+  open_url's job). Crash detection = honest status reading; recovery =
+  the agent calling restart (no auto-supervision daemon in S45). The
+  roadmap chain (start server -> wait_for_port -> health_check -> stop ->
+  restart -> crash recovery) is proven end-to-end against a real
+  ThreadingHTTPServer fixture. agent_registry → 41 tools.
+  Suite 1222 → 1238 OK. Spec: docs/s45-spec.md.
 - 2026-09-04 — **S44 Vision / Screenshot Analysis** —
   `qacompanion/agent/vision.py`: minimal stdlib PNG codec (encode/decode,
   8-bit RGB filter 0); ctypes GDI acquisition (capture_screen /
