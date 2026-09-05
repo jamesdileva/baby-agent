@@ -1,104 +1,93 @@
-# S47 — Experience Memory: Design Spec
+# S47.1 — opencode Session Mining: Design Spec
 
-Spec of record for the sprint: [ROADMAP-agentlite.md](ROADMAP-agentlite.md)
-§S47. Builds on S31–S46. One slice, stdlib only, no CLI changes.
+Follow-up to [s47-spec.md](s47-spec.md); human-directed: "can baby-agent
+learn from my already-made projects?" One slice, stdlib only (`sqlite3`
+is stdlib), read-only over opencode's data.
 
-## Overview
+## The corpus (measured 2026-09-04)
 
-The QA case base becomes one specialized source inside a broader memory
-layer. S47 adds the missing store — **agent experiences** (episodic +
-failure memory from coding sessions) — and the unified read layer over
-all four memory sources. Automatic context injection stays out (S56 owns
-the ContextBuilder/MemoryRetriever); retrieval is tool-driven, the
-proven S27 pattern.
+`C:\Users\j\.local\share\opencode\opencode.db` (8 GB SQLite, SST
+opencode): 1,170 sessions / 42,530 messages / 171,746 parts across 21
+projects, spanning 2026-07-30 → now. **Two session shapes** (volume
+measured per directory):
 
-**Store mapping (documented):**
+- **marathon projects**: surfhop (2 sessions, 1,694 messages),
+  dinner-menu-generator (1 session, 2,483 messages), sentinel (~28
+  sessions, 50k parts), worldsim, WorkFlow-Toolkit — few sessions, huge
+  ones. Session count is meaningless as a value proxy here.
+- **turn-spawn projects**: antfarm spawns a session per agent turn —
+  385 tiny sessions (~26 parts each) whose goals repeat.
 
-```text
-failure memory      cases.jsonl        (existing, S1-S10)
-documentation       digest.jsonl       (existing, S20/S29)
-semantic/procedural journal.md         (existing, S15)
-episodic/agent      experience.jsonl   (NEW this sprint)
-```
+Design consequence: the miner is **volume-aware** (records
+message/part counts into the experience context), caps per-experience
+action lists, and relies on the store's normalized-goal reinforcement
+so antfarm's repeating turn-goals merge into few high-times_seen
+patterns instead of flooding the store.
 
 ## Module layout
 
 ```text
-qacompanion/agent/experience.py    # Experience, ExperienceStore, MemoryLayer, tools
-tests/test_agent_experience.py
+qacompanion/agent/opencode_mine.py    # OpencodeMiner
+tests/test_agent_opencode_mine.py     # synthetic SQLite fixture
 ```
 
-## Experience record
+## Miner
 
 ```text
-experience_id (uuid hex), session_id?, goal (required),
-context {}, actions [], failure?, diagnosis?, resolution?,
-verification {}, outcome (required: success|failed|recovered|
-human_corrected|partial), confidence (0..1, default 0.5),
-times_seen (default 1), tags [], project_type?, languages [],
-recorded_at, last_reinforced_at
+OpencodeMiner(db_path)
+    .sessions(directory=None)   -> rows (id, directory, title, times)
+    .mine_session(row)          -> Experience | None   (None = trivial)
+    .mine(directory=None, store=None, dry_run=False) -> stats
 ```
 
-`to_dict`/`from_dict` strict (malformed → ValueError, S1 culture),
-JSONL-ready, non-ASCII safe.
+Mapping per session:
 
-## ExperienceStore
+- **goal**: first user-message text part (≤200 chars); title fallback;
+  no user text and no tool parts → trivial, skipped.
+- **actions**: ordered tool-part names, capped at 50 (total count kept).
+- **session_id**: the opencode session id (provenance — the store keeps
+  it so any experience traces back to its source session).
+- **context**: `{source: "opencode", directory, message_count,
+  part_count, tool_count, model}` — the volume signals curation needs.
+- **outcome**: honestly `partial` for every mined session (success is
+  not yet provable from the DB) with low confidence (0.3); refinement is
+  curation's job (S62), not the miner's guessing.
+- **project metadata**: `ProjectMetadata.detect(directory)` languages /
+  project_type when the directory still exists (read-only walk);
+  otherwise omitted.
+- Reinforcement goes through `ExperienceStore.record` (normalized-goal
+  dedupe — antfarm's repeating turn prompts converge into few
+  high-times_seen patterns).
 
-- JSONL at `experience.jsonl` (cwd default), overridable via
-  `QA_EXPERIENCE_FILE` (the QA_CASES_FILE convention). Atomic writes
-  (tmp + os.replace); load is strict about malformed lines; BOM/CRLF
-  tolerated (S19 lessons).
-- **Recurrence over duplication**: recording an experience whose
-  normalized goal matches an existing one bumps `times_seen`, updates
-  confidence toward the newer value, refreshes `last_reinforced_at` —
-  "better at recurring problems" made mechanical. Distinct goals append.
+Read-only discipline: the DB opens with `mode=ro` URI; the miner never
+writes to opencode's files. Tests use a synthetic fixture DB built with
+the same schema — the real database is never touched by the suite.
 
-## Retrieval (stdlib scoring, honestly labeled)
+## Stats + live import
 
-`find_similar(query, k=5)` scores keyword overlap between query terms
-and goal + tags + failure/diagnosis/resolution text, boosted by
-times_seen and confidence. No embeddings — the upgrade path (semantic
-retrieval) is documented for S56; the ranking is deterministic and
-testable now.
+`mine()` returns `{sessions_seen, mined, reinforced, skipped_trivial,
+by_directory}`. First run: `dry_run=True` for a safe preview, then the
+real import into `experience.jsonl` (runtime artifact — gitignored like
+digest.jsonl; the mined corpus stays local).
 
-## MemoryLayer (the unified read)
+## Testing strategy (tests/test_agent_opencode_mine.py)
 
-`search(query, k_per_source=3)` queries all four stores and returns
-merged, score-ranked, **source-labeled** results
-(`source: experience|case|doc|journal`). A missing/unreadable store
-degrades to empty — never crashes; per-source scoring is thin and
-explicit (keyword match on the store's natural text fields).
+Synthetic DB with the real schema: two marathon sessions (many
+messages/parts incl. tool + text parts), one turn-spawn pattern
+(repeated identical goals), one trivial session (no user text, no
+tools), one session whose project directory doesn't exist.
 
-## The three tools (category "memory", brain-level — requires_workspace
-False, like the S27 knowledge tools)
+- Goal extraction (first user text), title fallback, trivial skip.
+- Action ordering + cap; context volume counts.
+- Reinforcement across repeated turn-goals (store-level dedupe).
+- Directory filter; dry_run writes nothing; stats honest.
+- Read-only proof: the fixture DB is byte-identical after mining.
 
-```text
-experience_record  {goal, outcome, session_id?, diagnosis?, resolution?,
-                    actions?, tags?, project_type?, confidence?}  SAFE_WRITE
-experience_search  {query, k?}                                    READ_ONLY
-memory_search      {query, k_per_source?}                         READ_ONLY
-```
+Expected suite growth: 1277 → ~1290 OK.
 
-`agent_registry()` grows to 49 tools.
+## Exit criteria
 
-## Testing strategy (tests/test_agent_experience.py)
-
-- Record round trips (incl. non-ASCII), strict validation, JSONL
-  persistence across store instances, BOM/CRLF tolerance, atomicity.
-- Recurrence: same normalized goal bumps times_seen / refreshes stamp,
-  no duplicate row; distinct goals append.
-- Retrieval ranking: keyword overlap; times_seen/confidence boosts; k
-  limit; empty store → empty.
-- MemoryLayer: merged results carry source labels; each real store
-  exercised with its own fixture API (CaseStore/DigestStore/journal);
-  missing store files degrade to empty.
-- Tools: registration matrix; through-registry record+search; default
-  SAFE_WRITE posture (record); agent_registry membership (49).
-
-Expected suite growth: 1258 → ~1285 OK.
-
-## Exit criteria (from ROADMAP-agentlite.md §S47)
-
-Teach a successful recovery procedure (experience_record), run a similar
-query, and the experience is retrieved ranked-first — the tool path that
-S56 will wire into automatic context. Full suite green; preflight clean.
+A dry-run preview over the real DB reports honest stats; the import
+populates experience.jsonl with curated experiences traceable to their
+source sessions; the suite never touches the real database. Full suite
+green; preflight clean.
