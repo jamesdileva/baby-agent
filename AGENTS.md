@@ -80,6 +80,34 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S48 First Autonomous Coding Task** —
+  `qacompanion/agent/benchmark.py`: the defect-fix benchmark harness —
+  deterministic fixture (calculator.py with one intentional defect +
+  failing unittest), natural-language goal (no file names), the S37 loop
+  with coding-family tools only (fs/execution/verification/code/memory —
+  hermetic by construction), and the S41 plan-verifier gate: COMPLETED
+  only when the tests genuinely pass. BenchmarkReport records honest
+  metrics from the session + S39 events (files_changed, commands_run,
+  tool_failures, recovery_count, verification results,
+  intervention_count=0 by construction). **S41 amendment** (found by the
+  benchmark): must_contain/must_not_contain now check COMBINED
+  stdout+stderr — unittest reports on stderr and stdout-only checks
+  missed it. Hermetic success path green (scripted
+  inspect→fail→fix→pass→final with full metrics). **Live runs — honest
+  failures**: qwen2.5-coder:1.5b never ran a test (0 commands), faked
+  evidence via log files, 7 premature-done claims all rejected by the
+  verifier, ended on an Ollama timeout; llama3.1:8b made 5 tool-call
+  errors and timed out per-request even at 180s (8B on CPU too slow for
+  the loop). The harness recorded both runs completely — capability, not
+  harness, is the gap (S55: routing to a stronger model; loop accepts
+  any provider; free Gemini plain-mode is a candidate adapter). Bridge
+  60s HTTP timeout is a hard cap worth making configurable (S55 note).
+  **Curation backlog (human-directed, for S50/S56/S62 wherever it fits
+  best)**: curation pass over the 99 mined experiences; merge the
+  x321 resume pattern ("response interrupted, continue") into a skill;
+  drop greeting pings ("hello" x7); deeper marathon-session extraction
+  (diagnosis/resolution from surfhop/sentinel/dinner-menu-generator).
+  Suite 1288 → 1293 OK. Spec: docs/s48-spec.md.
 - 2026-09-05 — **S47.1 opencode Session Mining** — human-directed: "can
   baby-agent learn from my already-made projects?" Located the corpus:
   `~/.local/share/opencode/opencode.db` (8 GB SQLite, SST opencode;
