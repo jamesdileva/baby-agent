@@ -93,6 +93,19 @@ def _write_db(path: Path) -> dict:
          {"type": "tool", "tool": "read", "state": {"status": "completed"}}, 2)
     ids["boilerplate"] = "ses_boiler"
 
+    # goal-less but SUBSTANTIAL session: crash-and-continue sprint chunk
+    session("ses_nogoal", "C:/Users/j/Projects/surfhop", "New session - 2026")
+    con.execute("INSERT INTO message VALUES (?, ?, ?, ?)",
+                ("m_ng", "ses_nogoal", 3000, json.dumps(
+                    {"role": "user", "time": {}})))
+    part("p_ng0", "m_ng", "ses_nogoal",
+         {"type": "text", "text": "continue"}, 3001)
+    for i in range(120):
+        con.execute("INSERT INTO part VALUES (?, ?, ?, ?, ?)",
+                    (f"p_ng{i+1}", "m_ng", "ses_nogoal", 3002 + i, json.dumps(
+                        {"type": "tool", "tool": "edit",
+                         "state": {"status": "completed"}})))
+
     # missing-directory session (project gone)
     session("ses_ghost", "C:/Users/j/VanishedProject", "fix the thing")
     message("m_ghost", "ses_ghost", "user")
@@ -127,10 +140,10 @@ class TestMinerBasics(MineTestBase):
             OpencodeMiner(self.tmp / "nope.db")
 
     def test_sessions_listing_and_filter(self):
-        self.assertEqual(len(self.miner.sessions()), 6)
+        self.assertEqual(len(self.miner.sessions()), 7)
         surf = self.miner.sessions(directory="C:/Users/j/Projects/surfhop")
-        self.assertEqual([r["id"] for r in surf], ["ses_marathon",
-                                                   "ses_trivial"])
+        self.assertEqual([r["id"] for r in surf],
+                         ["ses_marathon", "ses_trivial", "ses_nogoal"])
 
     def test_goal_from_first_user_text(self):
         row = next(r for r in self.miner.sessions()
@@ -171,33 +184,45 @@ class TestMinerBasics(MineTestBase):
                    if r["id"] == "ses_boiler")
         self.assertIsNone(self.miner.mine_session(row))
 
+    def test_goal_less_substantial_session_mined_with_placeholder(self):
+        # crash-and-continue chunks with real work are worth keeping even
+        # without a stated goal (the "continue" itself is boilerplate)
+        row = next(r for r in self.miner.sessions()
+                   if r["id"] == "ses_nogoal")
+        experience = self.miner.mine_session(row)
+        self.assertIsNotNone(experience)
+        self.assertEqual(experience.goal,
+                         "continued prior work (session had no stated goal)")
+        self.assertIn("goal-less", experience.tags)
+        self.assertEqual(experience.context["part_count"], 121)
+
 
 class TestMineRun(MineTestBase):
     def test_dry_run_writes_nothing(self):
         stats = self.miner.mine(store=self.store, dry_run=True)
         self.assertTrue(stats["dry_run"])
-        self.assertEqual(stats["sessions_seen"], 6)
+        self.assertEqual(stats["sessions_seen"], 7)
         self.assertEqual(stats["skipped_trivial"], 2)
         self.assertEqual(len(self.store.load()), 0)
 
     def test_full_run_reinforces_turn_spawn_pattern(self):
         stats = self.miner.mine(store=self.store)
-        self.assertEqual(stats["sessions_seen"], 6)
-        self.assertEqual(stats["mined"], 4)
+        self.assertEqual(stats["sessions_seen"], 7)
+        self.assertEqual(stats["mined"], 5)
         self.assertEqual(stats["skipped_trivial"], 2)
         self.assertEqual(stats["errors"], 0)
         # the two identical turn-goals reinforced into ONE experience:
-        # 4 mined - 1 reinforcement = 3 stored goals
+        # 5 mined - 1 reinforcement = 4 stored goals
         self.assertEqual(stats["reinforced"], 1)
         goals = [e.goal for e in self.store.load()]
-        self.assertEqual(len(goals), 3)
+        self.assertEqual(len(goals), 4)
         self.assertIn("Continue the migration task", goals)
 
     def test_directory_filter(self):
         stats = self.miner.mine(store=self.store,
                                 directory="C:/Users/j/Projects/surfhop")
-        self.assertEqual(stats["sessions_seen"], 2)
-        self.assertEqual(stats["mined"], 1)
+        self.assertEqual(stats["sessions_seen"], 3)
+        self.assertEqual(stats["mined"], 2)
 
     def test_read_only_database(self):
         before = hashlib.sha256(self.db.read_bytes()).hexdigest()

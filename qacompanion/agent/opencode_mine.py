@@ -36,6 +36,9 @@ from .workspace import ProjectMetadata
 MAX_ACTIONS = 50
 MAX_GOAL_CHARS = 200
 TRIVIAL_MIN_PARTS = 1
+# a goal-less session must be at least this substantial to mine (the
+# antfarm per-turn pings average ~26 parts; marathon chunks are 1000s)
+SUBSTANTIAL_GOAL_LESS_PARTS = 100
 # antfarm injects a per-turn kickoff preamble as the "user" message — it
 # is prompt template, not a task goal; sessions whose only user text is
 # boilerplate have no learnable goal
@@ -45,8 +48,17 @@ BOILERPLATE_MARKERS = ("SITUATION REPORT", "PROJECT GOAL (authored by",
                        "Your previous response was interrupted")
 
 
+CONTINUATION_PHRASES = {"continue", "continue.", "go on", "keep going",
+                        "resume", "continue where you left off"}
+
+
 def _is_boilerplate(text: str) -> bool:
-    return any(marker in text for marker in BOILERPLATE_MARKERS)
+    # substring markers: injected preambles
+    if any(marker in text for marker in BOILERPLATE_MARKERS):
+        return True
+    # exact-match phrases: standalone continuation pings ("continue")
+    # are boilerplate, but "continue the migration task" is an instruction
+    return text.strip().lower() in CONTINUATION_PHRASES
 
 
 def _clean_goal(text: str) -> str:
@@ -203,10 +215,16 @@ class OpencodeMiner:
         finally:
             con.close()
 
+        goal_was_missing = goal is None
         if goal is None:
-            # no non-boilerplate user text: nothing learnable yet (tool
-            # actions without a goal are curation's problem, not ours)
-            return None
+            # no non-boilerplate user text anywhere in the session. Most
+            # such sessions are turn-pings — skipped. But a SUBSTANTIAL
+            # goal-less session (a crash-and-continue sprint chunk with
+            # real work) still carries learnable failure/fix pairs, so
+            # mine it with an honest placeholder goal at >=100 parts.
+            if volume["part_count"] < SUBSTANTIAL_GOAL_LESS_PARTS:
+                return None
+            goal = "continued prior work (session had no stated goal)"
 
         directory = session_row.get("directory") or ""
         project_type = None
@@ -223,17 +241,21 @@ class OpencodeMiner:
             **volume,
             **tool_info,
         }
+        goal_used = goal or (session_row.get("title")
+                             or "opencode session")[:MAX_GOAL_CHARS]
+        tags = ["opencode", Path(directory).name.lower()
+                if directory else "unknown"]
+        if goal_was_missing:
+            tags.append("goal-less")  # placeholder goal: substance over label
         experience = Experience(
-            goal=goal or (session_row.get("title")
-                          or "opencode session")[:MAX_GOAL_CHARS],
+            goal=goal_used,
             outcome=MINED_OUTCOME,
             session_id=session_id,
             actions=tool_info["actions"],
             failure=failure,
             resolution=resolution,
             context=context,
-            tags=["opencode", Path(directory).name.lower()
-                  if directory else "unknown"],
+            tags=tags,
             project_type=project_type,
             languages=languages,
             confidence=MINED_CONFIDENCE,
