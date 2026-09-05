@@ -192,23 +192,51 @@ def make_handler(app: AgentServerApp):
                 return {}
             return json.loads(self.rfile.read(length).decode("utf-8"))
 
+        def _serve_dist(self, path: str):
+            """Serve the built dashboard. / -> index.html; asset paths
+            resolve INSIDE app/dist only (traversal-proof)."""
+            dist = Path(__file__).resolve().parents[2] / "app" / "dist"
+            index = dist / "index.html"
+            if not index.exists():
+                self._json({"error": "dashboard not built (npm run "
+                                     "build in app/)"}, 404)
+                return
+            if path == "/" or path == "/index.html":
+                target, content_type = index, "text/html; charset=utf-8"
+            else:
+                candidate = (dist / path.lstrip("/")).resolve()
+                try:
+                    candidate.relative_to(dist.resolve())
+                except ValueError:
+                    self._json({"error": "forbidden path"}, 403)
+                    return
+                if not candidate.is_file():
+                    # SPA fallback: unknown paths render the app shell
+                    target, content_type = index, "text/html; charset=utf-8"
+                else:
+                    target = candidate
+                    suffix = candidate.suffix.lower()
+                    content_type = {
+                        ".js": "text/javascript; charset=utf-8",
+                        ".css": "text/css; charset=utf-8",
+                        ".html": "text/html; charset=utf-8",
+                        ".svg": "image/svg+xml",
+                        ".png": "image/png",
+                        ".ico": "image/x-icon",
+                    }.get(suffix, "application/octet-stream")
+            body = target.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
         def do_GET(self):
             path, _, query = self.path.partition("?")
             params = dict(pair.split("=", 1) for pair in query.split("&")
                           if "=" in pair)
             if path == "/" or not path.startswith("/api/"):
-                dist = Path(__file__).resolve().parents[2] / "app" / "dist"
-                index = dist / "index.html"
-                if index.exists():
-                    body = index.read_bytes()
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/html; charset=utf-8")
-                    self.send_header("Content-Length", str(len(body)))
-                    self.end_headers()
-                    self.wfile.write(body)
-                else:
-                    self._json({"error": "dashboard not built (npm run "
-                                         "build in app/)"}, 404)
+                self._serve_dist(path)
                 return
             if path == "/api/health":
                 self._json({"status": "ok", "api": "baby-agent/v1"})

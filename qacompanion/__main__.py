@@ -1052,8 +1052,8 @@ def _cmd_escalate(args):
 
 def _cmd_serve(args):
     """S52: boot the localhost dashboard API and serve until Ctrl+C."""
+    from .agent.experience import ExperienceStore
     from .agent.server import AgentServer, AgentServerApp
-    from .experience import ExperienceStore
 
     app = AgentServerApp(experience_store=ExperienceStore())
     try:

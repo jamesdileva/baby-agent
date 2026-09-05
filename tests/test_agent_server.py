@@ -112,6 +112,20 @@ class TestRestSurface(ServerBase):
             self.get("/api/session/ghost")
         self.assertEqual(ctx.exception.code, 404)
 
+    def test_dashboard_assets_served(self):
+        # / serves the built shell; JS assets serve as real JS (the
+        # walkthrough caught the index-for-everything bug)
+        with urllib.request.urlopen(self.server.url + "/", timeout=5) as resp:
+            body = resp.read().decode("utf-8")
+        self.assertIn("<div id=\"root\">", body)
+        asset_line = next(line for line in body.splitlines()
+                          if "/assets/" in line and ".js" in line)
+        asset_path = asset_line.split('src="')[1].split('"')[0]
+        request = urllib.request.Request(self.server.url + asset_path)
+        with urllib.request.urlopen(request, timeout=5) as resp:
+            self.assertEqual(resp.headers["Content-Type"],
+                             "text/javascript; charset=utf-8")
+
     def test_skills_and_memory_endpoints(self):
         skills = self.get("/api/skills")["skills"]
         self.assertTrue(any(s["name"] == "resume_interrupted_task"
