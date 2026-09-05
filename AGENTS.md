@@ -80,6 +80,22 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S55 slice 3 (ModelRouter) + tool-call diagnosis** —
+  Diagnosis of the native-retest zero-tool-call mystery: qwen3:4b emits
+  CORRECT native tool calls in an isolated 2-tool probe (10–15s, both
+  think modes — Ollama and the model are fine); with the benchmark's
+  20-tool catalog it needs 177–300+s/turn on CPU, and the textual
+  protocol teaching in the system prompt conflicts with native calling
+  (0 native calls when both present). Filed as catalog-weight +
+  prompt-conflict engineering (native-only prompting, hierarchical tool
+  selection — follow-ups). **ModelRouter landed**:
+  deterministic role routing under policy (ordered ModelRoute rules,
+  first-match, trigger-driven escalation on failure_count>=2/stuck,
+  unknown roles fall back to brain, explain() for dashboards);
+  default_router() encodes the human role sketch — local qwen3:4b
+  brain, free-Gemini escalation tier only when GEMINI_API_KEY present,
+  qwen2.5-coder:3b as the cheap local route. Route is pure policy —
+  never calls a model. Suite 1354 → 1363 OK.
 - 2026-09-05 — **S55 slice 4 + PASS (native tool-calling adapters)** —
   DECISIONS 2026-09-05: native tool calling is the primary provider
   contract when tools are declared; textual protocol demotes to shim.
