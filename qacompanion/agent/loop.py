@@ -23,6 +23,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from .contracts import ModelMessage, ModelRequest, ToolResult
 from .registry import SAFE_WRITE, EXECUTION, DESTRUCTIVE, EXTERNAL, ToolRegistry
 from .providers import ModelProvider, ProviderError
+from .qa_brain import format_advice
 from .session import AgentConfig, AgentSession, AgentState, SessionError
 from .workspace import Workspace
 
@@ -111,6 +112,7 @@ class AgentLoop:
         verifier: Optional[Callable[[AgentSession], Tuple[bool, str]]] = None,
         confirmer: Optional[Callable[[Any, Any], bool]] = None,
         events=None,
+        qa_brain=None,
     ):
         self.provider = provider
         self.registry = registry
@@ -121,6 +123,7 @@ class AgentLoop:
         self.verifier = verifier
         self.confirmer = confirmer
         self.events = events
+        self.qa_brain = qa_brain
 
     # -- helpers ----------------------------------------------------------
 
@@ -299,6 +302,20 @@ class AgentLoop:
                     role="tool",
                     content=json.dumps(result.to_dict(), ensure_ascii=False),
                 ))
+                if self.qa_brain is not None:
+                    # S49: the QA brain's advice reaches the model BEFORE
+                    # its next action. The brain owns failure semantics
+                    # (failed results AND the S35 embedded-CommandResult
+                    # convention) — the loop only asks. Recording cases
+                    # is S50's job.
+                    advice = self.qa_brain.advise(result)
+                    if advice:
+                        session.messages.append(ModelMessage(
+                            role="system",
+                            content=format_advice(advice)))
+                        self._emit("memory_advice", session,
+                                   source=advice.get("source"),
+                                   call=call.name)
 
     def _verify(self, session: AgentSession) -> Tuple[bool, str]:
         try:
