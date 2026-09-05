@@ -80,6 +80,26 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S47.1 opencode Session Mining** — human-directed: "can
+  baby-agent learn from my already-made projects?" Located the corpus:
+  `~/.local/share/opencode/opencode.db` (8 GB SQLite, SST opencode;
+  1,170 sessions / 42.5k messages / 171.7k parts across 21 projects,
+  2026-07-30 → now). `qacompanion/agent/opencode_mine.py`: READ-ONLY
+  miner (mode=ro) → one Experience per session (goal = first
+  non-boilerplate user text part, ordered tool names as actions capped
+  at 50, volume counts in context, opencode session id as provenance,
+  ProjectMetadata from the project directory when it exists). Curation
+  learned the hard way: first import's top "experiences" were antfarm's
+  injected kickoff preamble ("SITUATION REPORT…") reinforced x127 —
+  fixed with boilerplate detection, word-boundary goal truncation, and
+  skipping goal-less sessions. Two measured session shapes drive the
+  design: marathon projects (surfhop: 2 sessions / 1,694 messages;
+  dinner-menu-generator: 1 session / 2,483) vs turn-spawn antfarm (385
+  tiny sessions). **Clean import: 1,170 sessions → 99 experiences (330
+  reinforcements, 741 skipped, 0 errors, 19.5s)**; top pattern =
+  "response interrupted, continue" x321 (the colony's resume loop).
+  experience.jsonl gitignored (runtime artifact, stays local). Suite
+  1277 → 1288 OK. Spec: docs/s47-spec.md (S47.1 section).
 - 2026-09-04 — **S47 Experience Memory** —
   `qacompanion/agent/experience.py`: Experience record (goal/outcome/
   context/actions/failure/diagnosis/resolution/verification/confidence/
