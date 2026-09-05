@@ -80,6 +80,28 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S51 Skills 2.0** —
+  `qacompanion/agent/skills.py`: Skill schema (the exact S51 fields the
+  S50 resume seed already follows: name/goal/description/required_tools/
+  preconditions/procedure/verification/failure_modes/examples/confidence,
+  strict validation, identifier-like names because they map to files) +
+  SkillLibrary over skills/agent (TOLERANT loading: one malformed file
+  recorded in .errors and skipped — a library must not die on one bad
+  entry, unlike strict single-file stores) + deterministic keyword
+  retrieval (S47 pattern). Two brain-level tools: skill_find (READ_ONLY
+  — surfaces goal/preconditions/procedure/verification for the MODEL to
+  follow with its ordinary tools; nothing executes procedures
+  programmatically) and skill_teach (SAFE_WRITE — validated, atomic).
+  **The S50→S51 loop is closed**: the resume seed
+  (resume_interrupted_task.json) loads and is findable. Clarification
+  from the human, folded into the miner (S50 follow-up commit): bare
+  continuation pings ("continue") are boilerplate by exact match, but a
+  SUBSTANTIAL goal-less session (>=100 parts) is now mined with an
+  honest placeholder goal + goal-less tag — mid-session continues never
+  affected anything (the miner always took the first non-boilerplate
+  user text as the goal). agent_registry → 51 tools (exact count once,
+  in the combines-all test). Suite 1318 → 1332 OK. Spec:
+  docs/s51-spec.md.
 - 2026-09-05 — **S50 Learning From Agent Sessions** —
   `qacompanion/agent/session_learning.py`: mechanical outcome
   classification (COMPLETED+first-verify-ok = success, later-verify =
