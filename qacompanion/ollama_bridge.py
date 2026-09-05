@@ -41,6 +41,16 @@ def _configured_timeout() -> float:
     inference on bigger models legitimately exceeds 60s per generation.
     Call-time resolution (no reload hazards)."""
     return float(os.environ.get("OLLAMA_TIMEOUT", "60"))
+
+
+def _think_flag():
+    """S55: qwen3-class models think by default — huge <think> blocks
+    on CPU. OLLAMA_THINK=false sends think:false to disable it; unset
+    sends nothing (models without thinking support are unaffected)."""
+    value = os.environ.get("OLLAMA_THINK")
+    if value is None:
+        return None
+    return value.lower() in ("1", "true", "yes")
 DEFAULT_CASES = "cases.jsonl"
 DEFAULT_DIGEST = "digest.jsonl"
 
@@ -79,6 +89,9 @@ def _ollama_generate(prompt, model=None, url=None):
     base_url = url or os.environ.get("OLLAMA_URL") or DEFAULT_URL
     endpoint = f"{base_url}/api/generate"
     data = {"model": model, "prompt": prompt, "stream": False}
+    think = _think_flag()
+    if think is not None:
+        data["think"] = think
     result = _http_post(endpoint, data)
     return result.get("response", "") or ""
 

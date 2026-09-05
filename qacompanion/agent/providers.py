@@ -17,6 +17,7 @@ Live-provider tests are opt-in via QA_OLLAMA_LIVE=1 and never a CI gate
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
@@ -87,19 +88,30 @@ class GeminiModelProvider(ModelProvider):
                 "no gemini provider configured: set GEMINI_API_KEY")
         prompt = _flatten_messages(request.messages)
         body = {"contents": [{"parts": [{"text": prompt}]}]}
-        req = urllib.request.Request(
-            f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{self.model}:generateContent?key={self._api_key}",
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            raise ProviderError(f"gemini request failed: HTTP {exc.code}")                 from exc
-        except Exception as exc:
-            raise ProviderError(f"gemini request failed: {exc}") from exc
+        # 503 high-demand spikes are transient: retry with backoff
+        last_error: Optional[Exception] = None
+        for attempt in range(3):
+            req = urllib.request.Request(
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{self.model}:generateContent?key={self._api_key}",
+                data=json.dumps(body).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                last_error = None
+                break
+            except urllib.error.HTTPError as exc:
+                last_error = ProviderError(
+                    f"gemini request failed: HTTP {exc.code}")
+                if exc.code != 503:
+                    raise last_error from exc
+                time.sleep(5.0 * (attempt + 1))
+            except Exception as exc:
+                raise ProviderError(f"gemini request failed: {exc}") from exc
+        if last_error is not None:
+            raise last_error
         try:
             text = "".join(str(part.get("text", "")) for part
                            in data["candidates"][0]["content"]["parts"])
