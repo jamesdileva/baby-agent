@@ -69,7 +69,7 @@ class TestRegistration(unittest.TestCase):
         tmp = Path(tempfile.mkdtemp())
         try:
             reg = agent_registry(Workspace(tmp))
-            self.assertEqual(len(reg.names()), 32)
+            self.assertEqual(len(reg.names()), 41)
             self.assertIn("case_search", reg.names())
             self.assertIn("write_file", reg.names())
             self.assertIn("run_command", reg.names())
@@ -83,6 +83,8 @@ class TestRegistration(unittest.TestCase):
             self.assertIn("capture_screen", reg.names())
             self.assertIn("inspect_image", reg.names())
             self.assertIn("compare_images", reg.names())
+            self.assertIn("start_process", reg.names())
+            self.assertIn("health_check", reg.names())
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 

@@ -408,6 +408,7 @@ def agent_registry(
     from .execution import ExecutionToolkit
     from .git_tools import GitToolkit
     from .registry import default_knowledge_registry
+    from .processes import ProcessToolkit
     from .verification import VerificationToolkit
     from .vision import VisionToolkit
     from .webfetch import WebFetchToolkit
@@ -432,5 +433,7 @@ def agent_registry(
     for tool in WebFetchToolkit(workspace).tools():
         registry.register(tool)
     for tool in VisionToolkit(workspace, vision_provider).tools():
+        registry.register(tool)
+    for tool in ProcessToolkit(workspace).tools():
         registry.register(tool)
     return registry

@@ -104,8 +104,9 @@ class CommandResult:
         )
 
 
-def _kill_tree(proc: subprocess.Popen) -> None:
-    """Kill the process and its children (tree), best effort."""
+def kill_process_tree(proc: subprocess.Popen) -> None:
+    """Kill the process and its children (tree), best effort. Public since
+    S45 (ProcessManager stops servers the same way commands time out)."""
     try:
         if os.name == "nt":
             subprocess.run(
@@ -194,7 +195,7 @@ def execute_command(
         stdout, stderr = proc.communicate(timeout=effective_timeout)
     except subprocess.TimeoutExpired:
         timed_out = True
-        _kill_tree(proc)
+        kill_process_tree(proc)
         try:
             stdout, stderr = proc.communicate(timeout=KILL_REAP_GRACE)
         except Exception:
