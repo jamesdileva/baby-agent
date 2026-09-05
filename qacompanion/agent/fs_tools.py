@@ -403,6 +403,7 @@ def agent_registry(
     vision_provider=None,
     experience_store=None,
     journal_path=None,
+    skill_dir=None,
 ) -> ToolRegistry:
     """Registry preloaded with knowledge + filesystem + execution + git +
     environment + verification + web research/fetch + vision tools."""
@@ -413,6 +414,7 @@ def agent_registry(
     from .git_tools import GitToolkit
     from .registry import default_knowledge_registry
     from .processes import ProcessToolkit
+    from .skills import SkillLibrary, SkillToolkit
     from .verification import VerificationToolkit
     from .vision import VisionToolkit
     from .webfetch import WebFetchToolkit
@@ -445,5 +447,7 @@ def agent_registry(
     for tool in MemoryToolkit(
             experience_store, cases_path=cases_path, digest_path=digest_path,
             journal_path=journal_path).tools():
+        registry.register(tool)
+    for tool in SkillToolkit(SkillLibrary(skill_dir)).tools():
         registry.register(tool)
     return registry
