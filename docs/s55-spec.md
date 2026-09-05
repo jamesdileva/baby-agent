@@ -90,3 +90,35 @@ Native adapters landed with hermetic tests; **the bake-off table
 re-run on native tool calling** (docs/bakeoff-s55.md updated with a
 native section); a model that honestly passes the defect-fix benchmark
 would close the S48 goal. Full suite green; preflight clean.
+
+
+## Slice 5 — native-only prompting + lean catalog + head-to-head
+
+The bake-off's diagnosis (catalog weight + prompt conflict) becomes
+engineering:
+
+1. **Native-only prompting**: `build_system_prompt(..., native_tools)`
+   — when the provider is native-capable (`provider.native_tools`),
+   the textual `[TOOL: ...]` protocol is NOT taught; the catalog is
+   listed, the native tools are attached, done. Textual providers keep
+   the protocol teaching. Providers declare capability:
+   `OllamaProvider(native_tools=True)`, `GeminiModelProvider
+   .native_tools = True`; unknown providers default False (textual).
+2. **Lean catalog**: the loop accepts `tool_catalog` (a name filter) —
+   the model sees only those ToolDefinitions in request.tools AND the
+   system-prompt listing; the registry still holds everything (the
+   harness can execute tools the model wasn't offered). The benchmark
+   offers the LEAN_CODING_TOOLS set (7 filesystem + 5 execution = 12
+   tools) instead of all 22 — halving catalog weight for CPU models.
+
+## Head-to-head (four local models, best config each)
+
+```text
+qwen3:4b            native + native-prompt + lean catalog
+qwen2.5-coder:3b    TEXTUAL (no Ollama native tool support) + lean
+phi4-mini (3.8B)    native + native-prompt + lean (edge-focused = fast CPU)
+granite3.3:2b       native attempt; fallback textual if 0 calls
+```
+
+Success bar: honest tool usage + the defect fixed + unit-tests pass.
+Everything is recorded either way.
