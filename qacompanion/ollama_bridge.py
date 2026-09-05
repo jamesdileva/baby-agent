@@ -43,6 +43,20 @@ def _configured_timeout() -> float:
     return float(os.environ.get("OLLAMA_TIMEOUT", "60"))
 
 
+def _num_ctx():
+    """S55: Ollama's default context window (~2048 tokens) overflows the
+    moment a tool catalog is attached — tool schemas + protocol prompt
+    get truncated and the model loses the plot. OLLAMA_NUM_CTX raises
+    it (e.g. 8192); unset leaves the server default."""
+    value = os.environ.get("OLLAMA_NUM_CTX")
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
 def _think_flag():
     """S55: qwen3-class models think by default — huge <think> blocks
     on CPU. OLLAMA_THINK=false sends think:false to disable it; unset
@@ -92,6 +106,9 @@ def _ollama_generate(prompt, model=None, url=None):
     think = _think_flag()
     if think is not None:
         data["think"] = think
+    num_ctx = _num_ctx()
+    if num_ctx is not None:
+        data["options"] = {"num_ctx": num_ctx}
     result = _http_post(endpoint, data)
     return result.get("response", "") or ""
 
@@ -108,6 +125,9 @@ def _ollama_chat(messages, tools=None, model=None, url=None,
         data["tools"] = tools
     if think is not None:
         data["think"] = think
+    num_ctx = _num_ctx()
+    if num_ctx is not None:
+        data["options"] = {"num_ctx": num_ctx}
     result = _http_post(endpoint, data, timeout=300)
     return result
 
