@@ -244,8 +244,8 @@ class TestRegistration(CodeIntelBase):
 
     def test_agent_registry_includes_code_tools(self):
         reg = agent_registry(self.ws)
-        self.assertEqual(len(reg.names()), 46)
         self.assertIn("code_symbols", reg.names())
+        self.assertIn("code_diagnostics", reg.names())
 
 
 if __name__ == "__main__":

@@ -401,11 +401,14 @@ def agent_registry(
     change_ledger: Optional[ChangeLedger] = None,
     search_provider=None,
     vision_provider=None,
+    experience_store=None,
+    journal_path=None,
 ) -> ToolRegistry:
     """Registry preloaded with knowledge + filesystem + execution + git +
     environment + verification + web research/fetch + vision tools."""
     from .codeintel import CodeIntelToolkit
     from .environment import EnvironmentToolkit
+    from .experience import MemoryToolkit
     from .execution import ExecutionToolkit
     from .git_tools import GitToolkit
     from .registry import default_knowledge_registry
@@ -438,5 +441,9 @@ def agent_registry(
     for tool in ProcessToolkit(workspace).tools():
         registry.register(tool)
     for tool in CodeIntelToolkit(workspace).tools():
+        registry.register(tool)
+    for tool in MemoryToolkit(
+            experience_store, cases_path=cases_path, digest_path=digest_path,
+            journal_path=journal_path).tools():
         registry.register(tool)
     return registry
