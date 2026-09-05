@@ -80,6 +80,26 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S50 Learning From Agent Sessions** —
+  `qacompanion/agent/session_learning.py`: mechanical outcome
+  classification (COMPLETED+first-verify-ok = success, later-verify =
+  recovered, FAILED = failed, CANCELLED/unverified = partial —
+  human_corrected/unsafe stay unimplemented until intervention tracking
+  exists), session_to_experience capture (qa_memory advice harvested
+  into diagnosis, actions, tags incl. "unverified"), record_session;
+  rule-based Curator delivering the human-directed backlog (greeting
+  pings removed, ×321 resume pattern PROMOTED to skill seed
+  skills/agent/resume_interrupted_task.json — S51-schema DATA, nothing
+  loads it until S51 — and removed from the episodic store); miner
+  error→patch enrichment (substantive error lines preferred over bare
+  traceback headers, resolution claimed only when a patch follows the
+  error); benchmark harness records sessions as experiences (loop stays
+  pure). **Live corpus final state: 1,170 sessions → 95 curated
+  experiences** (1,062 sessions skipped as boilerplate/trivial — the
+  continuation template is now boilerplate at the source, so curator
+  and miner no longer fight; the 2 enriched pairs sitting under resume
+  goals were traded away deliberately — S62's deeper extraction recovers
+  them from the DB). Suite 1306 → 1318 OK. Spec: docs/s50-spec.md.
 - 2026-09-05 — **S49 QA Brain Integration** —
   `qacompanion/agent/qa_brain.py`: the architecture payoff — when a tool
   fails, the colony's accumulated QA intelligence is injected into the
