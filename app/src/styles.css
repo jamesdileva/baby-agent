@@ -1,0 +1,10 @@
+body { font-family: system-ui, sans-serif; margin: 0; background: #101418; color: #d8dee6; }
+.app { max-width: 860px; margin: 0 auto; padding: 1rem; }
+section { background: #181e24; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.75rem; }
+h1 { font-size: 1.3rem; } h2 { font-size: 1rem; color: #8ab4f8; }
+textarea, input { width: 100%; box-sizing: border-box; background: #0d1117; color: inherit; border: 1px solid #2c3440; border-radius: 4px; padding: 0.4rem; margin: 0.2rem 0; font-family: inherit; }
+button { background: #2563eb; color: white; border: none; border-radius: 4px; padding: 0.45rem 0.9rem; margin: 0.2rem 0.2rem 0.2rem 0; cursor: pointer; }
+ul { list-style: none; padding-left: 0; font-size: 0.85rem; }
+li { padding: 0.15rem 0; border-bottom: 1px solid #212933; }
+.type { color: #8ab4f8; }
+.done { color: #7ee787; }

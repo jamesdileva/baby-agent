@@ -196,6 +196,20 @@ def make_handler(app: AgentServerApp):
             path, _, query = self.path.partition("?")
             params = dict(pair.split("=", 1) for pair in query.split("&")
                           if "=" in pair)
+            if path == "/" or not path.startswith("/api/"):
+                dist = Path(__file__).resolve().parents[2] / "app" / "dist"
+                index = dist / "index.html"
+                if index.exists():
+                    body = index.read_bytes()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                else:
+                    self._json({"error": "dashboard not built (npm run "
+                                         "build in app/)"}, 404)
+                return
             if path == "/api/health":
                 self._json({"status": "ok", "api": "baby-agent/v1"})
             elif path == "/api/sessions":

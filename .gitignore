@@ -3,3 +3,7 @@ __pycache__/
 .venv/
 digest.jsonl
 experience.jsonl
+
+# S52 dashboard
+app/node_modules/
+app/dist/
