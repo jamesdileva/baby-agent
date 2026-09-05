@@ -341,9 +341,10 @@ class TestPromptAndSession(unittest.TestCase):
         # its own call syntax)
         self.assertIn('[TOOL: write_file(path="notes.txt"', prompt)
 
-    def test_textual_ollama_path_end_to_end(self):
-        """Hermetic proof of the exact live wire format: scripted bridge
-        output parsed by the real OllamaProvider, driven by the real loop."""
+    def test_native_ollama_path_end_to_end(self):
+        """Hermetic proof of the live wire format since S55 slice 4:
+        /api/chat with native tools, scripted at the bridge, driven by
+        the real loop and parsed by the real OllamaProvider."""
         from unittest.mock import patch
         import shutil as _shutil
 
@@ -351,21 +352,24 @@ class TestPromptAndSession(unittest.TestCase):
         try:
             ws = Workspace(tmp)
             reg = _registry(tmp, ws)
-            responses = [
-                # NOTE: _is_ollama_available is fully mocked, so no ping is
-                # made and every scripted entry is a real model turn
-                'I will create the file.\n'
-                '[TOOL: write_file(path="hello.txt", content="Hello from Baby-Agent")]',
-                "The file is created with the exact text.",
+            chat_responses = [
+                {"message": {"role": "assistant", "content":
+                             "I will create the file.",
+                             "tool_calls": [{"function": {
+                                 "name": "write_file",
+                                 "arguments": {
+                                     "path": "hello.txt",
+                                     "content": "Hello from Baby-Agent"}}}]}},
+                {"message": {"role": "assistant", "content":
+                             "The file is created with the exact text."}},
             ]
 
-            def scripted_generate(prompt, model=None, url=None):
-                return responses.pop(0)
+            def scripted_chat(messages, tools=None, model=None, url=None,
+                              think=None):
+                return chat_responses.pop(0)
 
-            with patch("qacompanion.ollama_bridge._is_ollama_available",
-                       return_value=True), \
-                 patch("qacompanion.ollama_bridge._ollama_generate",
-                       side_effect=scripted_generate):
+            with patch("qacompanion.ollama_bridge._ollama_chat",
+                       side_effect=scripted_chat):
                 provider = OllamaProvider()
                 loop = AgentLoop(provider, reg, ws)
                 session = loop.run(

@@ -86,6 +86,8 @@ class GeminiModelProvider(ModelProvider):
         if not self._api_key:
             raise ProviderError(
                 "no gemini provider configured: set GEMINI_API_KEY")
+        if request.tools:
+            return self._generate_native(request)
         prompt = _flatten_messages(request.messages)
         body = {"contents": [{"parts": [{"text": prompt}]}]}
         # 503 high-demand spikes are transient: retry with backoff
@@ -121,6 +123,65 @@ class GeminiModelProvider(ModelProvider):
             raise ProviderError("gemini response missing usable content")
         return ModelResponse(text=text, finish_reason="stop",
                              model=self.model)
+
+    def _generate_native(self, request: ModelRequest) -> ModelResponse:
+        """Gemini function_declarations -> functionCall parts
+        (DECISIONS 2026-09-05: native tool calling)."""
+        import urllib.error as _uerr
+        import urllib.request as _ureq
+
+        declarations = [{
+            "name": t.name,
+            "description": t.description,
+            "parameters": t.parameters_schema,
+        } for t in request.tools]
+        contents = []
+        for message in request.messages:
+            role = "model" if message.role in ("assistant", "tool")                 else "user"
+            contents.append({"role": role, "parts": [{"text": message.content}]})
+        body = {
+            "contents": contents,
+            "tools": [{"function_declarations": declarations}],
+        }
+        last_error: Optional[Exception] = None
+        for attempt in range(3):
+            req = _ureq.Request(
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{self.model}:generateContent?key={self._api_key}",
+                data=json.dumps(body).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
+            try:
+                with _ureq.urlopen(req, timeout=60) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                last_error = None
+                break
+            except _uerr.HTTPError as exc:
+                last_error = ProviderError(
+                    f"gemini request failed: HTTP {exc.code}")
+                if exc.code != 503:
+                    raise last_error from exc
+                time.sleep(5.0 * (attempt + 1))
+            except Exception as exc:
+                raise ProviderError(f"gemini request failed: {exc}") from exc
+        if last_error is not None:
+            raise last_error
+        try:
+            parts = data["candidates"][0]["content"]["parts"]
+        except (KeyError, IndexError, TypeError):
+            parts = []
+        calls = [ToolCall(name=part["functionCall"]["name"],
+                          arguments=dict(part["functionCall"].get("args")
+                                         or {}))
+                 for part in parts if "functionCall" in part]
+        text = "".join(str(part.get("text", "")) for part in parts
+                       if "text" in part).strip()
+        return ModelResponse(
+            text=text,
+            tool_calls=calls,
+            finish_reason="tool_calls" if calls else "stop",
+            model=self.model,
+        )
 
 
 def _flatten_messages(messages: List[ModelMessage]) -> str:
@@ -177,6 +238,49 @@ class OllamaProvider(ModelProvider):
         # no availability pre-check: the bridge's ping is itself a full
         # generation (2x cost per turn) and one flaky ping would kill the
         # loop — a dead Ollama surfaces naturally as ProviderError below
+        if request.tools:
+            # DECISIONS 2026-09-05: native tool calling is the primary
+            # contract when tools are declared
+            return self._generate_native(request, model)
+        return self._generate_textual(request, model)
+
+    def _generate_native(self, request: ModelRequest,
+                         model: Optional[str]) -> ModelResponse:
+        """Ollama /api/chat with structured tools (DECISIONS 2026-09-05)."""
+        messages = [{"role": m.role, "content": m.content}
+                    for m in request.messages]
+        tools = [{
+            "type": "function",
+            "function": {
+                "name": t.name,
+                "description": t.description,
+                "parameters": t.parameters_schema,
+            },
+        } for t in request.tools]
+        think = bridge._think_flag()
+        try:
+            data = bridge._ollama_chat(messages, tools=tools, model=model,
+                                       url=self.url, think=think)
+        except bridge.OllamaError as exc:
+            raise ProviderError(f"ollama failure: {exc}") from exc
+        message = data.get("message") or {}
+        calls = [
+            ToolCall(name=tc.get("function", {}).get("name", "unknown"),
+                     arguments=dict(tc.get("function", {}).get("arguments")
+                                    or {}))
+            for tc in (message.get("tool_calls") or [])
+        ]
+        text = message.get("content") or ""
+        return ModelResponse(
+            text=text,
+            tool_calls=calls,
+            finish_reason="tool_calls" if calls else "stop",
+            usage=None,
+            model=model or os.environ.get("OLLAMA_MODEL") or bridge.DEFAULT_MODEL,
+        )
+
+    def _generate_textual(self, request: ModelRequest,
+                          model: Optional[str]) -> ModelResponse:
         try:
             prompt = _flatten_messages(request.messages)
             text = bridge._ollama_generate(prompt, model=model, url=self.url)

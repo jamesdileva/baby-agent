@@ -96,6 +96,22 @@ def _ollama_generate(prompt, model=None, url=None):
     return result.get("response", "") or ""
 
 
+def _ollama_chat(messages, tools=None, model=None, url=None,
+                 think=None):
+    """S55: /api/chat with native structured tool calling. Returns the
+    parsed response (message.tool_calls carries the model's calls)."""
+    model = model or os.environ.get("OLLAMA_MODEL") or DEFAULT_MODEL
+    base_url = url or os.environ.get("OLLAMA_URL") or DEFAULT_URL
+    endpoint = f"{base_url}/api/chat"
+    data = {"model": model, "messages": messages, "stream": False}
+    if tools:
+        data["tools"] = tools
+    if think is not None:
+        data["think"] = think
+    result = _http_post(endpoint, data, timeout=300)
+    return result
+
+
 def _is_ollama_available(model=None, url=None):
     """Ping Ollama with a trivial prompt; return True if it responds."""
     try:
