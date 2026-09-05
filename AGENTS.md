@@ -80,6 +80,22 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S55 slice 1 (model routing & bake-off)** — Research
+  (cited in docs/s55-spec.md): Qwen3-4B is the 3–4B class favorite
+  ("unusually strong tool-calling priors" — ertas.ai; best small base
+  model — distillabs.ai; runs on CPU ~1.5s/turn — r/LocalLLaMA),
+  Phi-4-mini the alternative; 30B MoE excluded (17 GB RAM). Spec:
+  docs/s55-spec.md — bake-off via the S48 harness (controls 1.5b + 8b,
+  challengers qwen3:4b + qwen2.5-coder:3b), role sketch to validate
+  (local coder brain / qwen2.5vl vision / free-Gemini escalation).
+  Slice 1 landed: **OLLAMA_TIMEOUT** call-time configurable bridge
+  timeout (the 8B 180s monkey-patch becomes configuration; reload-free
+  env resolution after importlib.reload poisoned cross-module refs) +
+  **GeminiModelProvider** (agent loop backend, PLAIN generation per the
+  no-billing ruling — distinct from GeminiSearchProvider; the
+  escalation/research candidate in the role sketch). Model pulls
+  (qwen3:4b, qwen2.5-coder:3b) kicked off in background; bake-off run +
+  router are slices 2/3. Suite 1342 → 1349 OK. Spec: docs/s55-spec.md.
 - 2026-09-05 — **S52 close-out + live walkthrough** — `qa serve` CLI
   wired (localhost dashboard server, Ctrl+C clean shutdown); Electron
   deferral recorded in ROADMAP §S52. Live browser walkthrough caught a
