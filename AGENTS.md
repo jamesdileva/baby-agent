@@ -80,6 +80,27 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S55 slice 4 + PASS (native tool-calling adapters)** —
+  DECISIONS 2026-09-05: native tool calling is the primary provider
+  contract when tools are declared; textual protocol demotes to shim.
+  OllamaProvider: /api/chat with structured tools (tools declared ->
+  native; absent -> /api/generate textual). GeminiModelProvider:
+  function_declarations -> functionCall parts + Gemini-safe schema
+  coercion (registry arrays/objects 400'd without items/properties) +
+  GEMINI_TIMEOUT env + 503 retry-with-backoff + OLLAMA_NUM_CTX env
+  (bridge never set a context window — 23 tool schemas overflowed the
+  ~2048 default). **THE BENCHMARK PASSED**: gemini-3.1-flash-lite via
+  native function calling completed the defect-fix benchmark
+  autonomously — 6 iterations, 144s, calculator.py fixed,
+  unit-tests=pass verified, 0 tool failures, 0 interventions. First
+  honest pass in project history; the S48 goal condition is closed.
+  Native retest of locals: qwen2.5-coder:3b has NO Ollama native tool
+  support (0 calls in 25 iterations); qwen3:4b native + num_ctx still
+  timeout-prone on CPU (0 calls in 6 iterations, 22 min) — revisit on
+  GPU. Bake-off table updated (docs/bakeoff-s55.md). Role sketch
+  validated: gemini-3.1-flash-lite = brain for real tasks; local
+  qwen models = cheap/routine + vision; loop accepts any provider.
+  Suite 1349 → 1354 OK.
 - 2026-09-05 — **S55 slice 2 (bake-off)** — Seven-model defect-fix
   bake-off complete (docs/bakeoff-s55.md): every brain failed —
   1.5b faked evidence, 8b too slow, qwen2.5-coder:3b drove 107 tool
