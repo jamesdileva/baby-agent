@@ -25,6 +25,7 @@ Pins (fixtures-first discipline):
 """
 
 import json
+import re
 import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -53,6 +54,9 @@ def _clean_goal(text: str) -> str:
     return cut[:cut.rfind(" ")].rstrip(",;:") + "…"
 MINED_OUTCOME = "partial"
 MINED_CONFIDENCE = 0.3
+
+
+ERROR_SHAPE_RE = re.compile(r"Traceback \(|Error|FAIL|error:", re.IGNORECASE)
 
 
 class MiningError(Exception):
@@ -148,6 +152,41 @@ class OpencodeMiner:
             "tool_count": len(tools),
         }
 
+    def _error_patch(self, con: sqlite3.Connection, session_id: str
+                     ) -> "tuple[Optional[str], Optional[str]]":
+        """Conservative error->patch correlation: when an error-shaped
+        tool output is followed by a later patch part in the same
+        session, report failure line + honest resolution note."""
+        first_error = None
+        patch_after = False
+        for row in con.execute(
+                "SELECT time_created, data FROM part WHERE session_id = ? "
+                "ORDER BY time_created", (session_id,)).fetchall():
+            try:
+                part = json.loads(row["data"])
+            except (json.JSONDecodeError, TypeError):
+                continue
+            ptype = part.get("type")
+            if ptype == "tool":
+                output = str((part.get("state") or {}).get("output") or "")
+                for line in output.splitlines():
+                    if not ERROR_SHAPE_RE.search(line):
+                        continue
+                    if "Traceback (" in line:
+                        # bare header: weak fallback only — keep scanning
+                        # for the substantive error line past it
+                        if first_error is None:
+                            first_error = line.strip()[:200]
+                        continue
+                    first_error = line.strip()[:200]  # strong line wins
+                    break
+            elif ptype == "patch" and first_error is not None:
+                patch_after = True
+        if first_error is None:
+            return None, None
+        resolution = "fix applied via patch" if patch_after else None
+        return first_error, resolution
+
     def mine_session(self, session_row: Dict[str, Any],
                      store: Optional[ExperienceStore] = None
                      ) -> Optional[Experience]:
@@ -157,6 +196,7 @@ class OpencodeMiner:
             volume = self._session_volume(con, session_id)
             goal = self._user_text(con, session_id)
             tool_info = self._tool_actions(con, session_id)
+            failure, resolution = self._error_patch(con, session_id)
         finally:
             con.close()
 
@@ -186,6 +226,8 @@ class OpencodeMiner:
             outcome=MINED_OUTCOME,
             session_id=session_id,
             actions=tool_info["actions"],
+            failure=failure,
+            resolution=resolution,
             context=context,
             tags=["opencode", Path(directory).name.lower()
                   if directory else "unknown"],

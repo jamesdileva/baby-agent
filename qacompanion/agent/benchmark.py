@@ -26,6 +26,7 @@ from typing import Any, Dict, Optional
 
 from .events import EventStream
 from .execution import ExecutionToolkit
+from .session_learning import record_session
 from .fs_tools import FilesystemToolkit
 from .codeintel import CodeIntelToolkit
 from .experience import ExperienceStore, MemoryToolkit
@@ -143,6 +144,10 @@ def _coding_registry(workspace: Workspace,
     return registry
 
 
+def report_model(provider) -> str:
+    return getattr(provider, "model", None) or provider.name
+
+
 def run_benchmark(provider, config=None, workspace_root=None,
                   experience_store: Optional[ExperienceStore] = None,
                   events: Optional[EventStream] = None,
@@ -162,11 +167,16 @@ def run_benchmark(provider, config=None, workspace_root=None,
     session = loop.run(BENCHMARK_GOAL)
     duration = time.monotonic() - started
 
+    if experience_store is not None:
+        # S50: the harness records the session as experience — the loop
+        # stays pure, recording is a harness concern
+        record_session(session, experience_store, model=report_model(provider))
+
     types = events.types()
     report = BenchmarkReport(
         task="defect-fix-calculator",
         goal=BENCHMARK_GOAL,
-        model=getattr(provider, "model", None) or provider.name,
+        model=report_model(provider),
         success=session.state.value == "COMPLETED",
         termination_reason=session.termination_reason or "",
         iterations=session.iterations,

@@ -52,6 +52,27 @@ def _query_terms(output_text: str) -> str:
     return " ".join(words)
 
 
+def failure_text(result: ToolResult) -> Optional[str]:
+    """Extract failure substance, or None when nothing failed.
+
+    Two failure shapes: a failed ToolResult itself, and the S35
+    convention where run_command-family results are ok=True with the
+    embedded CommandResult carrying the nonzero exit code. Module-level
+    since S50 (session harvesting reuses it).
+    """
+    if not result.ok:
+        return (result.error or "") + "\n" + (result.output or "")
+    try:
+        payload = json.loads(result.output)
+    except (ValueError, TypeError):
+        return None
+    if isinstance(payload, dict) \
+            and payload.get("exit_code") not in (0, None):
+        return (payload.get("stderr") or "") + "\n" \
+            + (payload.get("stdout") or "")
+    return None
+
+
 class QABrain:
     """Layered failure advice from the colony's accumulated memory."""
 
