@@ -404,6 +404,7 @@ def agent_registry(
 ) -> ToolRegistry:
     """Registry preloaded with knowledge + filesystem + execution + git +
     environment + verification + web research/fetch + vision tools."""
+    from .codeintel import CodeIntelToolkit
     from .environment import EnvironmentToolkit
     from .execution import ExecutionToolkit
     from .git_tools import GitToolkit
@@ -435,5 +436,7 @@ def agent_registry(
     for tool in VisionToolkit(workspace, vision_provider).tools():
         registry.register(tool)
     for tool in ProcessToolkit(workspace).tools():
+        registry.register(tool)
+    for tool in CodeIntelToolkit(workspace).tools():
         registry.register(tool)
     return registry

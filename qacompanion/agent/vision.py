@@ -58,6 +58,9 @@ SRCCOPY = 0x00CC0020
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
+_UNSET = object()  # sentinel: "argument omitted"
+
+
 class VisionError(ToolOperationError):
     """Structured vision failure (platform, capture, provider, caps)."""
 
@@ -259,9 +262,10 @@ class FakeVisionProvider(VisionProvider):
 class GeminiVisionProvider(VisionProvider):
     """Gemini multimodal (plain request — no grounding tool)."""
 
-    def __init__(self, api_key: Optional[str] = None,
-                 model: Optional[str] = None):
-        self._api_key = api_key or os.environ.get("GEMINI_API_KEY")
+    def __init__(self, api_key=_UNSET, model: Optional[str] = None):
+        # sentinel: explicit None = definitely no key (tests); omitted =
+        # fall back to the environment (production default)
+        self._api_key = os.environ.get("GEMINI_API_KEY")             if api_key is _UNSET else api_key
         self.model = model or os.environ.get("GEMINI_VISION_MODEL") \
             or DEFAULT_VISION_MODEL
 

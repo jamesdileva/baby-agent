@@ -273,13 +273,15 @@ class TestVisionTools(unittest.TestCase):
         self.assertEqual(self.provider.calls, [])
 
     def test_inspect_without_provider_structured_error(self):
-        import os
-        bare = VisionToolkit(self.ws, None)
-        reg = ToolRegistry()
-        for tool in bare.tools():
-            reg.register(tool)
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("GEMINI_API_KEY", None)
+            # construct INSIDE the popped env (hermeticity): provider
+            # resolution happens at toolkit construction and must never
+            # see the ambient key
+            bare = VisionToolkit(self.ws, None)
+            reg = ToolRegistry()
+            for tool in bare.tools():
+                reg.register(tool)
             result = reg.execute(
                 ToolCall(name="inspect_image", arguments={"path": "shot.png"}),
                 workspace=self.ws, policy=ALLOW_ALL_POLICY)

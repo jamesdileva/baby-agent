@@ -40,6 +40,9 @@ GEMINI_TIMEOUT = 30.0
 MAX_SOURCES_DEFAULT = 5
 
 
+_UNSET = object()  # sentinel: "argument omitted"
+
+
 class WebSearchError(ToolOperationError):
     """Structured search failure (no provider, HTTP error, shape drift)."""
 
@@ -159,9 +162,10 @@ def _extract_grounding(data: Dict[str, Any]) -> tuple:
 class GeminiSearchProvider(WebSearchProvider):
     """Google AI Studio generateContent grounded with Google Search."""
 
-    def __init__(self, api_key: Optional[str] = None,
-                 model: Optional[str] = None):
-        self._api_key = api_key or os.environ.get("GEMINI_API_KEY")
+    def __init__(self, api_key=_UNSET, model: Optional[str] = None):
+        # sentinel: explicit None = definitely no key (tests); omitted =
+        # fall back to the environment (production default)
+        self._api_key = os.environ.get("GEMINI_API_KEY")             if api_key is _UNSET else api_key
         self.model = model or os.environ.get("GEMINI_MODEL") \
             or DEFAULT_GEMINI_MODEL
 

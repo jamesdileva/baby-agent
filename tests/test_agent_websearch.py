@@ -236,9 +236,11 @@ class TestWebSearchTool(unittest.TestCase):
 
     def test_no_provider_is_structured_error(self):
         from qacompanion.agent.registry import ALLOW_ALL_POLICY
-        reg = self._registry(None)
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("GEMINI_API_KEY", None)
+            # construct INSIDE the popped env: provider resolution happens
+            # at toolkit construction and must never see the ambient key
+            reg = self._registry(None)
             result = reg.execute(ToolCall(name="web_search",
                                           arguments={"query": "q"}),
                                  workspace=self.ws, policy=ALLOW_ALL_POLICY)
