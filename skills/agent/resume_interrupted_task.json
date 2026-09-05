@@ -1,0 +1,37 @@
+{
+  "name": "resume_interrupted_task",
+  "goal": "Resume an interrupted task from partial state without redoing completed work",
+  "description": "A previous session worked in this workspace and was interrupted mid-task. Recover the state, finish the job, and prove it.",
+  "required_tools": [
+    "list_directory",
+    "read_file",
+    "search_code",
+    "run_tests",
+    "run_command",
+    "edit_file"
+  ],
+  "preconditions": [
+    "a prior session worked here and was interrupted",
+    "the workspace may contain partially completed work"
+  ],
+  "procedure": [
+    "Inspect the workspace for partially completed work (new/modified files vs git status)",
+    "Read any leftover test or verification output",
+    "Determine the last completed step from evidence",
+    "Continue from the next step — never from scratch",
+    "Re-run the verification plan to prove completion"
+  ],
+  "verification": "The project's verification plan passes (tests/build green); COMPLETED only on proof",
+  "failure_modes": [
+    "assuming prior work is complete",
+    "redoing finished steps",
+    "missing leftover broken state"
+  ],
+  "examples": [
+    {
+      "goal": "Your previous response was interrupted. Continue where you left off",
+      "source": "opencode corpus, 321 reinforced occurrences (S47.1)"
+    }
+  ],
+  "confidence": 0.6
+}
