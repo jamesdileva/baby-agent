@@ -80,6 +80,17 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S52 close-out + live walkthrough** — `qa serve` CLI
+  wired (localhost dashboard server, Ctrl+C clean shutdown); Electron
+  deferral recorded in ROADMAP §S52. Live browser walkthrough caught a
+  real bug: static asset requests were served index.html (module never
+  loaded) — fixed with traversal-proof static serving from app/dist
+  (content types, SPA fallback). End-to-end from the dashboard UI:
+  Start agent -> live SSE feed (21 events) -> session completed;
+  qwen2.5-coder:1.5b again tried faking evidence (writing logs.txt) and
+  the no-clobber guard refused it twice in the UI context. Honest
+  limitation visible: dashboard sessions without verify_command
+  complete unverified (S50 records them partial). Suite 1341 → 1342 OK.
 - 2026-09-05 — **S52 Desktop UI (API-first; Electron deferred)** —
   `qacompanion/agent/server.py`: the runtime's local API layer in
   STDLIB (ThreadingHTTPServer) — REST (health, session
