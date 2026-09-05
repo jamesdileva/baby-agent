@@ -623,6 +623,19 @@ changed, failures, diagnoses, fixes, verification, outcome, human
 interventions. Classify: successful / failed / recovered / human-corrected /
 partially successful / unsafe / inefficient.
 
+**Notes (2026-09-05, human-directed curation backlog — mined corpus from
+S47.1 lives in experience.jsonl: 1,170 sessions → 99 experiences).**
+This sprint owns: (1) a curation pass over the 99 mined experiences
+(drop greeting pings like "hello" ×7, drop/merge low-value patterns);
+(2) merge the ×321 resume pattern ("Your previous response was
+interrupted. Continue where you left off") into a proper SKILL
+(resume_interrupted_task) rather than an experience; (3) deeper
+marathon-session extraction — diagnosis/resolution mining from the
+big-content projects (surfhop: 2 sessions/1,694 msgs,
+dinner-menu-generator: 1/2,483, sentinel: 50k parts) where outcome and
+fix work is inferable from edit/patch parts. See also S62 for the full
+curation machinery.
+
 **Verification.** Run a task with an unknown failure, recover, verify a new
 experience/case exists with signature, diagnosis, resolution, verification,
 timestamp.
@@ -725,6 +738,37 @@ escalation model   -> stuck situations
 
 Router inputs: task type, difficulty, context size, latency budget, privacy,
 cost, availability, failure count.
+
+**Notes (2026-09-05, from S48 live benchmark data — no worklog dig needed).**
+
+Measured on the S48 defect-fix benchmark (CPU-only machine, no GPU):
+
+```text
+qwen2.5-coder:1.5b   fast (~5s/turn) but UNRELIABLE: 0 test runs,
+                     7 premature-done claims (all rejected by the
+                     verifier), faked evidence via log files
+llama3.1:8b          too slow on CPU: 5 tool-call errors, per-request
+                     timeouts even at 180s, 397s for 3 iterations
+```
+
+Sprint agenda (human + agents):
+1. **Bake-off candidates between 1.5B and 8B** — human suggestion:
+   qwen2.5-coder:3b / 5b class. Research current options, run the S48
+   benchmark as the bake-off harness (it already produces comparable
+   metrics per model).
+2. **Make the bridge HTTP timeout configurable** (currently hardcoded
+   60s in ollama_bridge._http_post) — a hard cap slow models always
+   hit; smoke runs had to monkey-patch it.
+3. **Role sketch (human direction, to validate with the bake-off)**:
+   local qwen2.5-coder variant as the BRAIN (coder), qwen2.5vl:3b
+   (already pulled) as VISION, free-tier Gemini as
+   RESEARCH/ESCALATION helper when baby-agent gets stuck — Gemini is
+   quota-limited so it stays the on-demand helper, not the default.
+4. **GeminiModelProvider adapter** (plain mode, no grounding — works
+   free per the no-billing ruling) so the loop/benchmark can run on a
+   cloud model; ModelProvider already accepts any backend.
+5. Benchmark categories beyond defect-fix come after the bake-off picks
+   the brain.
 
 **Verification.** Mock multiple providers; routing is deterministic under
 policy.
@@ -924,6 +968,10 @@ demonstrably different strategies emerge.
 
 **Objective.** The gate between "something happened" and "Baby-Agent should
 learn this." Not every session enters the dataset.
+
+**Note (2026-09-05).** The near-term curation backlog for the mined
+opencode corpus is tracked in S50 (this sprint supplies the full
+machinery it will eventually use).
 
 **Pipeline.**
 
