@@ -35,7 +35,9 @@ VerificationStep (dataclass)
                       step cwd — the root is the S33-resolved boundary;
                       per-step cwd can come later with a policy resolve)
     expect_exit       int, default 0
-    must_contain      substring required in stdout, optional
+    must_contain      substring required in the COMBINED stdout+stderr
+                      output, optional (amendment S48: unittest reports
+                      on stderr — stdout-only checks missed it)
     must_not_contain  substring forbidden in stdout+stderr, optional
     optional          bool, default False (failure doesn't fail the plan)
 

@@ -185,10 +185,11 @@ class VerificationPlan:
                 step_ok = False
             else:
                 step_ok = command.exit_code == step.expect_exit
+                # combined output: unittest & friends report on STDERR
+                combined = (command.stdout or "") + (command.stderr or "")
                 if step_ok and step.must_contain is not None:
-                    step_ok = step.must_contain in (command.stdout or "")
+                    step_ok = step.must_contain in combined
                 if step_ok and step.must_not_contain is not None:
-                    combined = (command.stdout or "") + (command.stderr or "")
                     step_ok = step.must_not_contain not in combined
             results.append(VerificationResult(
                 name=step.name, category=step.category, ok=step_ok,
