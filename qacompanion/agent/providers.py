@@ -66,7 +66,13 @@ class FakeModelProvider(ModelProvider):
         return item
 
 
-_UNSET = object()  # sentinel: "argument omitted" (env fallback)
+_UNSET = object()  # sentinel: "argument omitted"
+
+
+def _gemini_timeout() -> int:
+    """S55: Gemini thinking + big tool catalogs exceed 60s reads."""
+    import os as _os
+    return int(_os.environ.get("GEMINI_TIMEOUT", "120"))
 
 
 class GeminiModelProvider(ModelProvider):
@@ -124,6 +130,28 @@ class GeminiModelProvider(ModelProvider):
         return ModelResponse(text=text, finish_reason="stop",
                              model=self.model)
 
+    @staticmethod
+    def _gemini_safe_schema(schema: Any) -> Dict[str, Any]:
+        """Gemini rejects schemas our registry allows (arrays without
+        items, objects without properties). Coerce recursively."""
+        if not isinstance(schema, dict):
+            return {"type": "string"}
+        clean: Dict[str, Any] = {
+            key: value for key, value in schema.items()
+            if key in ("type", "description", "properties", "required",
+                       "items", "enum", "format")
+        }
+        stype = clean.get("type", "string")
+        if stype == "object":
+            properties = clean.setdefault("properties", {})
+            for key, subschema in properties.items():
+                properties[key] = GeminiModelProvider._gemini_safe_schema(
+                    subschema)
+        elif stype == "array":
+            clean["items"] = GeminiModelProvider._gemini_safe_schema(
+                clean.get("items", {"type": "string"}))
+        return clean
+
     def _generate_native(self, request: ModelRequest) -> ModelResponse:
         """Gemini function_declarations -> functionCall parts
         (DECISIONS 2026-09-05: native tool calling)."""
@@ -133,7 +161,8 @@ class GeminiModelProvider(ModelProvider):
         declarations = [{
             "name": t.name,
             "description": t.description,
-            "parameters": t.parameters_schema,
+            "parameters": GeminiModelProvider._gemini_safe_schema(
+                t.parameters_schema),
         } for t in request.tools]
         contents = []
         for message in request.messages:
@@ -152,7 +181,7 @@ class GeminiModelProvider(ModelProvider):
                 headers={"Content-Type": "application/json"},
             )
             try:
-                with _ureq.urlopen(req, timeout=60) as resp:
+                with _ureq.urlopen(req, timeout=_gemini_timeout()) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                 last_error = None
                 break

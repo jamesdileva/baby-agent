@@ -43,3 +43,41 @@ prompt-taught textual protocols. The textual protocol remains as the
    OLLAMA_THINK=false (added this sprint).
 4. Gemini 503 retry-with-backoff added this sprint; free tier remains
    demand-gated in evening windows.
+
+
+## Native tool-calling retest (slice 4, same day)
+
+DECISIONS 2026-09-05 landed native adapters (Ollama /api/chat with
+tools; Gemini function_declarations). Retest results:
+
+| model | mode | result | verdict |
+|---|---|---|---|
+| qwen2.5-coder:3b | native | FAIL — 0 tool calls in 25 iterations | qwen2.5-coder models do not support Ollama native tools (template lacks tool support); params silently ignored |
+| qwen3:4b (think off, num_ctx 8192) | native | FAIL — 0 tool calls, 300s turn timeout at 22 min | schemas + prompt overwhelm CPU 4B; latency disqualifies on this box |
+| gemini-3.1-flash-lite | NATIVE | **PASS — success in 6 iterations, 144s, unit-tests=pass, 0 failures, 0 interventions** | **first honest benchmark pass in project history** |
+
+Also fixed en route: Gemini-safe schema coercion (arrays need items,
+objects need properties — the registry's minimal schemas 400'd),
+GEMINI_TIMEOUT env (thinking + big catalogs exceed 60s reads), 503
+retry-with-backoff.
+
+## Updated conclusion
+
+The S48 goal is closed by the free cloud brain: with native function
+calling, the harness + loop + tools + verifier chain passes end-to-end
+autonomously. The local models' gap is real but now precisely bounded:
+protocol handling (solved by native adapters) and CPU latency (not
+solvable in software). The human's role sketch is validated and
+ sharpened:
+
+```text
+brain (real tasks):    gemini-3.1-flash-lite (free, native tools)  144s PASS
+brain (free-local):    qwen3:4b / qwen2.5-coder:3b — honest attempts,
+                       not yet benchmark-competent on CPU
+vision:                qwen2.5vl:3b (local) or Gemini multimodal
+escalation/stuck:      the same Gemini brain IS the escalation tier
+```
+
+Follow-up: qwen3:4b native worth revisiting on GPU hardware; qwen3
+tool-call parsing (0 calls in 6 native iterations) may also improve
+with a smaller per-family tool catalog.
