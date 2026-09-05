@@ -127,7 +127,7 @@ def create_fixture(workspace: Workspace) -> None:
     (workspace.root / "README.md").write_text(README, encoding="utf-8")
 
 
-def _coding_registry(workspace: Workspace,
+def coding_registry(workspace: Workspace,
                      experience_store: Optional[ExperienceStore] = None
                      ) -> ToolRegistry:
     """The benchmark's tool set: coding families only, hermetic by
@@ -157,7 +157,7 @@ def run_benchmark(provider, config=None, workspace_root=None,
     workspace = Workspace(root)
     create_fixture(workspace)
 
-    registry = _coding_registry(workspace, experience_store)
+    registry = coding_registry(workspace, experience_store)
     verifier = plan_verifier(_verification_plan(), workspace)
     events = events or EventStream()
 
