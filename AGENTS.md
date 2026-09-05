@@ -80,6 +80,24 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S52 Desktop UI (API-first; Electron deferred)** —
+  `qacompanion/agent/server.py`: the runtime's local API layer in
+  STDLIB (ThreadingHTTPServer) — REST (health, session
+  start/stop/detail/list, skills, memory, environment) + SSE streaming
+  of the S39 event stream with replay-then-live subscribe. Security
+  posture: binds 127.0.0.1 only; sessions run the same S37 loop / S38
+  engine policy (the UI adds convenience, not authority); unverified
+  completions recorded honestly as partial (opt-in verify_command
+  builds a real S41 gate). **Server session id IS the agent session
+  id** (pre-built AgentSession passed into loop.run) — found via a
+  cross-session event-id mismatch. `app/`: Vite+React+TS dashboard
+  (goal input, live event feed, session list/summary, stop); npm build
+  green; the server serves app/dist at / — open
+  http://127.0.0.1:8765/ and watch the agent work. **Electron shell
+  deferred** to a packaging follow-up: the browser is the desktop shell
+  for now; the API contract is unchanged when it lands. node is NOT a
+  Python-suite dependency (npm build is the UI gate). Suite 1332 →
+  1341 OK. Spec: docs/s52-spec.md.
 - 2026-09-05 — **S51 Skills 2.0** —
   `qacompanion/agent/skills.py`: Skill schema (the exact S51 fields the
   S50 resume seed already follows: name/goal/description/required_tools/
