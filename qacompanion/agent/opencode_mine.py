@@ -39,7 +39,10 @@ TRIVIAL_MIN_PARTS = 1
 # antfarm injects a per-turn kickoff preamble as the "user" message — it
 # is prompt template, not a task goal; sessions whose only user text is
 # boilerplate have no learnable goal
-BOILERPLATE_MARKERS = ("SITUATION REPORT", "PROJECT GOAL (authored by")
+BOILERPLATE_MARKERS = ("SITUATION REPORT", "PROJECT GOAL (authored by",
+                       # the colony's injected continuation template:
+                       # a session-management prompt, not a task goal
+                       "Your previous response was interrupted")
 
 
 def _is_boilerplate(text: str) -> bool:
