@@ -80,6 +80,19 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S55 slice 2 (bake-off)** — Seven-model defect-fix
+  bake-off complete (docs/bakeoff-s55.md): every brain failed —
+  1.5b faked evidence, 8b too slow, qwen2.5-coder:3b drove 107 tool
+  calls but looped without fixing (verifier refused 17x), qwen3:4b
+  timed out (think blocks; OLLAMA_THINK=false flag added to the
+  bridge), cloud Gemini 503-throttled and lite never emitted a tool
+  call. **The finding that reframes the roadmap: the gap is the taught
+  textual tool protocol, not the brains** — native tool-calling
+  adapters (Ollama structured tools, Gemini function calling) filed as
+  the real unlock; textual protocol demoted to compatibility shim.
+  Also added: Gemini 503 retry-with-backoff (free tier demand spikes).
+  Suite 1349 OK. Follow-ups: native adapters, then ModelRouter (slice
+  3) per the human role sketch.
 - 2026-09-05 — **S55 slice 1 (model routing & bake-off)** — Research
   (cited in docs/s55-spec.md): Qwen3-4B is the 3–4B class favorite
   ("unusually strong tool-calling priors" — ertas.ai; best small base
