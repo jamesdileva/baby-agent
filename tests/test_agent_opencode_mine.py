@@ -81,6 +81,18 @@ def _write_db(path: Path) -> dict:
     part("p_triv", "m_triv", "ses_trivial", {"type": "step-start"}, 1)
     ids["trivial"] = "ses_trivial"
 
+    # boilerplate-only session: antfarm kickoff preamble, no real goal
+    session("ses_boiler", "C:/Users/j/AppData/Roaming/@antfarm/shell",
+            "SITUATION REPORT turn")
+    message("m_boil", "ses_boiler", "user")
+    part("p_boil1", "m_boil", "ses_boiler",
+         {"type": "text",
+          "text": "SITUATION REPORT - agent-a  PROJECT GOAL (authored by"
+                  " the human; treat as context)"}, 1)
+    part("p_boil2", "m_boil", "ses_boiler",
+         {"type": "tool", "tool": "read", "state": {"status": "completed"}}, 2)
+    ids["boilerplate"] = "ses_boiler"
+
     # missing-directory session (project gone)
     session("ses_ghost", "C:/Users/j/VanishedProject", "fix the thing")
     message("m_ghost", "ses_ghost", "user")
@@ -115,7 +127,7 @@ class TestMinerBasics(MineTestBase):
             OpencodeMiner(self.tmp / "nope.db")
 
     def test_sessions_listing_and_filter(self):
-        self.assertEqual(len(self.miner.sessions()), 5)
+        self.assertEqual(len(self.miner.sessions()), 6)
         surf = self.miner.sessions(directory="C:/Users/j/Projects/surfhop")
         self.assertEqual([r["id"] for r in surf], ["ses_marathon",
                                                    "ses_trivial"])
@@ -153,20 +165,26 @@ class TestMinerBasics(MineTestBase):
                    if r["id"] == "ses_trivial")
         self.assertIsNone(self.miner.mine_session(row))
 
+    def test_boilerplate_only_session_skipped(self):
+        # antfarm's injected preamble is template, not a task goal
+        row = next(r for r in self.miner.sessions()
+                   if r["id"] == "ses_boiler")
+        self.assertIsNone(self.miner.mine_session(row))
+
 
 class TestMineRun(MineTestBase):
     def test_dry_run_writes_nothing(self):
         stats = self.miner.mine(store=self.store, dry_run=True)
         self.assertTrue(stats["dry_run"])
-        self.assertEqual(stats["sessions_seen"], 5)
-        self.assertEqual(stats["skipped_trivial"], 1)
+        self.assertEqual(stats["sessions_seen"], 6)
+        self.assertEqual(stats["skipped_trivial"], 2)
         self.assertEqual(len(self.store.load()), 0)
 
     def test_full_run_reinforces_turn_spawn_pattern(self):
         stats = self.miner.mine(store=self.store)
-        self.assertEqual(stats["sessions_seen"], 5)
+        self.assertEqual(stats["sessions_seen"], 6)
         self.assertEqual(stats["mined"], 4)
-        self.assertEqual(stats["skipped_trivial"], 1)
+        self.assertEqual(stats["skipped_trivial"], 2)
         self.assertEqual(stats["errors"], 0)
         # the two identical turn-goals reinforced into ONE experience:
         # 4 mined - 1 reinforcement = 3 stored goals

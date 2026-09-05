@@ -35,6 +35,22 @@ from .workspace import ProjectMetadata
 MAX_ACTIONS = 50
 MAX_GOAL_CHARS = 200
 TRIVIAL_MIN_PARTS = 1
+# antfarm injects a per-turn kickoff preamble as the "user" message — it
+# is prompt template, not a task goal; sessions whose only user text is
+# boilerplate have no learnable goal
+BOILERPLATE_MARKERS = ("SITUATION REPORT", "PROJECT GOAL (authored by")
+
+
+def _is_boilerplate(text: str) -> bool:
+    return any(marker in text for marker in BOILERPLATE_MARKERS)
+
+
+def _clean_goal(text: str) -> str:
+    """Truncate at a word boundary, never mid-word."""
+    if len(text) <= MAX_GOAL_CHARS:
+        return text
+    cut = text[:MAX_GOAL_CHARS]
+    return cut[:cut.rfind(" ")].rstrip(",;:") + "…"
 MINED_OUTCOME = "partial"
 MINED_CONFIDENCE = 0.3
 
@@ -109,8 +125,9 @@ class OpencodeMiner:
             # message_id is a DB column, not a field of the part JSON
             if roles.get(row["message_id"]) != "user":
                 continue
-            if (part.get("text") or "").strip():
-                return part["text"].strip()[:MAX_GOAL_CHARS]
+            text = (part.get("text") or "").strip()
+            if text and not _is_boilerplate(text):
+                return _clean_goal(text)
         return None
 
     def _tool_actions(self, con: sqlite3.Connection, session_id: str
@@ -143,8 +160,10 @@ class OpencodeMiner:
         finally:
             con.close()
 
-        if goal is None and tool_info["tool_count"] < TRIVIAL_MIN_PARTS:
-            return None  # trivial: nothing to learn from
+        if goal is None:
+            # no non-boilerplate user text: nothing learnable yet (tool
+            # actions without a goal are curation's problem, not ours)
+            return None
 
         directory = session_row.get("directory") or ""
         project_type = None
