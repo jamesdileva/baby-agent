@@ -34,6 +34,13 @@ from pathlib import Path
 
 DEFAULT_MODEL = "qwen2.5-coder:1.5b"
 DEFAULT_URL = "http://localhost:11434"
+
+
+def _configured_timeout() -> float:
+    """S55: per-request timeout, configurable via OLLAMA_TIMEOUT — CPU
+    inference on bigger models legitimately exceeds 60s per generation.
+    Call-time resolution (no reload hazards)."""
+    return float(os.environ.get("OLLAMA_TIMEOUT", "60"))
 DEFAULT_CASES = "cases.jsonl"
 DEFAULT_DIGEST = "digest.jsonl"
 
@@ -46,8 +53,11 @@ class OllamaError(Exception):
     """Operational failure: Ollama unreachable, model error, or bad response."""
 
 
-def _http_post(url, data, timeout=30):
-    """POST JSON to url, return parsed response. Raises OllamaError on failure."""
+def _http_post(url, data, timeout=None):
+    """POST JSON to url, return parsed response. Raises OllamaError on failure.
+    timeout=None falls back to OLLAMA_TIMEOUT (default 60s)."""
+    if timeout is None:
+        timeout = _configured_timeout()
     payload = json.dumps(data).encode("utf-8")
     req = urllib.request.Request(
         url, data=payload, headers={"Content-Type": "application/json"}
@@ -69,7 +79,7 @@ def _ollama_generate(prompt, model=None, url=None):
     base_url = url or os.environ.get("OLLAMA_URL") or DEFAULT_URL
     endpoint = f"{base_url}/api/generate"
     data = {"model": model, "prompt": prompt, "stream": False}
-    result = _http_post(endpoint, data, timeout=60)
+    result = _http_post(endpoint, data)
     return result.get("response", "") or ""
 
 

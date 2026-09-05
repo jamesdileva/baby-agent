@@ -14,8 +14,11 @@ Live-provider tests are opt-in via QA_OLLAMA_LIVE=1 and never a CI gate
 (DECISIONS 2026-09-04 hermeticity rule).
 """
 
+import json
 import os
 import re
+import urllib.error
+import urllib.request
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
@@ -60,6 +63,52 @@ class FakeModelProvider(ModelProvider):
                 text="", tool_calls=[item], finish_reason="tool_calls", model=self.name
             )
         return item
+
+
+_UNSET = object()  # sentinel: "argument omitted" (env fallback)
+
+
+class GeminiModelProvider(ModelProvider):
+    """Free-tier cloud brain (PLAIN generation — no grounding tool),
+    per the no-billing ruling. The escalation/research candidate in
+    the S55 role sketch; the local bake-off winner stays the default
+    brain."""
+
+    name = "gemini"
+
+    def __init__(self, api_key=_UNSET, model: Optional[str] = None):
+        import os as _os
+        self._api_key = _os.environ.get("GEMINI_API_KEY")             if api_key is _UNSET else api_key
+        self.model = model or _os.environ.get("GEMINI_MODEL")             or "gemini-flash-latest"
+
+    def generate(self, request: ModelRequest) -> ModelResponse:
+        if not self._api_key:
+            raise ProviderError(
+                "no gemini provider configured: set GEMINI_API_KEY")
+        prompt = _flatten_messages(request.messages)
+        body = {"contents": [{"parts": [{"text": prompt}]}]}
+        req = urllib.request.Request(
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{self.model}:generateContent?key={self._api_key}",
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            raise ProviderError(f"gemini request failed: HTTP {exc.code}")                 from exc
+        except Exception as exc:
+            raise ProviderError(f"gemini request failed: {exc}") from exc
+        try:
+            text = "".join(str(part.get("text", "")) for part
+                           in data["candidates"][0]["content"]["parts"])
+        except (KeyError, IndexError, TypeError):
+            text = ""
+        if not text.strip():
+            raise ProviderError("gemini response missing usable content")
+        return ModelResponse(text=text, finish_reason="stop",
+                             model=self.model)
 
 
 def _flatten_messages(messages: List[ModelMessage]) -> str:
