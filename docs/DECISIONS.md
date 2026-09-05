@@ -1261,3 +1261,21 @@ sprint in this repo:
 
 Recorded as a standing rule (audit trail, not permission slip): the cycle
 ritual in AGENTS.md is amended by steps 1 and 5 above.
+
+---
+
+### Native tool calling becomes the primary provider contract (S55)
+
+**Decision:** When a ModelRequest declares tools, providers use their
+backend's NATIVE tool-calling API (Ollama /api/chat with tools;
+Gemini function_declarations) and return structured ToolCalls.
+The taught textual `[TOOL: ...]` protocol demotes to a compatibility
+shim: it remains for tool-less requests (qa ask) and as the fallback
+path, and the loop's system prompt still teaches it for models that
+need it. Provenance: the S55 seven-model bake-off
+(docs/bakeoff-s55.md) showed every brain — local and cloud — failed to
+drive the textual protocol to completion; native tool calling is the
+roadmap-named unlock. New rules documented here per standing
+discipline; no human approval required (teaching authority).
+
+Status: Adopted 2026-09-05. Slice 4 of docs/s55-spec.md.

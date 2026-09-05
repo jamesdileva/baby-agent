@@ -37,31 +37,44 @@ S48 defect-fix benchmark, one run per model, same fixture, metrics
 from the harness (success, iterations, tool_calls, commands_run,
 tool_failures, duration, termination_reason).
 
-## Slice 1 — infrastructure fixes (this commit)
+## Slice 1 — infrastructure fixes (landed)
 
 - **Configurable bridge timeout**: `OLLAMA_TIMEOUT` env (seconds,
-  default 60) replaces the hardcoded 60s in `ollama_bridge._http_post`
-  callers — the measured 8B kill at 180s monkey-patch becomes
-  configuration.
+  call-time resolution) replaces the hardcoded 60s.
 - **GeminiModelProvider** (agent loop backend, PLAIN mode — the
-  no-billing ruling): the loop accepts any provider; the free cloud
-  model becomes the escalation/research brain candidate the human
-  sketched. Distinct from websearch's GeminiSearchProvider (that one
-  searches; this one generates).
+  no-billing ruling).
 
-## Slice 2 — the bake-off (needs model pulls)
+## Slice 2 — the bake-off (landed; results in docs/bakeoff-s55.md)
 
-One benchmark run per model; results table committed to
-docs/bakeoff-s55.md with honest per-metric comparison. Success bar:
-a model that completes the defect-fix benchmark with tests actually
-passing in reasonable CPU time — the 1.5B bar is "any honest tool
-usage at all".
+Seven models, zero passes. The finding that reframes the roadmap:
+**the gap is the taught textual protocol, not the brains** — models
+fake evidence, loop, or ignore the protocol entirely.
 
-## Slice 3 — the router (deterministic policy)
+## Slice 4 — native tool-calling adapters (the unlock)
+
+The bake-off's conclusion made primary. Decision (DECISIONS
+2026-09-05): **native tool calling becomes the primary contract when a
+request declares tools; the textual protocol demotes to the
+compatibility shim for tool-less requests and the 1.5B-era fallback.**
+
+- **OllamaProvider**: when `request.tools` is non-empty, call
+  `/api/chat` with `tools: [{type: "function", function: {name,
+  description, parameters}}]` built from the ToolDefinitions; map
+  `message.tool_calls[].function` → structured ToolCalls. Empty tools
+  → the legacy `/api/generate` textual path, unchanged. OLLAMA_THINK
+  applies to both endpoints.
+- **GeminiModelProvider**: when `request.tools` is non-empty, send
+  `tools: [{function_declarations: [...]}]`; map `functionCall` parts
+  → ToolCalls. Text-only requests keep the plain path.
+- Tool results feed back through the existing tool-role messages
+  (S37); no loop changes needed.
+- The 503 retry/backoff and OLLAMA_TIMEOUT apply to both adapters.
+
+## Slice 3 — the router (after the retest)
 
 ```text
 ModelRouter(policy) with rules mapping task shape -> provider
-    default brain:     bake-off winner (local)
+    default brain:     retest winner (local, native tools)
     vision:            qwen2.5vl:3b (local, already pulled) or free Gemini
     stuck/escalation:  free Gemini plain mode (quota-limited helper)
 ```
@@ -73,6 +86,7 @@ under the chosen routing.
 
 ## Exit criteria
 
-A committed comparison table; a routing policy wired into the loop;
-the dashboard's model field honoring the router. Full suite green;
-preflight clean.
+Native adapters landed with hermetic tests; **the bake-off table
+re-run on native tool calling** (docs/bakeoff-s55.md updated with a
+native section); a model that honestly passes the defect-fix benchmark
+would close the S48 goal. Full suite green; preflight clean.
