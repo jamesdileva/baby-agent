@@ -80,6 +80,20 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S47 Experience Memory** —
+  `qacompanion/agent/experience.py`: Experience record (goal/outcome/
+  context/actions/failure/diagnosis/resolution/verification/confidence/
+  tags/project metadata, strict validation, JSONL-ready) +
+  ExperienceStore (experience.jsonl, QA_EXPERIENCE_FILE override, atomic
+  writes, BOM/CRLF tolerance, **recurrence reinforcement**: a repeated
+  normalized goal bumps times_seen instead of duplicating) + MemoryLayer
+  (unified read over cases/digest/journal/experiences, merged, scored,
+  source-labeled; missing stores degrade to empty) + three brain-level
+  tools (experience_record SAFE_WRITE, experience_search /
+  memory_search READ_ONLY). Retrieval is deterministic keyword scoring
+  with times_seen/confidence boosts — semantic upgrade documented for
+  S56. agent_registry → 49 tools (exact count asserted once; family
+  tests membership-only). Suite 1258 → 1277 OK. Spec: docs/s47-spec.md.
 - 2026-09-04 — **S46 Static Code Intelligence** —
   `qacompanion/agent/codeintel.py`: CodeIndex over the workspace with
   three precision-labeled language tiers — Python via real stdlib AST
