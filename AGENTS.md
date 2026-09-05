@@ -80,6 +80,31 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-04 — **S46 Static Code Intelligence** —
+  `qacompanion/agent/codeintel.py`: CodeIndex over the workspace with
+  three precision-labeled language tiers — Python via real stdlib AST
+  (functions/methods with qualified names, classes, module-level
+  variables, precise ast.Name/Attribute references, imports, syntax-error
+  diagnostics), JavaScript/TypeScript via a documented regex scanner
+  (heuristic), generic keyword fallback (labeled); mtime+size caching so
+  the index stays correct while the agent edits; walk through PathPolicy
+  (exclusions/binaries/caps enforced). Five READ_ONLY tools: code_symbols
+  (search + exact definition lookup), code_references, code_imports,
+  code_importers (dotted-suffix match), code_diagnostics.
+  agent_registry → 46 tools. Two findings fixed honestly: (a) the AST
+  visitor initially double-visited every node (unconditional recurse
+  after the special-case branches) producing phantom unqualified
+  definitions — restructured with an explicit else; variable
+  definition-sites are the ONLY is_definition references (a function's
+  own name is not a Name node — documented in code and tests); (b) the
+  human's GEMINI_API_KEY (setx) leaked into the test process and the
+  missing-key tests silently found it — one test even made a REAL
+  network call. Fixed properly: provider constructors now take a
+  sentinel (explicit api_key=None = definitely no key; omitted = env
+  fallback), and toolkit tests resolve providers only inside their
+  popped-env contexts. Suite 1238 → 1258 OK. Spec: docs/s46-spec.md.
+  NOTE for S55: human has qwen2.5vl:3b pulled locally — candidate local
+  vision fallback alongside free-tier Gemini vision.
 - 2026-09-04 — **S45 Process & Runtime Management** —
   `qacompanion/agent/processes.py`: ProcessManager owning long-lived
   processes with daemon reader threads feeding bounded log rings (server
