@@ -80,6 +80,23 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S53 Browser Abstraction** —
+  `qacompanion/agent/browser.py`: BrowserProvider ABC + two adapters —
+  FakeBrowserProvider (in-memory page model: registered pages,
+  selector-addressable elements, history, click/type/select mutation,
+  REAL PNG screenshots via the S44 codec with per-page colors so
+  compare_images can verify) and PlaywrightBrowserProvider (sync
+  Playwright behind an import guard — activates with `pip install
+  playwright && playwright install chromium`, structured error naming
+  the fix before that; no binaries download as a side effect). Eight
+  EXTERNAL tools (browser_open/back/click/type/scroll/select/
+  screenshot/extract — default ASK posture; screenshot is the only
+  workspace writer); browser_download covered by S43
+  download_artifact (documented deviation). Playwright method mapping
+  proven with a mocked module both absent and present.
+  agent_registry → 59 tools (benchmark lean catalog unchanged — the
+  benchmark doesn't browse). Suite 1363 → 1384 OK. Spec:
+  docs/s53-spec.md.
 - 2026-09-05 — **S55 slice 5 (native-only prompting + lean catalog +
   head-to-head)** — The bake-off diagnosis became engineering:
   build_system_prompt(native_tools=...) — providers declare capability
