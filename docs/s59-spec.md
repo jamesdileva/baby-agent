@@ -65,9 +65,12 @@ lessons_extracted: [strings]
 
 Flow per session: student attempts task → teacher demonstrates →
 student retries with the lesson → S41 verification gate → curation
-gate → ACCEPT records the experience (S50 record_session on the retry)
-→ REJECT discards with a reason. Verification failure → REJECTED,
-never stored.
+gate → ACCEPT records the verified lesson (S50) → REJECT discards
+with a reason. **Store discipline (test-found):** attempts run against
+a QUARANTINE store (attempt_store — recorded honestly but separate);
+the MAIN store only receives ACCEPTED lessons, under a distinct goal
+so store goal-dedupe cannot merge the lesson tag away. Verification
+failure → REJECTED, never in main memory.
 
 ## Curator gate (never auto-trust)
 
