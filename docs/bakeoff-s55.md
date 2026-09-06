@@ -81,3 +81,34 @@ escalation/stuck:      the same Gemini brain IS the escalation tier
 Follow-up: qwen3:4b native worth revisiting on GPU hardware; qwen3
 tool-call parsing (0 calls in 6 native iterations) may also improve
 with a smaller per-family tool catalog.
+
+
+## Slice-5 head-to-head (lean 12-tool catalog, best config per model)
+
+Slice 5 changes: native-only prompting (no textual/native conflict),
+lean 12-tool catalog, num_ctx 8192.
+
+| model | mode | result | turns | tool calls | tool failures | duration | verdict |
+|---|---|---|---|---|---|---|---|
+| qwen3:4b | native + lean | FAIL — turn timeout at 300s | 1 | 0 | 0 | 300s | even lean, 8192-ctx prefill + catalog is minutes/turn on CPU |
+| qwen2.5-coder:3b | textual + lean | FAIL — 24 rejections | 7 | 8 | 6 | 590s | timeout mid-run; protocol OK, solving absent |
+| phi4-mini | native + lean | FAIL — 24 rejections | 25 | 0 | 0 | 363s | emits SCHEMA as arguments (echoes the JSON spec, not values) |
+| granite3.3:2b | native + lean | FAIL — 14 rejections | 25 | 8 | 7 | 1224s | calls tools but wrong ones/args; 20 min wall |
+
+## Final S55 conclusion
+
+All four local candidates fail the benchmark with every configuration
+tried (textual, native, lean, full catalog, think on/off, num_ctx
+2048/8192). The isolated probes prove the plumbing is correct — models
+that support Ollama native tools DO emit valid calls — but completing
+a multi-step defect-fix task requires sustained multi-turn reasoning
+that no 2–4B model on this CPU delivers within practical latency.
+phi4-mini additionally exposes a real adapter finding: it echoes the
+parameter SCHEMA as arguments (a model/template quirk the harness
+honestly recorded).
+
+The passing brain remains **gemini-3.1-flash-lite via native function
+calling** (144s, verified). Local candidates are revisited on GPU
+hardware or with a distill baby-agent:ep1 (S63+), whose training data
+(S50 corpus + S55 trajectories) specifically teaches the tool protocol
+that general small models struggle with.
