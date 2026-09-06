@@ -80,6 +80,21 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S54 Computer Use** —
+  `qacompanion/agent/computer.py`: the heavily restricted GUI
+  capability behind a THREE-GATE safety model — explicit allow-list
+  (default EMPTY: an unconfigured toolkit is a no-op by construction),
+  DESTRUCTIVE+requires_confirmation pipeline guarantee (default engine
+  demands confirmation for every single GUI action; denied with no
+  confirmer — spec overclaimed DENY, corrected), and per-action
+  confirmer. Six tools (click/double_click/move/type/press_keys/
+  focus_window); screen observation = S44 capture_screen, app
+  launching = S45 start_process (documented reuse). FakeComputerProvider
+  action log (hermetic); ctypes SendInput Windows adapter (POSIX =
+  structured error); max_actions budget (runaway-clicking protection);
+  out-of-bounds coordinates are structured errors, never clamped.
+  agent_registry → 65 tools (benchmark lean catalog unchanged). Suite
+  1384 → 1396 OK. Spec: docs/s54-spec.md.
 - 2026-09-05 — **S53 Browser Abstraction** —
   `qacompanion/agent/browser.py`: BrowserProvider ABC + two adapters —
   FakeBrowserProvider (in-memory page model: registered pages,
