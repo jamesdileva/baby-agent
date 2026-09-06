@@ -129,6 +129,22 @@ commit + push → worklog entry.**
   agent_registry → 59 tools (benchmark lean catalog unchanged — the
   benchmark doesn't browse). Suite 1363 → 1384 OK. Spec:
   docs/s53-spec.md.
+- 2026-09-05 — **S59 Agent Apprenticeship Lab** —
+  `qacompanion/agent/apprenticeship.py`: TeacherProvider ABC +
+  ScriptedTeacherProvider (hermetic; real Gemini/opencode teachers
+  plug into the same ABC later); Lesson = explanation + REAL tool
+  actions (a teacher that can't produce actions can't teach);
+  ApprenticeshipLab flow — student attempt 1 (unaided) → teacher demo
+  → student retry → S41 verification gate → curation gate.
+  **Quarantine store discipline (test-found):** attempts run against
+  a separate attempt_store; the MAIN memory store only receives
+  ACCEPTED verified lessons, under a distinct goal ("...apprenticeship
+  lesson") so the store's goal-dedupe cannot merge the apprenticeship
+  tag away. Rejects recorded with reasons (teacher_failed /
+  verification_failed), never in main memory. The S50→S59 loop is
+  closed: verified lessons enter the S47/S50 experience store as
+  first-class experiences. LabReport counts by teacher. Suite 1440 →
+  1445 OK. Spec: docs/s59-spec.md.
 - 2026-09-05 — **S58 Failure Recovery & Escalation 2.0** —
   `qacompanion/agent/recovery.py`: FailureTracker (S2-style
   deterministic signatures; no-progress = same signature repeating
