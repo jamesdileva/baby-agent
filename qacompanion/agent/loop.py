@@ -24,7 +24,8 @@ from .contracts import ModelMessage, ModelRequest, ToolResult
 from .registry import SAFE_WRITE, EXECUTION, DESTRUCTIVE, EXTERNAL, ToolRegistry
 from .providers import ModelProvider, ProviderError
 from .qa_brain import format_advice
-from .session import AgentConfig, AgentSession, AgentState, SessionError
+from .session import (AgentConfig, AgentSession, AgentState, SessionError,
+                      TERMINAL_STATES)
 from .workspace import Workspace
 
 WRITE_LEVELS = frozenset({SAFE_WRITE, EXECUTION, DESTRUCTIVE, EXTERNAL})
@@ -119,6 +120,8 @@ class AgentLoop:
         qa_brain=None,
         tool_catalog: Optional[List[str]] = None,
         context_builder=None,
+        recovery=None,
+        escalation_factory=None,
     ):
         self.provider = provider
         self.registry = registry
@@ -135,6 +138,8 @@ class AgentLoop:
         self.tool_catalog = frozenset(tool_catalog) if tool_catalog else None
         self.native_tools = bool(getattr(provider, "native_tools", False))
         self.context_builder = context_builder
+        self.recovery = recovery
+        self.escalation_factory = escalation_factory
 
     # -- helpers ----------------------------------------------------------
 
@@ -256,7 +261,17 @@ class AgentLoop:
                         return self._finish(session, AgentState.COMPLETED,
                                             TERMINATION_COMPLETED)
                     attempts = len(session.verification_results)
-                    if session.iterations >= self.config.max_iterations:
+                    if self.recovery is not None:
+                        decision = self.recovery.on_failure(
+                            "verification", detail, session.iterations,
+                            self.config.max_iterations,
+                            escalation_available=(
+                                self.escalation_factory is not None
+                                and not self.recovery.escalated))
+                        self._apply_recovery(session, decision, detail)
+                        if session.state in TERMINAL_STATES:
+                            return session
+                    elif session.iterations >= self.config.max_iterations:
                         return self._finish(
                             session, AgentState.FAILED,
                             TERMINATION_VERIFICATION_FAILED.format(attempts),
@@ -337,6 +352,63 @@ class AgentLoop:
                         self._emit("memory_advice", session,
                                    source=advice.get("source"),
                                    call=call.name)
+                if self.recovery is not None and not result.ok:
+                    # S58: classify the failure and pick a strategy before
+                    # the next action; ASK_USER/TERMINATE end the session
+                    failure_text = ((result.error or "") + "\n"
+                                    + (result.output or ""))[:2000]
+                    decision = self.recovery.on_failure(
+                        "tool", failure_text, session.iterations,
+                        self.config.max_iterations,
+                        escalation_available=(
+                            self.escalation_factory is not None
+                            and not self.recovery.escalated))
+                    self._apply_recovery(session, decision,
+                                         (result.error or "")[:200])
+                    if session.state in TERMINAL_STATES:
+                        return session
+
+    def _apply_recovery(self, session: AgentSession,
+                        decision, detail: str) -> None:
+        """Act on a recovery decision (S58). Non-terminating strategies
+        inject instructions or swap the provider; ASK_USER/TERMINATE
+        finish the session honestly."""
+        from .recovery import Strategy
+
+        if decision.strategy is Strategy.RETRY_WITH_ADVICE:
+            return  # S49 advice already injected
+        if decision.strategy is Strategy.ALTERNATE_APPROACH:
+            session.messages.append(ModelMessage(
+                role="system",
+                content=f"Recovery: {decision.reason}. Change your "
+                        f"approach — do NOT repeat the same actions."))
+            return
+        if decision.strategy is Strategy.ENVIRONMENT_CHECK:
+            session.messages.append(ModelMessage(
+                role="system",
+                content=f"Recovery: run get_environment_summary and "
+                        f"inspect the machine before retrying. Last "
+                        f"failure: {detail[:200]}"))
+            return
+        if decision.strategy is Strategy.ESCALATE_MODEL:
+            if self.escalation_factory is None:
+                session.messages.append(ModelMessage(
+                    role="system",
+                    content="Recovery: escalation requested but no "
+                            "escalation brain is configured."))
+                return
+            self.provider = self.escalation_factory()
+            self.recovery.mark_escalated()
+            self._emit("model_escalated", session,
+                       reason=decision.reason)
+            session.messages.append(ModelMessage(
+                role="system",
+                content="Escalated to a stronger model. Retry with the "
+                        "full context."))
+            return
+        # ASK_USER / TERMINATE — the decision reason is the honest
+        # termination surface (e.g. "needs human decision")
+        self._finish(session, AgentState.FAILED, decision.reason)
 
     def _verify(self, session: AgentSession) -> Tuple[bool, str]:
         try:
