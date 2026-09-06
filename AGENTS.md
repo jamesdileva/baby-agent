@@ -129,6 +129,23 @@ commit + push → worklog entry.**
   agent_registry → 59 tools (benchmark lean catalog unchanged — the
   benchmark doesn't browse). Suite 1363 → 1384 OK. Spec:
   docs/s53-spec.md.
+- 2026-09-05 — **S57 Agent Evaluation Harness** —
+  `qacompanion/agent/evaluation.py`: THREE deterministic defect
+  fixtures (calculator / string reverse / nested JSON lookup — each
+  with its own S41 unittest gate), `run_evaluation` full model × task
+  cross product through the S48 benchmark (generalized:
+  run_benchmark gained fixture_writer + goal params — it previously
+  hardcoded the calculator fixture AND goal, which silently planted a
+  second defect in every non-calculator eval task), per-model
+  aggregates (success rate, avg iterations/duration, tool totals,
+  interventions), atomic JSON persistence (QA_EVAL_DIR, default
+  eval-runs/), and symmetric `compare()` — regressions AND
+  improvements flagged per (model, task); unknown tasks ignored.
+  Test-provider lesson (3rd occurrence, now policy): heredoc patch
+  scripts fail silently on whitespace/escape drift — surgical Edit
+  only; the AutoFix fake provider synthesizes fixes per turn instead
+  of pre-scripted lists that exhaust mid-run. Suite 1411 → 1422 OK.
+  Spec: docs/s57-spec.md.
 - 2026-09-05 — **S55 slice 5 (native-only prompting + lean catalog +
   head-to-head)** — The bake-off diagnosis became engineering:
   build_system_prompt(native_tools=...) — providers declare capability
