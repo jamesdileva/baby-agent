@@ -14,8 +14,9 @@ surface:
 ```text
 nothing happens unless THREE gates agree:
 1. the action type is in an EXPLICIT allow-list (default: EMPTY)
-2. the S38 engine's verdict is DENY-resistant: every tool is
-   DESTRUCTIVE-level + requires_confirmation (pipeline guarantee)
+2. the S38 pipeline guarantee: every tool is DESTRUCTIVE-level +
+   requires_confirmation — under the default engine every single GUI
+   action demands confirmation (and is denied with no confirmer)
 3. the confirmer approves the specific action
 ```
 

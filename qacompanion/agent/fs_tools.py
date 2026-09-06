@@ -405,11 +405,14 @@ def agent_registry(
     journal_path=None,
     skill_dir=None,
     browser_provider=None,
+    computer_provider=None,
+    computer_config=None,
 ) -> ToolRegistry:
     """Registry preloaded with knowledge + filesystem + execution + git +
     environment + verification + web research/fetch + vision tools."""
     from .browser import BrowserToolkit
     from .codeintel import CodeIntelToolkit
+    from .computer import ComputerUseToolkit
     from .environment import EnvironmentToolkit
     from .experience import MemoryToolkit
     from .execution import ExecutionToolkit
@@ -453,5 +456,8 @@ def agent_registry(
     for tool in SkillToolkit(SkillLibrary(skill_dir)).tools():
         registry.register(tool)
     for tool in BrowserToolkit(workspace, browser_provider).tools():
+        registry.register(tool)
+    for tool in ComputerUseToolkit(workspace, computer_provider,
+                                   computer_config).tools():
         registry.register(tool)
     return registry
