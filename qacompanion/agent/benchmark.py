@@ -162,11 +162,16 @@ def run_benchmark(provider, config=None, workspace_root=None,
                   experience_store: Optional[ExperienceStore] = None,
                   events: Optional[EventStream] = None,
                   quiet: bool = True,
-                  tool_catalog=LEAN_MODEL_CATALOG) -> BenchmarkReport:
-    """Run one autonomous defect-fix attempt and return honest metrics."""
+                  tool_catalog=LEAN_MODEL_CATALOG,
+                  fixture_writer=create_fixture,
+                  goal: str = BENCHMARK_GOAL) -> BenchmarkReport:
+    """Run one autonomous defect-fix attempt and return honest metrics.
+    fixture_writer defaults to the S48 calculator fixture; the S57
+    evaluation passes its per-task fixture writers. goal defaults to
+    the S48 natural-language goal."""
     root = Path(workspace_root or tempfile.mkdtemp(prefix="benchmark-"))
     workspace = Workspace(root)
-    create_fixture(workspace)
+    fixture_writer(workspace)
 
     registry = coding_registry(workspace, experience_store)
     verifier = plan_verifier(_verification_plan(), workspace)
@@ -175,7 +180,7 @@ def run_benchmark(provider, config=None, workspace_root=None,
     started = time.monotonic()
     loop = AgentLoop(provider, registry, workspace, config=config,
                      verifier=verifier, events=events)
-    session = loop.run(BENCHMARK_GOAL)
+    session = loop.run(goal)
     duration = time.monotonic() - started
 
     if experience_store is not None:
@@ -186,7 +191,7 @@ def run_benchmark(provider, config=None, workspace_root=None,
     types = events.types()
     report = BenchmarkReport(
         task="defect-fix-calculator",
-        goal=BENCHMARK_GOAL,
+        goal=goal,
         model=report_model(provider),
         success=session.state.value == "COMPLETED",
         termination_reason=session.termination_reason or "",

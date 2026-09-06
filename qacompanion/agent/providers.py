@@ -52,8 +52,8 @@ class FakeModelProvider(ModelProvider):
 
     name = "fake"
 
-    def __init__(self, script):
-        self._script = list(script)
+    def __init__(self, script=None):
+        self._script = list(script or [])
 
     def generate(self, request: ModelRequest) -> ModelResponse:
         if not self._script:
