@@ -118,6 +118,7 @@ class AgentLoop:
         events=None,
         qa_brain=None,
         tool_catalog: Optional[List[str]] = None,
+        context_builder=None,
     ):
         self.provider = provider
         self.registry = registry
@@ -133,6 +134,7 @@ class AgentLoop:
         # still holds every tool; the model only sees the listed subset)
         self.tool_catalog = frozenset(tool_catalog) if tool_catalog else None
         self.native_tools = bool(getattr(provider, "native_tools", False))
+        self.context_builder = context_builder
 
     # -- helpers ----------------------------------------------------------
 
@@ -205,8 +207,15 @@ class AgentLoop:
             session.iterations += 1
             self._emit("model_started", session, iteration=session.iterations)
             try:
+                # S56: per-turn assembly — the builder sees the CURRENT
+                # session state (tool results exist by turn 2)
+                request_messages = (
+                    self.context_builder.build(
+                        session, offered, native_tools=self.native_tools)
+                    if self.context_builder is not None
+                    else list(session.messages))
                 response = self.provider.generate(
-                    ModelRequest(messages=list(session.messages),
+                    ModelRequest(messages=request_messages,
                                  tools=offered)
                 )
             except ProviderError as exc:
