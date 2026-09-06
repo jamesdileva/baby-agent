@@ -80,6 +80,23 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S56 Context Optimization** —
+  `qacompanion/agent/context.py`: ContextBudget (char accounting,
+  never split mid-message), ToolResultSummarizer/ObservationReducer
+  (command results reduce to exit_code + stdout head/tail + stderr
+  head; old turns become one-line digests), prioritized
+  ContextBuilder — goal > memory block > latest tool result
+  (NON-DROPPABLE: verbatim -> reduced -> hard truncate; budget may be
+  exceeded, reported honestly via over_budget) > recent turns
+  (reduced) > older (digests) — plus MemoryRetriever (S47 keyword
+  injection at assembly, degraded-silent). Loop integration ADDITIVE:
+  AgentLoop(context_builder=None); without it, behavior byte-identical
+  (all prior loop tests unmodified); with it, per-turn assembly (the
+  builder must see tool results that exist by turn 2 — the frozen-
+  once bug was caught by the loop test). BuildReport is the
+  verification surface: goal_present, latest_tool_result_verbatim,
+  dropped, chars, over_budget. Suite 1396 → 1411 OK. Spec:
+  docs/s56-spec.md.
 - 2026-09-05 — **S54 Computer Use** —
   `qacompanion/agent/computer.py`: the heavily restricted GUI
   capability behind a THREE-GATE safety model — explicit allow-list
