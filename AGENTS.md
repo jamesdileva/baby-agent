@@ -129,6 +129,22 @@ commit + push → worklog entry.**
   agent_registry → 59 tools (benchmark lean catalog unchanged — the
   benchmark doesn't browse). Suite 1363 → 1384 OK. Spec:
   docs/s53-spec.md.
+- 2026-09-05 — **S58 Failure Recovery & Escalation 2.0** —
+  `qacompanion/agent/recovery.py`: FailureTracker (S2-style
+  deterministic signatures; no-progress = same signature repeating
+  consecutively) + RecoveryPolicy strategy ladder — retry-with-advice
+  (S49 already injected) → alternate-approach instruction →
+  environment-check (marker-matched failures route to the S40 summary
+  first) → escalate-model (S55 escalation tier; ONE-WAY ladder, never
+  re-escalates; swaps the loop's provider mid-run + model_escalated
+  event) → ask-user / terminate (decision.reason is the honest
+  termination surface, e.g. "needs human decision"). Loop wiring
+  additive: AgentLoop(recovery=None, escalation_factory=None); both
+  tool-failure and verification-failure paths consult the state
+  machine, which owns the iteration-exhaustion termination when
+  present. Environment markers beat repeat counts (environment-class
+  failures get the S40 check instead of more retries). Suite 1422 →
+  1440 OK. Spec: docs/s58-spec.md.
 - 2026-09-05 — **S57 Agent Evaluation Harness** —
   `qacompanion/agent/evaluation.py`: THREE deterministic defect
   fixtures (calculator / string reverse / nested JSON lookup — each
