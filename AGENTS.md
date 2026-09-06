@@ -80,6 +80,25 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-05 — **S55 slice 5 (native-only prompting + lean catalog +
+  head-to-head)** — The bake-off diagnosis became engineering:
+  build_system_prompt(native_tools=...) — providers declare capability
+  (OllamaProvider(native_tools=...), Gemini class attr; unknown
+  providers default textual); the textual protocol is taught ONLY to
+  shim models (the conflict is ours, not the models'). Loop gained
+  tool_catalog (model-facing subset; registry keeps everything —
+  harness can execute tools the model wasn't offered). Benchmark
+  offers LEAN_MODEL_CATALOG (12 of 22). Pulled phi4-mini +
+  granite3.3:2b; four-way head-to-head, every config tried: ALL FOUR
+  FAIL (qwen3:4b turn-timeout at 300s even lean; 3b timeout mid-run
+  after 8 honest calls; phi4-mini 0 calls — echoes the SCHEMA as
+  arguments, adapter finding recorded; granite 8 calls/7 failures,
+  20 min wall). Isolated probes prove plumbing correct — the gap is
+  sustained multi-turn reasoning on 2–4B CPU, not plumbing. Passing
+  brain remains gemini-3.1-flash-lite native (144s, verified). Local
+  revisit: GPU or baby-agent:ep1 distill (S63+, training data teaches
+  the protocol general small models lack). Suite 1363 OK. Slice-5
+  section: docs/bakeoff-s55.md.
 - 2026-09-05 — **S55 slice 3 (ModelRouter) + tool-call diagnosis** —
   Diagnosis of the native-retest zero-tool-call mystery: qwen3:4b emits
   CORRECT native tool calls in an isolated 2-tool probe (10–15s, both
