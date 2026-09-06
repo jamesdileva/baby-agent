@@ -129,6 +129,25 @@ commit + push → worklog entry.**
   agent_registry → 59 tools (benchmark lean catalog unchanged — the
   benchmark doesn't browse). Suite 1363 → 1384 OK. Spec:
   docs/s53-spec.md.
+- 2026-09-05 — **S60 Synthetic Curriculum** —
+  `qacompanion/agent/curriculum.py`: CurriculumTask (strict schema,
+  difficulty VECTOR: reasoning/steps/tools_required — scales with
+  level) + eight category templates with failure injection BY
+  CONSTRUCTION (bug_fix modules contain the declared defect and their
+  tests genuinely fail pre-fix — proven via subprocess; feature_add
+  modules lack the expected function; build_repair has a syntax
+  error; dependency has a missing local module — known failure modes
+  DECLARED per task) + SyntheticCurriculum generator (seeded
+  deterministic, same seed = identical curriculum; round-robin
+  categories; level ranges; repeated normalized goals DETECTED and
+  skipped per the roadmap dedupe rule; coverage matrix =
+  skill → count) + MasteryTracker (success streak → level up,
+  consecutive failures → level down; recommend picks the
+  least-attempted skill). Bridge: as_eval_task() → S57
+  run_evaluation — curriculum runs through the identical harness
+  (proven end-to-end with a scripted fix). Registry unchanged
+  (curriculum is harness-level). Suite 1445 → 1461 OK. Spec:
+  docs/s60-spec.md.
 - 2026-09-05 — **S59 Agent Apprenticeship Lab** —
   `qacompanion/agent/apprenticeship.py`: TeacherProvider ABC +
   ScriptedTeacherProvider (hermetic; real Gemini/opencode teachers
