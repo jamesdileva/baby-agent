@@ -521,7 +521,34 @@ class TrajectoryCurator:
         for name, records in rows.items():
             _write_jsonl_atomic(out_path / name,
                                 [redact_all(r) for r in records])
+        _write_json_atomic(out_path / "diversity.json",
+                           self._diversity_section(trajectories))
         return counts
+
+    def _diversity_section(self, trajectories) -> Dict[str, Any]:
+        """The standalone diversity.json: measurable coverage, not raw
+        count (per-source / per-project groups, distinct vocabularies)."""
+        per_source: Dict[str, int] = {}
+        per_group: Dict[str, int] = {}
+        goal_heads: set = set()
+        tags: set = set()
+        tools: set = set()
+        for traj in trajectories:
+            per_source[traj.source] = per_source.get(traj.source, 0) + 1
+            group = f"{traj.source}/{traj.project_tag}"
+            per_group[group] = per_group.get(group, 0) + 1
+            goal_heads.add(_normalize_goal(traj.goal)[:40])
+        for exp in self.store.load():
+            tags.update(exp.tags)
+            tools.update(exp.actions)
+        return {
+            "trajectories": len(trajectories),
+            "per_source": per_source,
+            "per_source_project": per_group,
+            "distinct_tags": sorted(tags),
+            "distinct_goal_heads": len(goal_heads),
+            "tool_vocabulary": sorted(tools),
+        }
 
     @staticmethod
     def _tally(values) -> Dict[str, int]:
@@ -562,6 +589,13 @@ def _write_jsonl_atomic(path: Path, records: List[Dict[str, Any]]) -> None:
         for record in records)
     tmp = path.with_name(path.name + ".tmp-curation")
     tmp.write_text(payload, encoding="utf-8", newline="")
+    os.replace(tmp, path)
+
+
+def _write_json_atomic(path: Path, obj: Dict[str, Any]) -> None:
+    tmp = path.with_name(path.name + ".tmp-curation")
+    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=2),
+                   encoding="utf-8", newline="")
     os.replace(tmp, path)
 
 

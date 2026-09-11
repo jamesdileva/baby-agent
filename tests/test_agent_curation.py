@@ -210,6 +210,10 @@ class CuratorTests(unittest.TestCase):
         for name in TrajectoryCurator.EXPORT_FILES:
             self.assertTrue((self.out_dir / name).exists(), name)
         self.assertEqual(3, report["exports"]["trajectory.jsonl"])
+        diversity = json.loads((self.out_dir / "diversity.json").read_text(
+            encoding="utf-8"))
+        self.assertEqual(3, diversity["trajectories"])
+        self.assertIn("opencode", diversity["per_source"])
 
     def test_empty_export_files_come_with_honest_notes(self):
         store = self._store([_exp()])
