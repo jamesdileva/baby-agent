@@ -80,55 +80,27 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
-- 2026-09-05 — **S56 Context Optimization** —
-  `qacompanion/agent/context.py`: ContextBudget (char accounting,
-  never split mid-message), ToolResultSummarizer/ObservationReducer
-  (command results reduce to exit_code + stdout head/tail + stderr
-  head; old turns become one-line digests), prioritized
-  ContextBuilder — goal > memory block > latest tool result
-  (NON-DROPPABLE: verbatim -> reduced -> hard truncate; budget may be
-  exceeded, reported honestly via over_budget) > recent turns
-  (reduced) > older (digests) — plus MemoryRetriever (S47 keyword
-  injection at assembly, degraded-silent). Loop integration ADDITIVE:
-  AgentLoop(context_builder=None); without it, behavior byte-identical
-  (all prior loop tests unmodified); with it, per-turn assembly (the
-  builder must see tool results that exist by turn 2 — the frozen-
-  once bug was caught by the loop test). BuildReport is the
-  verification surface: goal_present, latest_tool_result_verbatim,
-  dropped, chars, over_budget. Suite 1396 → 1411 OK. Spec:
-  docs/s56-spec.md.
-- 2026-09-05 — **S54 Computer Use** —
-  `qacompanion/agent/computer.py`: the heavily restricted GUI
-  capability behind a THREE-GATE safety model — explicit allow-list
-  (default EMPTY: an unconfigured toolkit is a no-op by construction),
-  DESTRUCTIVE+requires_confirmation pipeline guarantee (default engine
-  demands confirmation for every single GUI action; denied with no
-  confirmer — spec overclaimed DENY, corrected), and per-action
-  confirmer. Six tools (click/double_click/move/type/press_keys/
-  focus_window); screen observation = S44 capture_screen, app
-  launching = S45 start_process (documented reuse). FakeComputerProvider
-  action log (hermetic); ctypes SendInput Windows adapter (POSIX =
-  structured error); max_actions budget (runaway-clicking protection);
-  out-of-bounds coordinates are structured errors, never clamped.
-  agent_registry → 65 tools (benchmark lean catalog unchanged). Suite
-  1384 → 1396 OK. Spec: docs/s54-spec.md.
-- 2026-09-05 — **S53 Browser Abstraction** —
-  `qacompanion/agent/browser.py`: BrowserProvider ABC + two adapters —
-  FakeBrowserProvider (in-memory page model: registered pages,
-  selector-addressable elements, history, click/type/select mutation,
-  REAL PNG screenshots via the S44 codec with per-page colors so
-  compare_images can verify) and PlaywrightBrowserProvider (sync
-  Playwright behind an import guard — activates with `pip install
-  playwright && playwright install chromium`, structured error naming
-  the fix before that; no binaries download as a side effect). Eight
-  EXTERNAL tools (browser_open/back/click/type/scroll/select/
-  screenshot/extract — default ASK posture; screenshot is the only
-  workspace writer); browser_download covered by S43
-  download_artifact (documented deviation). Playwright method mapping
-  proven with a mocked module both absent and present.
-  agent_registry → 59 tools (benchmark lean catalog unchanged — the
-  benchmark doesn't browse). Suite 1363 → 1384 OK. Spec:
-  docs/s53-spec.md.
+- 2026-09-11 — **S61 Multi-Agent Teacher Sessions** —
+  `qacompanion/agent/multi_agent.py`: structured multi-teacher
+  collaboration that generates higher-quality learning examples.
+  Participant delegates by duck-type — provider.propose →
+  TeacherProvider.teach → ModelProvider.generate — so ANY teacher or
+  model plugs in unchanged; MultiAgentSession carries the full
+  contract (proposals, critiques, votes, disagreements,
+  consensus_reached AS DATA, verified flag, diversity record). Four
+  session shapes: run_independent (N teachers solve separately,
+  verifier adjudicates, disagreements recorded as first-class data —
+  the S62-valuable training examples), run_debate (propose → critique
+  → revise), run_critique_chain (sequential role reviews),
+  run_specialist (primary + role reviewers → revision). THE pinned
+  principle: **consensus ≠ correctness** — a unanimous panel can be
+  wrong, so EVERY candidate passes the S41-style verification gate
+  (independent mode verifies each proposal; unanimous-wrong consensus
+  still fails, tested directly). MultiAgentLab wraps the runner with
+  record() + diversity_report() (by-mode aggregates, distinct roles,
+  disagreement sessions — diversity measured, not assumed; 11 roles ×
+  4 modes, strict validation, unknown role/mode rejected). Suite
+  1461 → 1474 OK. Spec: docs/s61-spec.md.
 - 2026-09-05 — **S60 Synthetic Curriculum** —
   `qacompanion/agent/curriculum.py`: CurriculumTask (strict schema,
   difficulty VECTOR: reasoning/steps/tools_required — scales with
@@ -197,6 +169,55 @@ commit + push → worklog entry.**
   only; the AutoFix fake provider synthesizes fixes per turn instead
   of pre-scripted lists that exhaust mid-run. Suite 1411 → 1422 OK.
   Spec: docs/s57-spec.md.
+- 2026-09-05 — **S56 Context Optimization** —
+  `qacompanion/agent/context.py`: ContextBudget (char accounting,
+  never split mid-message), ToolResultSummarizer/ObservationReducer
+  (command results reduce to exit_code + stdout head/tail + stderr
+  head; old turns become one-line digests), prioritized
+  ContextBuilder — goal > memory block > latest tool result
+  (NON-DROPPABLE: verbatim -> reduced -> hard truncate; budget may be
+  exceeded, reported honestly via over_budget) > recent turns
+  (reduced) > older (digests) — plus MemoryRetriever (S47 keyword
+  injection at assembly, degraded-silent). Loop integration ADDITIVE:
+  AgentLoop(context_builder=None); without it, behavior byte-identical
+  (all prior loop tests unmodified); with it, per-turn assembly (the
+  builder must see tool results that exist by turn 2 — the frozen-
+  once bug was caught by the loop test). BuildReport is the
+  verification surface: goal_present, latest_tool_result_verbatim,
+  dropped, chars, over_budget. Suite 1396 → 1411 OK. Spec:
+  docs/s56-spec.md.
+- 2026-09-05 — **S54 Computer Use** —
+  `qacompanion/agent/computer.py`: the heavily restricted GUI
+  capability behind a THREE-GATE safety model — explicit allow-list
+  (default EMPTY: an unconfigured toolkit is a no-op by construction),
+  DESTRUCTIVE+requires_confirmation pipeline guarantee (default engine
+  demands confirmation for every single GUI action; denied with no
+  confirmer — spec overclaimed DENY, corrected), and per-action
+  confirmer. Six tools (click/double_click/move/type/press_keys/
+  focus_window); screen observation = S44 capture_screen, app
+  launching = S45 start_process (documented reuse). FakeComputerProvider
+  action log (hermetic); ctypes SendInput Windows adapter (POSIX =
+  structured error); max_actions budget (runaway-clicking protection);
+  out-of-bounds coordinates are structured errors, never clamped.
+  agent_registry → 65 tools (benchmark lean catalog unchanged). Suite
+  1384 → 1396 OK. Spec: docs/s54-spec.md.
+- 2026-09-05 — **S53 Browser Abstraction** —
+  `qacompanion/agent/browser.py`: BrowserProvider ABC + two adapters —
+  FakeBrowserProvider (in-memory page model: registered pages,
+  selector-addressable elements, history, click/type/select mutation,
+  REAL PNG screenshots via the S44 codec with per-page colors so
+  compare_images can verify) and PlaywrightBrowserProvider (sync
+  Playwright behind an import guard — activates with `pip install
+  playwright && playwright install chromium`, structured error naming
+  the fix before that; no binaries download as a side effect). Eight
+  EXTERNAL tools (browser_open/back/click/type/scroll/select/
+  screenshot/extract — default ASK posture; screenshot is the only
+  workspace writer); browser_download covered by S43
+  download_artifact (documented deviation). Playwright method mapping
+  proven with a mocked module both absent and present.
+  agent_registry → 59 tools (benchmark lean catalog unchanged — the
+  benchmark doesn't browse). Suite 1363 → 1384 OK. Spec:
+  docs/s53-spec.md.
 - 2026-09-05 — **S55 slice 5 (native-only prompting + lean catalog +
   head-to-head)** — The bake-off diagnosis became engineering:
   build_system_prompt(native_tools=...) — providers declare capability
