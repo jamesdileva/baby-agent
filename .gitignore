@@ -4,6 +4,9 @@ __pycache__/
 digest.jsonl
 experience.jsonl
 
+# S62 curation exports
+curated/
+
 # S52 dashboard
 app/node_modules/
 app/dist/

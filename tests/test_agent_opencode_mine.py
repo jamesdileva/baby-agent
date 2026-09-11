@@ -6,6 +6,7 @@ The REAL opencode database is never touched by the suite.
 import hashlib
 import json
 import sqlite3
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -229,6 +230,95 @@ class TestMineRun(MineTestBase):
         self.miner.mine(store=self.store)
         after = hashlib.sha256(self.db.read_bytes()).hexdigest()
         self.assertEqual(before, after)
+
+
+def _tool_output(text):
+    return {"type": "tool", "tool": "bash",
+            "state": {"status": "completed", "output": text}}
+
+
+class MarathonFailurePairTests(unittest.TestCase):
+    """S62: marathon sessions carry MULTIPLE error->patch cycles."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.db = Path(self._tmp.name) / "oc.db"
+
+    def _build(self, parts):
+        con = sqlite3.connect(self.db)
+        con.executescript(SCHEMA)
+        con.execute("INSERT INTO session VALUES (?,?,?,?)",
+                    ("s1", self._tmp.name, "marathon chunk", NOW))
+        con.execute("INSERT INTO message VALUES (?,?,?,?)",
+                    ("m0", "s1", NOW, json.dumps({"role": "user"})))
+        con.execute("INSERT INTO part VALUES (?,?,?,?,?)",
+                    ("p0", "m0", "s1", NOW + 1, json.dumps(
+                        {"type": "text", "text": "fix the failing build"})))
+        con.execute("INSERT INTO message VALUES (?,?,?,?)",
+                    ("m1", "s1", NOW + 2, json.dumps({"role": "assistant"})))
+        for i, data in enumerate(parts):
+            con.execute("INSERT INTO part VALUES (?,?,?,?,?)",
+                        (f"p{i + 1}", "m1", "s1", NOW + 10 + i,
+                         json.dumps(data)))
+        con.commit()
+        con.close()
+        return OpencodeMiner(self.db).mine_session(
+            {"id": "s1", "directory": self._tmp.name, "title": "t"})
+
+    def test_two_cycles_yield_two_pairs(self):
+        exp = self._build([
+            _tool_output("AssertionError: expected 4 got 5"),
+            {"type": "patch", "path": "a.py"},
+            _tool_output("ValueError: bad header"),
+            {"type": "patch", "path": "b.py"},
+        ])
+        pairs = exp.context["failure_pairs"]
+        self.assertEqual(2, len(pairs))
+        self.assertEqual("AssertionError: expected 4 got 5", pairs[0][0])
+        self.assertEqual("fix applied via patch", pairs[0][1])
+        self.assertEqual("ValueError: bad header", pairs[1][0])
+        # back-compat: top-level fields carry the FIRST pair
+        self.assertEqual(pairs[0][0], exp.failure)
+        self.assertEqual("fix applied via patch", exp.resolution)
+
+    def test_pairs_capped_at_five(self):
+        parts = []
+        for i in range(7):
+            parts.append(_tool_output(f"Error: cycle {i} blew up"))
+            parts.append({"type": "patch", "path": f"f{i}.py"})
+        exp = self._build(parts)
+        self.assertEqual(5, len(exp.context["failure_pairs"]))
+
+    def test_unresolved_error_pair_has_no_resolution(self):
+        exp = self._build([_tool_output("Error: still broken")])
+        pairs = exp.context["failure_pairs"]
+        self.assertEqual([["Error: still broken", None]], pairs)
+        self.assertIsNone(exp.resolution)
+
+    def test_bare_traceback_header_is_weak_fallback_never_a_pair(self):
+        exp = self._build([
+            _tool_output("Traceback (most recent call last):"),
+            {"type": "patch", "path": "a.py"},
+        ])
+        self.assertNotIn("failure_pairs", exp.context)
+        self.assertIn("Traceback", exp.failure)
+        self.assertEqual("fix applied via patch", exp.resolution)
+
+    def test_repeated_identical_error_creates_one_pair(self):
+        exp = self._build([
+            _tool_output("Error: same failure"),
+            _tool_output("Error: same failure"),
+            {"type": "patch", "path": "a.py"},
+        ])
+        self.assertEqual(1, len(exp.context["failure_pairs"]))
+
+    def test_clean_session_has_no_failure_data(self):
+        exp = self._build([{"type": "tool", "tool": "read",
+                            "state": {"status": "completed",
+                                      "output": "all good"}}])
+        self.assertIsNone(exp.failure)
+        self.assertNotIn("failure_pairs", exp.context)
 
 
 if __name__ == "__main__":

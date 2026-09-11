@@ -499,6 +499,80 @@ def build_parser():
         help="digest store file (default: digest.jsonl)",
     )
 
+    sessminer = sub.add_parser(
+        "mine-sessions",
+        help="mine agent-session databases into the experience store",
+        epilog=(
+            "S47.1/S62: converts SST-family session databases (opencode, "
+            "ZCode) into S47 experiences, read-only. Repeatable corpus "
+            "refresh: already-mined goals reinforce (times_seen) instead "
+            "of duplicating. Exit contract: 0 success, 1 operational "
+            "error."
+        ),
+    )
+    sessminer.add_argument(
+        "--source",
+        required=True,
+        choices=["opencode", "zcode"],
+        help="session database family to mine",
+    )
+    sessminer.add_argument(
+        "--db",
+        default=None,
+        metavar="PATH",
+        help="database path (default: the source's standard location)",
+    )
+    sessminer.add_argument(
+        "--directory",
+        default=None,
+        metavar="DIR",
+        help="limit mining to one project directory",
+    )
+    sessminer.add_argument(
+        "--store",
+        dest="store_path",
+        default=None,
+        metavar="PATH",
+        help="experience store file (default: QA_EXPERIENCE_FILE or "
+             "experience.jsonl)",
+    )
+    sessminer.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report what would be mined without writing",
+    )
+
+    curator = sub.add_parser(
+        "curate",
+        help="run the S62 curation gate over the experience store",
+        epilog=(
+            "S62: classify, score, hard-reject, dedupe, and export "
+            "trajectories; propose failure-case and skill candidates "
+            "(never auto-written to cases.jsonl). Exports are atomic "
+            "JSONL under QA_CURATED_DIR (default curated/). Exit "
+            "contract: 0 success, 1 operational error."
+        ),
+    )
+    curator.add_argument(
+        "--store",
+        dest="store_path",
+        default=None,
+        metavar="PATH",
+        help="experience store file (default: QA_EXPERIENCE_FILE or "
+             "experience.jsonl)",
+    )
+    curator.add_argument(
+        "--out",
+        default=None,
+        metavar="DIR",
+        help="export directory (default: QA_CURATED_DIR or curated/)",
+    )
+    curator.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report verdicts without writing exports",
+    )
+
     server = sub.add_parser(
         "serve",
         help="dashboard API server — localhost UI for the agent runtime",
@@ -1050,6 +1124,48 @@ def _cmd_escalate(args):
     return 0
 
 
+def _cmd_mine_sessions(args):
+    """S47.1/S62: read-only session mining into the experience store."""
+    from .agent.experience import ExperienceStore
+    from .agent.opencode_mine import MiningError, OpencodeMiner
+    from .agent.zcode_mine import ZcodeMiner
+    try:
+        if args.source == "zcode":
+            miner = ZcodeMiner(args.db)
+        else:
+            miner = OpencodeMiner(args.db)
+        store = None if args.dry_run else ExperienceStore(args.store_path)
+        stats = miner.mine(directory=args.directory, store=store,
+                           dry_run=args.dry_run)
+    except MiningError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    label = "dry run" if args.dry_run else "mined"
+    print(f"session mining ({args.source}) — {label}:")
+    print(f"  sessions seen: {stats['sessions_seen']}, mined: "
+          f"{stats['mined']}, reinforced: {stats['reinforced']}, "
+          f"skipped trivial: {stats['skipped_trivial']}, "
+          f"errors: {stats['errors']}")
+    for directory, per in sorted(stats["by_directory"].items(),
+                                 key=lambda kv: -kv[1]["seen"])[:10]:
+        print(f"    {directory}: seen {per['seen']}, mined {per['mined']}")
+    return 0
+
+
+def _cmd_curate(args):
+    """S62: run the trajectory curation gate over the experience store."""
+    from .agent.curation import TrajectoryCurator, format_report
+    from .agent.experience import ExperienceStore
+    try:
+        curator = TrajectoryCurator(ExperienceStore(args.store_path))
+        report = curator.curate(out_dir=args.out, dry_run=args.dry_run)
+    except (OSError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(format_report(report))
+    return 0
+
+
 def _cmd_serve(args):
     """S52: boot the localhost dashboard API and serve until Ctrl+C."""
     from .agent.experience import ExperienceStore
@@ -1115,6 +1231,8 @@ _COMMANDS = {
     "tasklite": _cmd_tasklite,
     "gaps": _cmd_gaps,
     "escalate": _cmd_escalate,
+    "mine-sessions": _cmd_mine_sessions,
+    "curate": _cmd_curate,
     "watch": _cmd_watch,
     "serve": _cmd_serve,
 }

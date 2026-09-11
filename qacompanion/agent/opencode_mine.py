@@ -51,6 +51,12 @@ BOILERPLATE_MARKERS = ("SITUATION REPORT", "PROJECT GOAL (authored by",
 CONTINUATION_PHRASES = {"continue", "continue.", "go on", "keep going",
                         "resume", "continue where you left off"}
 
+# S62: marathon sessions carry MULTIPLE error->patch cycles; each
+# distinct error line followed later by a patch becomes one pair
+MAX_FAILURE_PAIRS = 5
+DEFAULT_OPENCODE_DB = (Path.home() / ".local" / "share" / "opencode"
+                       / "opencode.db")
+
 
 def _is_boilerplate(text: str) -> bool:
     # substring markers: injected preambles
@@ -81,8 +87,11 @@ class MiningError(Exception):
 class OpencodeMiner:
     """Read-only miner over an SST-opencode SQLite database."""
 
-    def __init__(self, db_path):
-        self.db_path = Path(db_path)
+    # subclasses in the same SST family (e.g. ZCode) override the tag
+    SOURCE_NAME = "opencode"
+
+    def __init__(self, db_path=None):
+        self.db_path = Path(db_path or DEFAULT_OPENCODE_DB)
         if not self.db_path.exists():
             raise MiningError(f"opencode database not found: {self.db_path}")
 
@@ -168,12 +177,19 @@ class OpencodeMiner:
         }
 
     def _error_patch(self, con: sqlite3.Connection, session_id: str
-                     ) -> "tuple[Optional[str], Optional[str]]":
-        """Conservative error->patch correlation: when an error-shaped
-        tool output is followed by a later patch part in the same
-        session, report failure line + honest resolution note."""
-        first_error = None
-        patch_after = False
+                     ) -> "tuple[Optional[str], Optional[str], list]":
+        """Error->patch correlation, marathon-aware (S62): each distinct
+        error-shaped tool output followed later by a patch part becomes
+        one [error, resolution] pair (capped at MAX_FAILURE_PAIRS). The
+        FIRST pair populates the top-level failure/resolution fields for
+        back-compatibility; the full list goes to context["failure_pairs"].
+        Bare Traceback headers are weak fallbacks only — they never start
+        a pair (S50 lesson: substantive error lines beat headers)."""
+        pairs: List[List[Optional[str]]] = []
+        current_error: Optional[str] = None
+        patch_since = False
+        weak_fallback: Optional[str] = None
+        weak_patch_after = False
         for row in con.execute(
                 "SELECT time_created, data FROM part WHERE session_id = ? "
                 "ORDER BY time_created", (session_id,)).fetchall():
@@ -184,23 +200,42 @@ class OpencodeMiner:
             ptype = part.get("type")
             if ptype == "tool":
                 output = str((part.get("state") or {}).get("output") or "")
+                strong = None
                 for line in output.splitlines():
                     if not ERROR_SHAPE_RE.search(line):
                         continue
                     if "Traceback (" in line:
-                        # bare header: weak fallback only — keep scanning
-                        # for the substantive error line past it
-                        if first_error is None:
-                            first_error = line.strip()[:200]
+                        # bare header: weak fallback only — keep the first
+                        # one in case no strong line ever appears
+                        if weak_fallback is None:
+                            weak_fallback = line.strip()[:200]
                         continue
-                    first_error = line.strip()[:200]  # strong line wins
+                    strong = line.strip()[:200]  # strong line wins
                     break
-            elif ptype == "patch" and first_error is not None:
-                patch_after = True
-        if first_error is None:
-            return None, None
-        resolution = "fix applied via patch" if patch_after else None
-        return first_error, resolution
+                if strong is not None and strong != current_error:
+                    if current_error is not None:
+                        if len(pairs) >= MAX_FAILURE_PAIRS:
+                            break  # cap reached: stop collecting
+                        pairs.append([current_error,
+                                      "fix applied via patch" if patch_since
+                                      else None])
+                    current_error = strong
+                    patch_since = False
+            elif ptype == "patch":
+                if current_error is not None:
+                    patch_since = True
+                elif weak_fallback is not None:
+                    weak_patch_after = True
+        if current_error is not None and len(pairs) < MAX_FAILURE_PAIRS:
+            pairs.append([current_error,
+                          "fix applied via patch" if patch_since else None])
+        if not pairs:
+            if weak_fallback is not None:
+                return weak_fallback, ("fix applied via patch"
+                                       if weak_patch_after else None), []
+            return None, None, []
+        first = pairs[0]
+        return first[0], first[1], pairs
 
     def mine_session(self, session_row: Dict[str, Any],
                      store: Optional[ExperienceStore] = None
@@ -211,7 +246,8 @@ class OpencodeMiner:
             volume = self._session_volume(con, session_id)
             goal = self._user_text(con, session_id)
             tool_info = self._tool_actions(con, session_id)
-            failure, resolution = self._error_patch(con, session_id)
+            failure, resolution, failure_pairs = self._error_patch(
+                con, session_id)
         finally:
             con.close()
 
@@ -236,14 +272,16 @@ class OpencodeMiner:
             languages = list(metadata.languages)
 
         context = {
-            "source": "opencode",
+            "source": self.SOURCE_NAME,
             "directory": directory,
             **volume,
             **tool_info,
         }
+        if failure_pairs:
+            context["failure_pairs"] = failure_pairs
         goal_used = goal or (session_row.get("title")
-                             or "opencode session")[:MAX_GOAL_CHARS]
-        tags = ["opencode", Path(directory).name.lower()
+                             or f"{self.SOURCE_NAME} session")[:MAX_GOAL_CHARS]
+        tags = [self.SOURCE_NAME, Path(directory).name.lower()
                 if directory else "unknown"]
         if goal_was_missing:
             tags.append("goal-less")  # placeholder goal: substance over label
