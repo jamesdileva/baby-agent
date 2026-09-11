@@ -72,6 +72,66 @@ def _harvest_qa_advice(session: AgentSession) -> List[Dict[str, Any]]:
     return advice
 
 
+# S63 capture bounds: enough metadata to reproduce a step, never a
+# transcript dump
+MAX_CAPTURED_CALLS = 50
+MAX_RESULT_HEAD_CHARS = 200
+MAX_FINAL_ANSWER_CHARS = 500
+
+
+def _json_safe(value: Any, limit: int = MAX_RESULT_HEAD_CHARS) -> Any:
+    """Coerce one argument value into bounded JSON-safe form."""
+    if isinstance(value, str):
+        return value[:limit]
+    if isinstance(value, (int, float, bool)) or value is None:
+        return value
+    try:
+        text = json.dumps(value, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        text = str(value)
+    return text[:limit]
+
+
+def _bounded_tool_calls(session: AgentSession) -> List[Dict[str, Any]]:
+    """S63: ordered tool calls with structured args + bounded result
+    heads (paired by index with the executed observations). This is the
+    step-level "enough metadata to reproduce the task" capture; the
+    actions field stays tool NAMES for S50 compatibility."""
+    captured: List[Dict[str, Any]] = []
+    for call, observation in zip(session.tool_calls,
+                                 session.observations):
+        if len(captured) >= MAX_CAPTURED_CALLS:
+            break
+        head = ""
+        if observation is not None:
+            raw = observation.output or observation.error or ""
+            head = raw.strip().splitlines()[0][:MAX_RESULT_HEAD_CHARS] \
+                if raw.strip() else ""
+        captured.append({
+            "tool": call.name,
+            "args": {k: _json_safe(v)
+                     for k, v in (call.arguments or {}).items()},
+            "ok": (observation.ok if observation is not None else None),
+            "result_head": head,
+        })
+    return captured
+
+
+def _final_answer(session: AgentSession) -> Optional[str]:
+    """S63: the loop's final answer (session.final_result), falling back
+    to the last text-only assistant message."""
+    final = getattr(session, "final_result", None)
+    if isinstance(final, str) and final.strip():
+        return final.strip()[:MAX_FINAL_ANSWER_CHARS]
+    for message in reversed(session.messages):
+        if message.role != "assistant":
+            continue
+        content = (message.content or "").strip()
+        if content and "[TOOL:" not in content:
+            return content[:MAX_FINAL_ANSWER_CHARS]
+    return None
+
+
 def session_to_experience(session: AgentSession,
                           model: Optional[str] = None) -> Experience:
     """Convert a finished session into an Experience record."""
@@ -97,6 +157,8 @@ def session_to_experience(session: AgentSession,
             "state": session.state.value,
             "workspace_root": session.workspace_root,
             "model": model,
+            "tool_calls": _bounded_tool_calls(session),
+            "final_answer": _final_answer(session),
         },
         failure=failure,
         diagnosis=(advice[0].get("diagnosis") if advice else None),

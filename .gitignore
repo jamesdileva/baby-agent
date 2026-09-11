@@ -7,6 +7,9 @@ experience.jsonl
 # S62 curation exports
 curated/
 
+# S63 training corpus
+training/
+
 # S52 dashboard
 app/node_modules/
 app/dist/

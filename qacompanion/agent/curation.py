@@ -319,6 +319,16 @@ class CuratedTrajectory:
     times_seen: int
     project_tag: str = ""
     diversity_score: Optional[float] = None
+    # S63: the substantive payload, so trajectory.jsonl is the full
+    # structured export the training pipeline consumes (redacted at
+    # export; training reads ONLY curated/, never raw experience)
+    actions: List[str] = field(default_factory=list)
+    failure: Optional[str] = None
+    diagnosis: Optional[str] = None
+    resolution: Optional[str] = None
+    verification: Dict[str, Any] = field(default_factory=dict)
+    steps: List[Dict[str, Any]] = field(default_factory=list)
+    final_answer: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -337,6 +347,13 @@ class CuratedTrajectory:
             "confidence": self.confidence,
             "times_seen": self.times_seen,
             "diversity_score": self.diversity_score,
+            "actions": self.actions,
+            "failure": self.failure,
+            "diagnosis": self.diagnosis,
+            "resolution": self.resolution,
+            "verification": self.verification,
+            "steps": self.steps,
+            "final_answer": self.final_answer,
         }
 
 
@@ -349,6 +366,17 @@ def _project_tag_of(experience: Experience) -> str:
     if len(tags) > 1:
         return tags[1]
     return tags[0] if tags else "unknown"
+
+
+def _steps_of(experience: Experience) -> List[Dict[str, Any]]:
+    """S63 step capture (loop-recorded sessions): context["tool_calls"]."""
+    steps = experience.context.get("tool_calls") or []
+    return steps if isinstance(steps, list) else []
+
+
+def _final_answer_of(experience: Experience) -> Optional[str]:
+    answer = experience.context.get("final_answer")
+    return answer if isinstance(answer, str) else None
 
 
 class TrajectoryCurator:
@@ -440,6 +468,13 @@ class TrajectoryCurator:
             confidence=experience.confidence,
             times_seen=experience.times_seen,
             project_tag=_project_tag_of(experience),
+            actions=list(experience.actions),
+            failure=experience.failure,
+            diagnosis=experience.diagnosis,
+            resolution=experience.resolution,
+            verification=dict(experience.verification or {}),
+            steps=_steps_of(experience),
+            final_answer=_final_answer_of(experience),
         )
 
     def _apply_diversity(self, trajectories: List[CuratedTrajectory]) -> None:

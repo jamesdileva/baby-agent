@@ -573,6 +573,38 @@ def build_parser():
         help="report verdicts without writing exports",
     )
 
+    trainer = sub.add_parser(
+        "build-training",
+        help="build the S63 training corpus from the curated export",
+        epilog=(
+            "S63: parses the S62 curated dataset (never raw experience) "
+            "into structured trajectory records; only verified-success "
+            "ACCEPTED trajectories become SFT chat records teaching the "
+            "runtime's textual tool protocol. Exports under "
+            "QA_TRAINING_DIR (default training/). Exit contract: 0 "
+            "success, 1 operational error."
+        ),
+    )
+    trainer.add_argument(
+        "--curated-dir",
+        default=None,
+        metavar="DIR",
+        help="curated export directory (default: QA_CURATED_DIR or "
+             "curated/)",
+    )
+    trainer.add_argument(
+        "--out-dir",
+        default=None,
+        metavar="DIR",
+        help="training export directory (default: QA_TRAINING_DIR or "
+             "training/)",
+    )
+    trainer.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report counts without writing exports",
+    )
+
     server = sub.add_parser(
         "serve",
         help="dashboard API server — localhost UI for the agent runtime",
@@ -1166,6 +1198,20 @@ def _cmd_curate(args):
     return 0
 
 
+def _cmd_build_training(args):
+    """S63: curated data -> structured records + SFT training corpus."""
+    from .agent.training import TrainingError, build_training, format_report
+    try:
+        report = build_training(curated_dir=args.curated_dir,
+                                out_dir=args.out_dir,
+                                dry_run=args.dry_run)
+    except (TrainingError, OSError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(format_report(report))
+    return 0
+
+
 def _cmd_serve(args):
     """S52: boot the localhost dashboard API and serve until Ctrl+C."""
     from .agent.experience import ExperienceStore
@@ -1233,6 +1279,7 @@ _COMMANDS = {
     "escalate": _cmd_escalate,
     "mine-sessions": _cmd_mine_sessions,
     "curate": _cmd_curate,
+    "build-training": _cmd_build_training,
     "watch": _cmd_watch,
     "serve": _cmd_serve,
 }
