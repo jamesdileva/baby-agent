@@ -276,8 +276,14 @@ def verdict_for(experience: Experience, classification: str,
     if placeholder and not substance:
         reasons.append("placeholder goal with no failure data and <3 actions")
         return VERDICT_REJECT, reasons
+    # human-review finding (DECISIONS 2026-09-11): a recovered pair under
+    # a junk goal (greeting, closing template) is NOT high-value — goal
+    # substance gates the high-value claim
+    substantive_goal = (
+        not placeholder
+        and len([t for t in re.split(r"\W+", experience.goal) if t]) >= 3)
     if (experience.confidence < REVIEW_CONFIDENCE
-            and dims.get("recovery") == 1.0):
+            and dims.get("recovery") == 1.0 and substantive_goal):
         reasons.append("low-confidence high-value: recovered failure->fix "
                        "pair routed to human review")
         return VERDICT_REVIEW, reasons

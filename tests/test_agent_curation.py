@@ -158,6 +158,17 @@ class VerdictTests(unittest.TestCase):
         self.assertEqual(VERDICT_REVIEW, verdict)
         self.assertIn("human review", " ".join(reasons))
 
+    def test_junk_goal_recovered_pair_not_high_value(self):
+        # DECISIONS 2026-09-11: human review judged the first two REVIEW
+        # items (greeting goal, closing template) low value — goal
+        # substance gates the high-value claim
+        exp = _exp(goal="hey", outcome="partial", confidence=0.3,
+                   failure="TypeError: x", resolution="fix applied via patch",
+                   actions=["read", "edit"])
+        dims, overall, _ = score(exp, CLASS_PARTIAL, [])
+        verdict, _ = verdict_for(exp, CLASS_PARTIAL, [], overall, dims)
+        self.assertNotEqual(VERDICT_REVIEW, verdict)
+
     def test_hard_flag_rejects_with_reason(self):
         exp = _exp(failure="api_key=abc123")
         flags = hard_flags(exp)

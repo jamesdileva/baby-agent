@@ -1279,3 +1279,21 @@ roadmap-named unlock. New rules documented here per standing
 discipline; no human approval required (teaching authority).
 
 Status: Adopted 2026-09-05. Slice 4 of docs/s55-spec.md.
+
+### Trajectory review: junk-goal sessions are not high-value (S62 follow-up)
+
+**Decision:** The S62 REVIEW router (low-confidence + recovered
+failure->fix pair) must also require GOAL SUBSTANCE. Human review of the
+first two REVIEW items (2026-09-11) judged both low value: one goal was
+"hey", the other the recurring session-closing template "Continue if you
+have next steps, or stop and ask for clarification if you are unsure how
+to proceed." (reinforced x3 in the store — a template, not a task).
+Changes: (a) `verdict_for` gates the high-value REVIEW claim on a
+substantive goal (not placeholder, >= 3 words); (b) the closing template
+joins the miner's boilerplate continuation set; (c) the dismissed
+template-goal record leaves the store and re-mines under the goal-less
+rule. The recovered failure->fix CONTENT remains exported as failure-case
+candidates — only the "high-value trajectory" claim is withdrawn.
+Provenance: human review of curated/review.jsonl, 2026-09-11.
+
+Status: Adopted 2026-09-11. Teaching authority; no spec amendment.

@@ -321,5 +321,33 @@ class MarathonFailurePairTests(unittest.TestCase):
         self.assertNotIn("failure_pairs", exp.context)
 
 
+class ClosingTemplateBoilerplateTests(unittest.TestCase):
+    """DECISIONS 2026-09-11: the human's recurring session-closing
+    prompt (reinforced x3 in the store) is boilerplate by exact match."""
+
+    TEMPLATE = ("Continue if you have next steps, or stop and ask for "
+                "clarification if you are unsure how to proceed.")
+
+    def test_closing_template_session_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "oc.db"
+            con = sqlite3.connect(db)
+            con.executescript(SCHEMA)
+            con.execute("INSERT INTO session VALUES (?,?,?,?)",
+                        ("s_close", tmp, "closing ping", NOW))
+            con.execute("INSERT INTO message VALUES (?,?,?,?)",
+                        ("cm0", "s_close", NOW, json.dumps({"role": "user"})))
+            con.execute("INSERT INTO part VALUES (?,?,?,?,?)",
+                        ("cp0", "cm0", "s_close", NOW + 1, json.dumps(
+                            {"type": "text", "text": self.TEMPLATE})))
+            con.commit()
+            con.close()
+            # boilerplate-only goal + <100 parts: skipped, never mined
+            # with the template as a task goal
+            exp = OpencodeMiner(db).mine_session(
+                {"id": "s_close", "directory": tmp, "title": "t"})
+            self.assertIsNone(exp)
+
+
 if __name__ == "__main__":
     unittest.main()

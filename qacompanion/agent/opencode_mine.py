@@ -49,7 +49,13 @@ BOILERPLATE_MARKERS = ("SITUATION REPORT", "PROJECT GOAL (authored by",
 
 
 CONTINUATION_PHRASES = {"continue", "continue.", "go on", "keep going",
-                        "resume", "continue where you left off"}
+                        "resume", "continue where you left off",
+                        # the human's session-closing template — reinforced
+                        # x3 in the store before the human review ruling
+                        # (DECISIONS 2026-09-11) identified it as boilerplate
+                        "continue if you have next steps, or stop and ask "
+                        "for clarification if you are unsure how to "
+                        "proceed."}
 
 # S62: marathon sessions carry MULTIPLE error->patch cycles; each
 # distinct error line followed later by a patch becomes one pair
