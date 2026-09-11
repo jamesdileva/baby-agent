@@ -80,6 +80,39 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-11 — **S62 Trajectory Curation** —
+  `qacompanion/agent/curation.py`: the §S62 gate between "something
+  happened" and "should learn this" — deterministic, no LLM.
+  Classification (SUCCESS / FAILED / RECOVERED / HUMAN_CORRECTED /
+  PARTIAL / UNSAFE / INVALID, flags override), scoring over the
+  roadmap's ten dimensions where deterministic signals EXIST (None =
+  honestly unknown, never guessed; overall = mean of known dims),
+  hard rejections (credential patterns — the flag names the pattern
+  and exports are REDACTED, never echoing the secret; destructive
+  markers; success-with-zero-actions = INVALID), soft penalties
+  (repeated actions, oversized tool usage, placeholder goals), and
+  verdicts: REJECT on flags or no substance; **REVIEW = low-confidence
+  AND high-value** (mined RECOVERED failure→fix pairs — the human
+  surface); ACCEPT at overall ≥ 0.5. Dedupe is a defensive second
+  layer over store reinforcement; diversity = rarity of the
+  (source, project) group, measured not assumed. Lesson extraction is
+  CANDIDATES ONLY — failure cases with S2 signature candidates +
+  S51-shaped skill seeds; cases.jsonl stays teacher-gated (case-#10
+  lore). Nine atomic exports + diversity.json under QA_CURATED_DIR
+  (gitignored); preferences/benchmarks honestly empty with explanatory
+  notes. Miner v2: marathon error→patch PAIRS (cap 5, first pair
+  back-compat, Traceback headers stay weak fallbacks) — the deeper
+  surfhop/sentinel extraction from the S50 backlog. ZcodeMiner: thin
+  SST-family subclass (SOURCE_NAME + default DB path; the corpus is 1
+  session — this one — and grows as the human uses ZCode). New CLI:
+  `qa mine-sessions` + `qa curate`. **Live runs**: opencode re-mine
+  1,431 seen / 288 mined / 274 reinforced / 1,143 skipped trivial /
+  0 errors (PortfolioCapture alone +86); store 97 → 112 (109 opencode,
+  1 zcode, 2 pre-source); curation ACCEPT=109 / REVIEW=2 / REJECT=1 —
+  the reject is a genuine data-quality catch ("Repaired failed tests"
+  claimed success with zero recorded actions → INVALID), 9 failure
+  cases + 93 skill candidates exported (428 records). Suite 1474 →
+  1515 OK. Spec: docs/s62-spec.md.
 - 2026-09-11 — **S61 Multi-Agent Teacher Sessions** —
   `qacompanion/agent/multi_agent.py`: structured multi-teacher
   collaboration that generates higher-quality learning examples.
