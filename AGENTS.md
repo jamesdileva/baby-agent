@@ -80,6 +80,31 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-12 — **S68 The Self-Improvement Loop — the generation cycle
+  is now standing plumbing** — Everything gen-3 needs, one command per
+  stage: (1) **corpus hygiene automated** — `mark_superseded_demos`
+  tags pre-S66 scripted demos whose FIRST captured step is read_file
+  (precise identifier: no S66 script starts with a read) as
+  `superseded-pattern`; tags now flow through the curated export and
+  training.py excludes them WITH a recorded reason (kept in the store
+  for provenance); (2) **idempotent rebuild** — build_corpus marks
+  superseded first, then skips any task whose normalized goal already
+  has a successful new-style demo (suffix-stripped normalization —
+  the recorded goal carries " (benchmark run <id>)" but the task goal
+  does not; the first implementation missed the strip and never
+  matched, caught by the idempotency test); **live: superseded 25,
+  skipped 96, 0 re-demos needed** — every task already had a
+  new-style record, so the training set went 122 → 97 with the stale
+  dilution gone, 100% explore/tests-first + real; (3) `qa
+  gemini-drip` — one real pass on the free-tier brain, recorded like
+  any run; **live smoke PASSED** (10 iterations, 9 calls, 1 failure —
+  a real verified record now feeding the next chain); (4) `qa
+  verdict --models A,B [--ab-demos]` — the one-command generation
+  verdict (tasks + protocol_metrics table), backed by a testable
+  run_verdict with injected providers; **live smoke: the ep0.5 A/B
+  ran for ep2 (with-demos 1 call vs without 4 calls, both FAILED —
+  one data point, the worked example makes ep2 more conservative)**.
+  Suite 1579 OK. Spec: docs/s68-spec.md.
 - 2026-09-12 — **S67 Gen-2 verdict — no benchmark win yet; the metrics
   did their job** — ep2 imported with ZERO local surgery (the first
   export through the hardened kit: untie + rope_theta + explicit
