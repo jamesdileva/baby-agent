@@ -97,6 +97,7 @@ class TrainingKitTests(unittest.TestCase):
             # Dataset.from_list) and T4 has no bf16
             self.assertIn('{"messages": r["messages"]}', script)
             self.assertIn("fp16=True", script)
+            self.assertIn('"use_reentrant": False', script)
             self.assertIn("merge_and_unload", script)
             # the kit imports nothing from qacompanion — it runs outside
             # (prose mentions of the repo are fine; imports are not)

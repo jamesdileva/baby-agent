@@ -57,6 +57,9 @@ def main():
         learning_rate=2e-4,
         fp16=True,                      # T4 (Turing) has no bf16
         gradient_checkpointing=True,
+        # LoRA + checkpointing: frozen embeddings break the default
+        # (reentrant) checkpoint implementation
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         logging_steps=1,
         report_to=[],
     )

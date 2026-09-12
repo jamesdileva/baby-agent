@@ -183,6 +183,9 @@ def main():
         learning_rate=2e-4,
         fp16=True,                      # T4 (Turing) has no bf16
         gradient_checkpointing=True,
+        # LoRA + checkpointing: frozen embeddings break the default
+        # (reentrant) checkpoint implementation
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         logging_steps=1,
         report_to=[],
     )
@@ -234,6 +237,8 @@ qacompanion stays stdlib-only — this kit runs on EXTERNAL free compute
   `train_ep1.py` via the FILES PANEL (left sidebar folder icon — NOT
   into a cell), then:
     `!pip install -U transformers peft datasets trl accelerate`
+    `!pip uninstall -y torchao`   # Colab ships an old torchao; recent
+    # peft RAISES on it instead of ignoring it (optional dependency)
     `%run train_ep1.py`
 - **Kaggle** (free 30 GPU-hours/week): same two files, P100/T4 kernel.
 
