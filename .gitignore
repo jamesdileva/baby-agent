@@ -13,3 +13,8 @@ training/
 # S52 dashboard
 app/node_modules/
 app/dist/
+
+# S64 ep1 model artifacts
+ep1-merged/
+ep1-merged-tied-backup/
+ep1-adapter/

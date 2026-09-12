@@ -216,9 +216,32 @@ def main():
     # merge the adapter into the base so ollama (or llama.cpp) can take
     # the WHOLE model without any adapter dance
     merged = model.merge_and_unload()
+    # UNTIE the LM head: Qwen2.5-3B ties it to the embeddings, and
+    # ollama's safetensors conversion DROPS the tied head — the GGUF
+    # shipped with no output.weight and the model emitted one repeated
+    # token (found via the first ep1 verdict attempt, 2026-09-11)
+    import torch as _torch
+    merged.config.tie_word_embeddings = False
+    merged.lm_head.weight = _torch.nn.Parameter(
+        merged.get_input_embeddings().weight.detach().clone())
     merged.save_pretrained(MERGED_DIR)
     tokenizer.save_pretrained(MERGED_DIR)
-    print("merged model saved to", MERGED_DIR)
+    print("merged model saved to", MERGED_DIR, "(lm_head untied)")
+
+    # the honesty gate, in-process: never declare success on a model
+    # that cannot speak — degenerate output ships silently otherwise
+    inputs = tokenizer("The capital of France is", return_tensors="pt")
+    out = merged.generate(**inputs, max_new_tokens=8, do_sample=False)
+    text = tokenizer.decode(out[0], skip_special_tokens=True)
+    print("SANITY GENERATION:", repr(text))
+    body = text.lower().replace("the capital of france is", "").strip()
+    if not body or len(set(body)) <= 2:
+        print("DEGENERATE OUTPUT DETECTED — the model cannot speak. "
+              "Do NOT download this model: check the loss curve above; "
+              "typical fixes are lower learning rate (1e-4) or fewer "
+              "epochs. Record the attempt as failed (roadmap honesty "
+              "rule).")
+        sys.exit(1)
     print("next: download ep1-merged/, then `ollama create "
           "baby-agent:ep1` (see training-kit/README.md),")
     print("then evaluate with run_evaluation + compare() — honestly.")
