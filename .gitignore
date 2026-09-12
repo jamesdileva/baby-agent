@@ -18,3 +18,6 @@ app/dist/
 ep1-merged/
 ep1-merged-tied-backup/
 ep1-adapter/
+
+# S67 gen-2 model artifact
+ep2-merged/
