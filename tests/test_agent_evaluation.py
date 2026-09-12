@@ -214,3 +214,42 @@ class TestCompare(EvalBase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProtocolMetricsTests(unittest.TestCase):
+    """S67: protocol quality measured from recorded trajectories."""
+
+    def _record(self, steps, outcome="failed", tags=None):
+        from qacompanion.agent.experience import Experience
+        return Experience(goal="benchmark goal", outcome=outcome,
+                          context={"tool_calls": steps},
+                          actions=[s["tool"] for s in steps],
+                          tags=tags or [])
+
+    def test_discovery_and_calls_rates(self):
+        from qacompanion.agent.evaluation import protocol_metrics
+        discover = [{"tool": "list_directory", "args": {"path": "."},
+                     "ok": True, "result_head": "files"}]
+        blind = [{"tool": "read_file", "args": {"path": "a.py"},
+                  "ok": True, "result_head": "x"}]
+        records = [self._record(discover), self._record(discover),
+                   self._record(blind)]
+        m = protocol_metrics(records)
+        self.assertEqual(3, m["runs"])
+        self.assertEqual(1.0, m["with_calls_rate"])
+        self.assertAlmostEqual(0.6667, m["discovery_first_rate"])
+
+    def test_guessed_paths_exclude_recovery_demos(self):
+        from qacompanion.agent.evaluation import protocol_metrics
+        guess = [{"tool": "read_file", "args": {"path": "src/a.py"},
+                  "ok": False,
+                  "result_head": "file not found: src/a.py"}]
+        records = [self._record(guess, tags=["recovery-demo"]),
+                   self._record(guess)]
+        m = protocol_metrics(records)
+        # the deliberate recovery miss is excluded, not hidden
+        self.assertAlmostEqual(1.0, m["guessed_path_rate"])
+
+    def test_empty_population_is_honest(self):
+        from qacompanion.agent.evaluation import protocol_metrics
+        self.assertEqual({"runs": 0}, protocol_metrics([]))

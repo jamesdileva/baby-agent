@@ -293,3 +293,41 @@ def run_evaluation(models: Dict[str, Callable[[Optional[str]], Any]],
                 goal=task.goal,
             ).to_dict()
     return report
+
+
+def protocol_metrics(records) -> Dict[str, Any]:
+    """S67 verdict harness v2: protocol-quality metrics computed from
+    recorded trajectories' captured steps (context["tool_calls"]).
+    Population notes: benchmark runs are the honest population for the
+    guessing metric — recovery-tagged corpus demos DELIBERATELY contain
+    one failed file access, so they are excluded from it, not hidden."""
+    runs = [r for r in records
+            if isinstance(r.context.get("tool_calls"), list)]
+    benchmark_runs = [r for r in runs
+                      if "recovery-demo" not in (r.tags or [])]
+    total = len(runs)
+    if not total:
+        return {"runs": 0}
+    with_calls = [r for r in runs if r.context["tool_calls"]]
+    discovery_first = [r for r in with_calls
+                       if r.context["tool_calls"][0]["tool"]
+                       == "list_directory"]
+    guessed = 0
+    tool_failures = 0
+    for r in benchmark_runs:
+        for step in r.context["tool_calls"]:
+            if not step.get("ok"):
+                tool_failures += 1
+                if step["tool"] in ("read_file", "edit_file") and                         "file not found" in str(step.get("result_head", "")):
+                    guessed += 1
+    successes = [r for r in runs if r.outcome == "success"]
+    return {
+        "runs": total,
+        "with_calls_rate": round(len(with_calls) / total, 4),
+        "discovery_first_rate": round(len(discovery_first)
+                                      / max(len(with_calls), 1), 4),
+        "success_rate": round(len(successes) / total, 4),
+        "guessed_path_rate": round(guessed / max(len(benchmark_runs), 1),
+                                   4),
+        "tool_failures": tool_failures,
+    }
