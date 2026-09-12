@@ -92,6 +92,12 @@ class TrainingKitTests(unittest.TestCase):
                 encoding="utf-8")
             self.assertIn("Qwen2.5-Coder-3B-Instruct", script)
             self.assertIn("training.jsonl", script)
+            # Colab-found regressions, pinned: the dataset must be
+            # conversational dicts (a bare list-of-lists 400s in
+            # Dataset.from_list) and T4 has no bf16
+            self.assertIn('{"messages": r["messages"]}', script)
+            self.assertIn("fp16=True", script)
+            self.assertIn("merge_and_unload", script)
             # the kit imports nothing from qacompanion — it runs outside
             # (prose mentions of the repo are fine; imports are not)
             self.assertNotIn("import qacompanion", script)

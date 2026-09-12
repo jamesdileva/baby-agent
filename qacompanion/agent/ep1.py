@@ -130,16 +130,19 @@ Run this OUTSIDE the qacompanion repo (Colab T4 / Kaggle GPU / any CUDA
 box). qacompanion itself stays stdlib-only; these dependencies belong to
 the training environment only.
 
-    pip install -U transformers peft datasets trl bitsandbytes
+    pip install -U transformers peft datasets trl accelerate
 
 Inputs: training.jsonl (S63 chat records: {"messages": [...],
-"metadata": {...}}). Output: a LoRA adapter merged into a GGUF for
-ollama, named baby-agent:ep1.
+"metadata": {...}}). Output: ep1-merged/ — the base model WITH the
+adapter baked in, ready for `ollama create` (or GGUF conversion).
 
 The honesty rule (docs/s64-spec.md): ep1 is NEVER assumed better —
 evaluate with the repo's own harness and compare():
     run_evaluation([base_provider, OllamaProvider(model="baby-agent:ep1")])
     compare(...)  # regressions are documented, not shipped silently
+
+T4 note: Turing GPUs have no bf16 — this script trains in fp16 with
+gradient checkpointing (free Colab T4 = 16 GB, plenty for a 3B QLoRA).
 """
 
 import json
@@ -148,6 +151,7 @@ import sys
 BASE_MODEL = "Qwen/Qwen2.5-Coder-3B-Instruct"
 DATASET = "training.jsonl"
 OUTPUT_DIR = "ep1-adapter"
+MERGED_DIR = "ep1-merged"
 
 
 def load_dataset(path=DATASET):
@@ -166,7 +170,10 @@ def main():
 
     rows = load_dataset()
     print(f"training records: {len(rows)}")
-    dataset = Dataset.from_list([r["messages"] for r in rows])
+    # conversational format: ONE {"messages": [...]} dict per row —
+    # trl applies the tokenizer's chat template to that column
+    dataset = Dataset.from_list(
+        [{"messages": r["messages"]} for r in rows])
 
     config = SFTConfig(
         output_dir=OUTPUT_DIR,
@@ -174,7 +181,8 @@ def main():
         gradient_accumulation_steps=4,
         num_train_epochs=3,
         learning_rate=2e-4,
-        bf16=True,
+        fp16=True,                      # T4 (Turing) has no bf16
+        gradient_checkpointing=True,
         logging_steps=1,
         report_to=[],
     )
@@ -188,7 +196,7 @@ def main():
     from transformers import AutoModelForCausalLM, AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
     model = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL, torch_dtype="bfloat16", device_map="auto")
+        BASE_MODEL, torch_dtype="float16")
     model = get_peft_model(model, lora)
     model.print_trainable_parameters()
 
@@ -201,7 +209,15 @@ def main():
     trainer.train()
     trainer.save_model(OUTPUT_DIR)
     print("adapter saved to", OUTPUT_DIR)
-    print("next: merge + convert to GGUF, `ollama create baby-agent:ep1`,")
+
+    # merge the adapter into the base so ollama (or llama.cpp) can take
+    # the WHOLE model without any adapter dance
+    merged = model.merge_and_unload()
+    merged.save_pretrained(MERGED_DIR)
+    tokenizer.save_pretrained(MERGED_DIR)
+    print("merged model saved to", MERGED_DIR)
+    print("next: download ep1-merged/, then `ollama create "
+          "baby-agent:ep1` (see training-kit/README.md),")
     print("then evaluate with run_evaluation + compare() — honestly.")
 
 
@@ -215,15 +231,23 @@ qacompanion stays stdlib-only — this kit runs on EXTERNAL free compute
 (no billing, same ruling as the Gemini free tier):
 
 - **Google Colab** (free T4): upload `training.jsonl` +
-  `train_ep1.py`, `pip install -U transformers peft datasets trl
-  bitsandbytes`, run the script.
+  `train_ep1.py` via the FILES PANEL (left sidebar folder icon — NOT
+  into a cell), then:
+    `!pip install -U transformers peft datasets trl accelerate`
+    `%run train_ep1.py`
 - **Kaggle** (free 30 GPU-hours/week): same two files, P100/T4 kernel.
 
-## The loop (roadmap §S64)
+## After training (script outputs `ep1-merged/`)
 
-1. `qa curate && qa build-training` in the repo -> `training/training.jsonl`
-2. train on external compute -> LoRA adapter
-3. merge adapter -> GGUF -> `ollama create baby-agent:ep1 -f Modelfile`
+1. Zip and download it (Colab):
+    `!zip -r ep1-merged.zip ep1-merged`
+2. On your PC, turn it into an ollama model — ollama reads the
+   safetensors directory directly (Qwen2 architecture is supported):
+       Modelfile:  FROM ./ep1-merged
+       `ollama create baby-agent:ep1 -f Modelfile`
+3. GGUF fallback (if your ollama version refuses): llama.cpp's
+   `convert_hf_to_gguf.py ep1-merged --outfile ep1-f16.gguf
+   --outtype f16`, then `FROM ./ep1-f16.gguf` in the Modelfile.
 4. evaluate HONESTLY with the repo harness (S57):
    base vs ep1 on the identical model x task cross product;
    `compare()` flags regressions AND improvements per task
