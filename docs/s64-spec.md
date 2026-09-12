@@ -39,9 +39,38 @@ NOT block S64 — it changes the order:
    `run_evaluation` + `compare()`): base vs ep1 on the identical model ×
    task cross product; regressions documented; no improvement = the
    attempt is recorded as failed (roadmap honesty rule).
-4. **ep0.5 adaptation** (follow-up slice, no gradients): retrieval-
+4. **ep0.5 adaptation** (slice 2, no gradients): retrieval-
    injection of full step-trainable demonstrations into the loop for
    similar goals — measurable on any provider today.
+
+## Slice 2 — ep0.5 demonstration injection (no GPU, no quota)
+
+The adaptation half of "fine-tune / adapt": when the retriever surfaces
+a VERIFIED experience that carries captured steps, the context assembly
+renders it as a full worked example (goal → `[TOOL: ...]` steps with
+observation heads → final answer) inside the memory block. The model
+learns by imitation-in-context instead of gradient updates.
+
+- `ep1.format_demonstration(...)` renders the block (bounded: ≤6 steps,
+  capped chars, provenance-labeled with the model tag).
+- `MemoryLayer` experience results carry `steps` / `final_answer` /
+  `model` additively (legacy data has none — byte-identical behavior).
+- `MemoryRetriever(demonstrations=True by default)`: only SUCCESS-
+  outcome, step-carrying experiences render as worked examples;
+  everything else stays a one-line summary.
+- `run_benchmark` gains additive `context_builder=None` passthrough for
+  the A/B harness.
+- **Acceptance experiment (human-directed):** qwen3:4b benchmark WITHOUT
+  injection (already recorded: failed, 883.5 s, 6 iterations) vs WITH —
+  the corpus's calculator demonstration matches the benchmark goal.
+  Honest outcome either way.
+
+## Slice 3 — dashboard brain selection
+
+The S52 server's default provider factory builds an OllamaProvider
+(the latency-bound locals). Additive: `QA_AGENT_PROVIDER=gemini`
+selects GeminiModelProvider so a dashboard session shows a working
+brain; default unchanged.
 
 ## Corpus generation (deterministic demonstrations)
 
