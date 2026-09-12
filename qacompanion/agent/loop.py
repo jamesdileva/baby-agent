@@ -293,7 +293,8 @@ class AgentLoop:
 
             # tool turn
             session.messages.append(ModelMessage(
-                role="assistant", content=response.text))
+                role="assistant", content=response.text,
+                tool_calls=list(response.tool_calls)))
             for call in response.tool_calls:
                 if self._cancelled():
                     return self._finish(session, AgentState.CANCELLED,

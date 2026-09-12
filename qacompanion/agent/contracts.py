@@ -34,19 +34,28 @@ class ModelMessage:
 
     role: str
     content: str
+    # S63: calls made in an assistant turn, replayed by native providers
+    # (Gemini functionCall parts); None for non-tool turns
+    tool_calls: Optional[List["ToolCall"]] = None
 
     def __post_init__(self):
         _require(self.role in VALID_ROLES, f"invalid message role: {self.role!r}")
         _require(isinstance(self.content, str), "message content must be a string")
 
     def to_dict(self):
-        return {"role": self.role, "content": self.content}
+        data = {"role": self.role, "content": self.content}
+        if self.tool_calls:
+            data["tool_calls"] = [c.to_dict() for c in self.tool_calls]
+        return data
 
     @classmethod
     def from_dict(cls, data):
         _require(isinstance(data, dict), "message record must be an object")
         _require("role" in data and "content" in data, "message missing role/content")
-        return cls(role=data["role"], content=data["content"])
+        calls = data.get("tool_calls")
+        return cls(role=data["role"], content=data["content"],
+                   tool_calls=[ToolCall.from_dict(c) for c in calls]
+                   if calls else None)
 
 
 @dataclass
@@ -174,17 +183,23 @@ class ToolCall:
     name: str
     arguments: Dict[str, Any]
     call_id: Optional[str] = None
+    # S63: Gemini thinking models require their thoughtSignature replayed
+    # on functionCall parts; None for every other provider
+    thought_signature: Optional[str] = None
 
     def __post_init__(self):
         _require(isinstance(self.name, str) and self.name.strip(), "tool call name required")
         _require(isinstance(self.arguments, dict), "tool call arguments must be a dict")
 
     def to_dict(self):
-        return {
+        data = {
             "name": self.name,
             "arguments": self.arguments,
             "call_id": self.call_id,
         }
+        if self.thought_signature:
+            data["thought_signature"] = self.thought_signature
+        return data
 
     @classmethod
     def from_dict(cls, data):
@@ -194,6 +209,7 @@ class ToolCall:
             name=data["name"],
             arguments=data["arguments"],
             call_id=data.get("call_id"),
+            thought_signature=data.get("thought_signature"),
         )
 
 

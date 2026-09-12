@@ -132,9 +132,13 @@ def _final_answer(session: AgentSession) -> Optional[str]:
     return None
 
 
-def session_to_experience(session: AgentSession,
-                          model: Optional[str] = None) -> Experience:
-    """Convert a finished session into an Experience record."""
+def session_to_experience(session: AgentSession, model: Optional[str] = None,
+                          goal_suffix: Optional[str] = None) -> Experience:
+    """Convert a finished session into an Experience record. goal_suffix
+    (S63) keeps per-session recordings distinct: the store's goal-dedupe
+    otherwise collapses repeated harness runs into ONE record, and every
+    rerun after the first silently loses its trajectory data (S59 uses
+    the same suffix pattern for the same reason)."""
     advice = _harvest_qa_advice(session)
     failure = None
     for observation in session.observations:
@@ -148,7 +152,7 @@ def session_to_experience(session: AgentSession,
             and session.state == AgentState.COMPLETED:
         tags.append("unverified")
     return Experience(
-        goal=session.goal,
+        goal=(session.goal + goal_suffix) if goal_suffix else session.goal,
         outcome=classify_outcome(session),
         session_id=session.session_id,
         actions=[call.name for call in session.tool_calls],
@@ -168,9 +172,11 @@ def session_to_experience(session: AgentSession,
 
 
 def record_session(session: AgentSession, store: ExperienceStore,
-                   model: Optional[str] = None) -> Experience:
+                   model: Optional[str] = None,
+                   goal_suffix: Optional[str] = None) -> Experience:
     """Record a finished session into the experience store."""
-    return store.record(session_to_experience(session, model=model))
+    return store.record(session_to_experience(session, model=model,
+                                              goal_suffix=goal_suffix))
 
 
 # --- curation ----------------------------------------------------------------

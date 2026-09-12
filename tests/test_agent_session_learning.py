@@ -241,7 +241,10 @@ class TestBenchmarkRecords(unittest.TestCase):
         experiences = store.load()
         self.assertEqual(len(experiences), 1)
         self.assertEqual(experiences[0].outcome, "success")
-        self.assertEqual(experiences[0].goal, report.goal)
+        # S63: session-unique goal suffix keeps per-run trajectories
+        # distinct — the store's goal-dedupe otherwise collapses reruns
+        self.assertTrue(experiences[0].goal.startswith(report.goal))
+        self.assertIn("(benchmark run", experiences[0].goal)
 
     def test_recovered_run_classified_as_recovered(self):
         import sys

@@ -1,5 +1,6 @@
 """S55 slice-1 tests: configurable bridge timeout + GeminiModelProvider."""
 
+import io
 import json
 import os
 import unittest
@@ -7,8 +8,8 @@ import urllib.error
 from unittest.mock import patch
 
 from qacompanion import ollama_bridge as bridge
-from qacompanion.agent import ModelMessage, ModelRequest, ModelResponse
-from qacompanion.agent.providers import GeminiModelProvider
+from qacompanion.agent import ModelMessage, ModelRequest, ModelResponse, ToolCall, ToolResult
+from qacompanion.agent.providers import GeminiModelProvider, ProviderError
 
 
 class TestConfigurableTimeout(unittest.TestCase):
@@ -138,7 +139,9 @@ class TestGeminiModelProvider(unittest.TestCase):
         def fake_urlopen(request, timeout=None):
             raise urllib.error.HTTPError(request.full_url, 429, "quota", {},
                                          __import__("io").BytesIO(b""))
-        with patch("qacompanion.agent.providers.urllib.request.urlopen",
+        # 429 now retries with a minute-long wait (free-tier rate limit);
+        # patch sleep so the structured-error assertion stays instant
+        with patch("qacompanion.agent.providers.time.sleep"),              patch("qacompanion.agent.providers.urllib.request.urlopen",
                    side_effect=fake_urlopen):
             with self.assertRaises(Exception) as ctx:
                 provider.generate(ModelRequest(messages=[]))
@@ -212,3 +215,155 @@ class TestGeminiModelProvider(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestGeminiNativeContents(unittest.TestCase):
+    """S63 live finding: tool results are USER-turn functionResponse
+    parts. Model-role text made requests "end with a model turn" and
+    Gemini 400'd the whole conversation."""
+
+    def _provider(self):
+        return GeminiModelProvider(api_key="test-key-123")
+
+    def _generate(self, request):
+        captured = {}
+
+        class FakeResponse:
+            def read(self):
+                return json.dumps({"candidates": [{"content": {"parts": [
+                    {"functionCall": {"name": "list_directory",
+                                      "args": {"path": "."}}}]}}]}
+                    ).encode("utf-8")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        def fake_urlopen(request, timeout=None):
+            captured["body"] = json.loads(request.data.decode("utf-8"))
+            return FakeResponse()
+
+        with patch("qacompanion.agent.providers.urllib.request.urlopen",
+                   side_effect=fake_urlopen):
+            response = self._provider().generate(request)
+        return captured["body"], response
+
+    def test_tool_result_is_user_turn_function_response(self):
+        result = ToolResult(call_name="read_file", ok=True,
+                            output="def add(): ...")
+        body, response = self._generate(ModelRequest(
+            messages=[
+                ModelMessage(role="system", content="be terse"),
+                ModelMessage(role="user", content="read the file"),
+                ModelMessage(role="assistant", content="",
+                             tool_calls=[ToolCall(
+                                 name="read_file",
+                                 arguments={"path": "a.py"})]),
+                ModelMessage(role="tool",
+                             content=json.dumps(result.to_dict())),
+            ],
+            tools=[_simple_definition()]))
+        contents = body["contents"]
+        self.assertEqual(["user", "user", "model", "user"],
+                         [c["role"] for c in contents])
+        function_call = contents[2]["parts"][0]["functionCall"]
+        self.assertEqual("read_file", function_call["name"])
+        self.assertEqual({"path": "a.py"}, function_call["args"])
+        function_response = contents[3]["parts"][0]["functionResponse"]
+        self.assertEqual("read_file", function_response["name"])
+        self.assertIn("def add", function_response["response"]["result"])
+        # the request never ends with a model turn
+        self.assertEqual("user", contents[-1]["role"])
+        # no empty text parts anywhere
+        for content in contents:
+            for part in content["parts"]:
+                if "text" in part:
+                    self.assertTrue(part["text"].strip(), content)
+        self.assertEqual(response.finish_reason, "tool_calls")
+
+    def test_assistant_text_replayed_alongside_calls(self):
+        body, _ = self._generate(ModelRequest(
+            messages=[
+                ModelMessage(role="user", content="go"),
+                ModelMessage(role="assistant", content="Checking.",
+                             tool_calls=[ToolCall(
+                                 name="read_file",
+                                 arguments={"path": "a.py"})]),
+                ModelMessage(role="tool", content="not json output"),
+            ],
+            tools=[_simple_definition()]))
+        parts = body["contents"][1]["parts"]
+        self.assertEqual("Checking.", parts[0]["text"])
+        self.assertEqual("read_file", parts[1]["functionCall"]["name"])
+        # unparseable tool content still yields a named functionResponse
+        self.assertEqual("tool",
+                         body["contents"][2]["parts"][0]
+                         ["functionResponse"]["name"])
+
+    def test_thought_signature_round_trip(self):
+        captured = {}
+
+        class FakeResponse:
+            def read(self):
+                return json.dumps({"candidates": [{"content": {"parts": [
+                    {"functionCall": {"name": "run_tests", "args": {}},
+                     "thoughtSignature": "sig-abc123"}]}}]}).encode("utf-8")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        def fake_urlopen(request, timeout=None):
+            captured["body"] = json.loads(request.data.decode("utf-8"))
+            return FakeResponse()
+
+        provider = GeminiModelProvider(api_key="test-key-123")
+        with patch("qacompanion.agent.providers.urllib.request.urlopen",
+                   side_effect=fake_urlopen):
+            first = provider.generate(ModelRequest(
+                messages=[ModelMessage(role="user", content="run tests")],
+                tools=[_simple_definition()]))
+        self.assertEqual("sig-abc123",
+                         first.tool_calls[0].thought_signature)
+        # replay the captured call as history: signature must survive
+        with patch("qacompanion.agent.providers.urllib.request.urlopen",
+                   side_effect=fake_urlopen):
+            provider.generate(ModelRequest(
+                messages=[
+                    ModelMessage(role="user", content="run tests"),
+                    ModelMessage(role="assistant", content="",
+                                 tool_calls=first.tool_calls),
+                    ModelMessage(role="tool", content='{"call_name": '
+                                                     '"read_file"}'),
+                ],
+                tools=[_simple_definition()]))
+        part = captured["body"]["contents"][1]["parts"][0]
+        self.assertEqual("sig-abc123", part["thoughtSignature"])
+        self.assertEqual("run_tests", part["functionCall"]["name"])
+        self.assertNotIn("thoughtSignature", part["functionCall"])
+
+    def test_error_body_surfaced(self):
+        def fake_urlopen(request, timeout=None):
+            raise urllib.error.HTTPError(
+                "url", 400, "Bad", {},
+                io.BytesIO(b'{"error": {"message": "boom: bad part"}}'))
+
+        with patch("qacompanion.agent.providers.urllib.request.urlopen",
+                   side_effect=fake_urlopen):
+            with self.assertRaises(ProviderError) as ctx:
+                self._provider().generate(ModelRequest(
+                    messages=[ModelMessage(role="user", content="hi")]))
+        self.assertIn("boom: bad part", str(ctx.exception))
+        self.assertIn("HTTP 400", str(ctx.exception))
+
+
+def _simple_definition():
+    from qacompanion.agent.contracts import ToolDefinition
+    return ToolDefinition(
+        name="read_file", description="Read a file",
+        parameters_schema={"type": "object", "properties": {
+            "path": {"type": "string"}}, "required": ["path"]})

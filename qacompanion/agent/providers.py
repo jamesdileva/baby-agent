@@ -112,11 +112,17 @@ class GeminiModelProvider(ModelProvider):
                 last_error = None
                 break
             except urllib.error.HTTPError as exc:
+                try:
+                    detail = exc.read().decode("utf-8", "replace")[:400]
+                except Exception:
+                    detail = ""
                 last_error = ProviderError(
-                    f"gemini request failed: HTTP {exc.code}")
-                if exc.code != 503:
+                    f"gemini request failed: HTTP {exc.code} {detail}".strip())
+                if exc.code not in (429, 503):
                     raise last_error from exc
-                time.sleep(5.0 * (attempt + 1))
+                # 429 = free-tier rate limit (5 RPM): a full minute wait
+                # guarantees a fresh window; 503 = high-demand spike
+                time.sleep(60.0 if exc.code == 429 else 5.0 * (attempt + 1))
             except Exception as exc:
                 raise ProviderError(f"gemini request failed: {exc}") from exc
         if last_error is not None:
@@ -167,8 +173,47 @@ class GeminiModelProvider(ModelProvider):
         } for t in request.tools]
         contents = []
         for message in request.messages:
-            role = "model" if message.role in ("assistant", "tool")                 else "user"
-            contents.append({"role": role, "parts": [{"text": message.content}]})
+            if message.role == "assistant":
+                # native replay: the requesting turn must carry its
+                # functionCall parts; a pure-call turn has no text, and
+                # an empty text part is itself a 400
+                parts = []
+                if (message.content or "").strip():
+                    parts.append({"text": message.content})
+                for call in message.tool_calls or []:
+                    part = {"functionCall": {"name": call.name,
+                                             "args": dict(call.arguments
+                                                          or {})}}
+                    if call.thought_signature:
+                        # Gemini thinking models 400 without it (S63);
+                        # the signature lives on the PART, not inside
+                        # the functionCall object
+                        part["thoughtSignature"] = call.thought_signature
+                    parts.append(part)
+                if parts:
+                    contents.append({"role": "model", "parts": parts})
+                continue
+            if message.role == "tool":
+                # native protocol: a tool result is a USER-turn
+                # functionResponse part. Sending it as model-role text
+                # makes the request "end with a model turn" — Gemini
+                # 400s the whole conversation (S63 live finding).
+                call_name = "tool"
+                try:
+                    parsed = json.loads(message.content)
+                    if isinstance(parsed, dict):
+                        call_name = str(parsed.get("call_name") or "tool")
+                except (ValueError, TypeError):
+                    pass
+                contents.append({"role": "user", "parts": [{
+                    "functionResponse": {
+                        "name": call_name,
+                        "response": {"result":
+                                     (message.content or "")[:100_000]},
+                    }}]})
+                continue
+            contents.append({"role": "user",
+                             "parts": [{"text": message.content}]})
         body = {
             "contents": contents,
             "tools": [{"function_declarations": declarations}],
@@ -187,11 +232,19 @@ class GeminiModelProvider(ModelProvider):
                 last_error = None
                 break
             except _uerr.HTTPError as exc:
+                # surface the response body — a bare "HTTP 400" once hid
+                # the real cause (empty text part) for a whole debug cycle
+                try:
+                    detail = exc.read().decode("utf-8", "replace")[:400]
+                except Exception:
+                    detail = ""
                 last_error = ProviderError(
-                    f"gemini request failed: HTTP {exc.code}")
-                if exc.code != 503:
+                    f"gemini request failed: HTTP {exc.code} {detail}".strip())
+                if exc.code not in (429, 503):
                     raise last_error from exc
-                time.sleep(5.0 * (attempt + 1))
+                # 429 = free-tier rate limit (5 RPM): a full minute wait
+                # guarantees a fresh window; 503 = high-demand spike
+                time.sleep(60.0 if exc.code == 429 else 5.0 * (attempt + 1))
             except Exception as exc:
                 raise ProviderError(f"gemini request failed: {exc}") from exc
         if last_error is not None:
@@ -202,7 +255,8 @@ class GeminiModelProvider(ModelProvider):
             parts = []
         calls = [ToolCall(name=part["functionCall"]["name"],
                           arguments=dict(part["functionCall"].get("args")
-                                         or {}))
+                                         or {}),
+                          thought_signature=part.get("thoughtSignature"))
                  for part in parts if "functionCall" in part]
         text = "".join(str(part.get("text", "")) for part in parts
                        if "text" in part).strip()

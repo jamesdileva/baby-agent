@@ -185,8 +185,13 @@ def run_benchmark(provider, config=None, workspace_root=None,
 
     if experience_store is not None:
         # S50: the harness records the session as experience — the loop
-        # stays pure, recording is a harness concern
-        record_session(session, experience_store, model=report_model(provider))
+        # stays pure, recording is a harness concern. S63: the
+        # session-unique goal suffix keeps every run's trajectory data
+        # intact (the store's goal-dedupe otherwise collapses reruns)
+        record_session(session, experience_store,
+                       model=report_model(provider),
+                       goal_suffix=f" (benchmark run "
+                                   f"{session.session_id[:8]})")
 
     types = events.types()
     report = BenchmarkReport(
