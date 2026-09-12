@@ -32,6 +32,12 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from .benchmark import coding_registry
+
+
+def _utc_stamp() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat(
+        timespec="seconds").replace("+00:00", "Z")
 from .events import EventStream
 from .experience import ExperienceStore, MemoryLayer
 from .loop import AgentLoop
@@ -107,11 +113,80 @@ class AgentServerApp:
 
     def __init__(self,
                  provider_factory: Optional[Callable[..., Any]] = None,
-                 experience_store: Optional[ExperienceStore] = None):
+                 experience_store: Optional[ExperienceStore] = None,
+                 drip_runner: Optional[Callable[[], str]] = None,
+                 verdict_runner: Optional[Callable[..., str]] = None):
         self.provider_factory = provider_factory or default_provider_factory
         self.experience_store = experience_store
         self.sessions: Dict[str, ManagedSession] = {}
+        self.jobs: Dict[str, Dict[str, Any]] = {}
+        # S70: runners are injectable so tests fake the heavy work; the
+        # defaults run the real loop commands
+        self.drip_runner = drip_runner or self._default_drip_runner
+        self.verdict_runner = verdict_runner or self._default_verdict_runner
         self._lock = threading.Lock()
+
+    def _default_drip_runner(self) -> str:
+        from .benchmark import run_benchmark
+        from .providers import GeminiModelProvider
+        report = run_benchmark(GeminiModelProvider(),
+                               experience_store=self.experience_store)
+        return (f"{'SUCCESS' if report.success else 'FAILED'}"
+                f" | {report.termination_reason}"
+                f" | iters={report.iterations}"
+                f" | calls={report.tool_calls}")
+
+    def _default_verdict_runner(self, models: List[str],
+                                tasks: int) -> str:
+        from .ep1 import format_verdict, run_verdict
+        from .providers import OllamaProvider
+        providers = {model: OllamaProvider(model=model,
+                                           native_tools=False)
+                     for model in models}
+        verdict = run_verdict(providers, task_count=tasks,
+                              store=self.experience_store)
+        return format_verdict(verdict)
+
+    def start_job(self, kind: str, runner: Callable[[], str]) -> str:
+        """S70: one deliberate operation on a background thread. The
+        job fails only on operational errors — a FAILED benchmark is an
+        honest done."""
+        import uuid as uuid_mod
+
+        job_id = uuid_mod.uuid4().hex
+        job: Dict[str, Any] = {"id": job_id, "kind": kind,
+                               "status": "running",
+                               "started_at": _utc_stamp(),
+                               "finished_at": None, "summary": None}
+
+        def run():
+            try:
+                job["summary"] = runner()
+                job["status"] = "done"
+            except Exception as exc:
+                job["summary"] = f"{type(exc).__name__}: {exc}"
+                job["status"] = "failed"
+            job["finished_at"] = _utc_stamp()
+
+        threading.Thread(target=run, daemon=True).start()
+        with self._lock:
+            self.jobs[job_id] = job
+        return job_id
+
+    def start_drip(self) -> str:
+        return self.start_job("drip", self.drip_runner)
+
+    def start_verdict(self, models: List[str], tasks: int = 3) -> str:
+        if not models:
+            raise ValueError("verdict requires at least one model")
+        return self.start_job(
+            "verdict", lambda: self.verdict_runner(models, tasks))
+
+    def jobs_summary(self) -> List[Dict[str, Any]]:
+        with self._lock:
+            jobs = [dict(job) for job in self.jobs.values()]
+        return sorted(jobs, key=lambda job: job["started_at"],
+                      reverse=True)
 
     def start_session(self, goal: str, workspace: str = "",
                       model: Optional[str] = None,
@@ -279,6 +354,8 @@ def make_handler(app: AgentServerApp):
             elif path == "/api/environment":
                 from .environment import collect_os, collect_runtimes
                 self._json({**collect_os(), **collect_runtimes()})
+            elif path == "/api/jobs":
+                self._json({"jobs": app.jobs_summary()})
             else:
                 self._json({"error": f"unknown path {path}"}, 404)
 
@@ -333,6 +410,19 @@ def make_handler(app: AgentServerApp):
                 stopped = app.stop_session(session_id)
                 self._json({"stopped": bool(stopped)},
                            200 if stopped else 404)
+            elif self.path == "/api/drip":
+                self._json({"job_id": app.start_drip()})
+            elif self.path == "/api/verdict":
+                try:
+                    body = self._read_json()
+                    models = [m.strip() for m in
+                              str(body.get("models", "")).split(",")
+                              if m.strip()]
+                    job_id = app.start_verdict(
+                        models, tasks=int(body.get("tasks", 3)))
+                    self._json({"job_id": job_id})
+                except Exception as exc:
+                    self._json({"error": f"{type(exc).__name__}: {exc}"}, 400)
             else:
                 self._json({"error": f"unknown path {self.path}"}, 404)
 

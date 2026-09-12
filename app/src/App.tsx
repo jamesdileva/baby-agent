@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AgentEvent,
+  Job,
   SessionSummary,
+  listJobs,
   listSessions,
   openEventStream,
+  startDrip,
   startSession,
+  startVerdict,
   stopSession,
 } from "./api";
 
@@ -15,15 +19,31 @@ export default function App() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [feed, setFeed] = useState<AgentEvent[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [verdictModels, setVerdictModels] = useState(
+    "baby-agent:ep4-q4,baby-agent:ep3-q4"
+  );
   const sourceRef = useRef<EventSource | null>(null);
 
   async function refreshSessions() {
     setSessions(await listSessions());
   }
 
+  async function refreshJobs() {
+    try {
+      setJobs(await listJobs());
+    } catch {
+      // server briefly unavailable between restarts: keep last view
+    }
+  }
+
   useEffect(() => {
     refreshSessions();
-    const timer = setInterval(refreshSessions, 2000);
+    refreshJobs();
+    const timer = setInterval(() => {
+      refreshSessions();
+      refreshJobs();
+    }, 3000);
     return () => clearInterval(timer);
   }, []);
 
@@ -63,11 +83,42 @@ export default function App() {
     if (activeId) await stopSession(activeId);
   }
 
+  async function handleDrip() {
+    await startDrip();
+    refreshJobs();
+  }
+
+  async function handleVerdict() {
+    await startVerdict(verdictModels, 3);
+    refreshJobs();
+  }
+
   const active = sessions.find((s) => s.session_id === activeId);
 
   return (
     <div className="app">
       <h1>Baby-Agent</h1>
+      <section className="operations">
+        <h2>Operations</h2>
+        <button onClick={handleDrip}>Run drip (one real pass, ~7-9 quota)</button>
+        <div className="verdict-row">
+          <input
+            value={verdictModels}
+            onChange={(e) => setVerdictModels(e.target.value)}
+            placeholder="models, comma-separated (newest first)"
+          />
+          <button onClick={handleVerdict}>Run verdict</button>
+        </div>
+        <ul className="jobs">
+          {jobs.map((job) => (
+            <li key={job.id} className={`job ${job.status}`}>
+              <span className="kind">[{job.kind}]</span>{" "}
+              <span className="status">{job.status}</span>
+              {job.summary && <div className="summary">{job.summary}</div>}
+            </li>
+          ))}
+        </ul>
+      </section>
       <section className="new-task">
         <textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={3} />
         <input

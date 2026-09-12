@@ -199,5 +199,61 @@ class _NeverDoneProvider(FakeModelProvider):
                              finish_reason="stop")
 
 
+class TestOperations(ServerBase):
+    """S70: the loop's buttons — drip + verdict as deliberate jobs."""
+
+    def setUp(self):
+        super().setUp()
+        self.app.drip_runner = lambda: ("SUCCESS | goal completed"
+                                        " | iters=6 | calls=5")
+        self.app.verdict_runner = lambda models, tasks: (
+            f"generation verdict: {','.join(models)}"
+            f" ({tasks} tasks)")
+
+    def _await_done(self):
+        import time
+        jobs = self.get("/api/jobs")["jobs"]
+        for _ in range(50):
+            if jobs[0]["status"] != "running":
+                break
+            time.sleep(0.1)
+            jobs = self.get("/api/jobs")["jobs"]
+        return jobs
+
+    def test_drip_job_lifecycle(self):
+        response = self.post("/api/drip", {})
+        self.assertIn("job_id", response)
+        jobs = self._await_done()
+        self.assertEqual("done", jobs[0]["status"])
+        self.assertEqual("drip", jobs[0]["kind"])
+        self.assertIn("SUCCESS", jobs[0]["summary"])
+        self.assertTrue(jobs[0]["finished_at"])
+
+    def test_verdict_job_carries_models(self):
+        self.post("/api/verdict",
+                  {"models": "baby-agent:ep4-q4,baby-agent:ep3-q4",
+                   "tasks": 3})
+        jobs = self._await_done()
+        self.assertEqual("done", jobs[0]["status"])
+        self.assertIn("baby-agent:ep4-q4,baby-agent:ep3-q4",
+                      jobs[0]["summary"])
+        self.assertIn("3 tasks", jobs[0]["summary"])
+
+    def test_verdict_requires_models(self):
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            self.post("/api/verdict", {"models": ""})
+        self.assertEqual(400, ctx.exception.code)
+
+    def test_jobs_newest_first_and_kinds(self):
+        self.post("/api/drip", {})
+        self.post("/api/verdict", {"models": "m1"})
+        jobs = self._await_done()
+        self.assertEqual(2, len(jobs))
+        self.assertEqual({"drip", "verdict"},
+                         {job["kind"] for job in jobs})
+        self.assertGreaterEqual(jobs[0]["started_at"],
+                                jobs[1]["started_at"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -8,3 +8,10 @@ ul { list-style: none; padding-left: 0; font-size: 0.85rem; }
 li { padding: 0.15rem 0; border-bottom: 1px solid #212933; }
 .type { color: #8ab4f8; }
 .done { color: #7ee787; }
+.verdict-row { display: flex; gap: 0.4rem; }
+.verdict-row input { flex: 1; }
+.jobs .job .kind { color: #f8b48a; }
+.jobs .job.running .status { color: #f8d38a; }
+.jobs .job.done .status { color: #7ee787; }
+.jobs .job.failed .status { color: #f87e7e; }
+.jobs .job .summary { font-family: ui-monospace, monospace; font-size: 0.78rem; color: #9aa7b5; white-space: pre-wrap; }

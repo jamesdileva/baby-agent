@@ -39,6 +39,40 @@ export async function stopSession(sessionId: string): Promise<void> {
   await fetch(`/api/session/${sessionId}/stop`, { method: "POST" });
 }
 
+export interface Job {
+  id: string;
+  kind: string;
+  status: "running" | "done" | "failed";
+  started_at: string;
+  finished_at: string | null;
+  summary: string | null;
+}
+
+export async function startDrip(): Promise<{ job_id: string }> {
+  const resp = await fetch("/api/drip", { method: "POST" });
+  if (!resp.ok) throw new Error((await resp.json()).error ?? resp.statusText);
+  return resp.json();
+}
+
+export async function startVerdict(
+  models: string,
+  tasks: number
+): Promise<{ job_id: string }> {
+  const resp = await fetch("/api/verdict", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ models, tasks }),
+  });
+  if (!resp.ok) throw new Error((await resp.json()).error ?? resp.statusText);
+  return resp.json();
+}
+
+export async function listJobs(): Promise<Job[]> {
+  const resp = await fetch("/api/jobs");
+  if (!resp.ok) throw new Error(resp.statusText);
+  return (await resp.json()).jobs;
+}
+
 export async function listSessions(): Promise<SessionSummary[]> {
   const resp = await fetch("/api/sessions");
   return (await resp.json()).sessions;
