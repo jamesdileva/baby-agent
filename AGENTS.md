@@ -80,6 +80,33 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-12 — **S66 Demonstrator 2.0 (Gen-2 corpus)** — The gen-1
+  verdict said ep1 had perfect syntax but flailed at tasks (guessed
+  paths, never discovered the workspace) because the demos taught
+  answer-reading. The corpus design is fixed and scaled, per the
+  human's strategy-diversity direction: **EXPLORE-FIRST scripts**
+  (every demonstration starts with list_directory), **strategy
+  diversity** (bug_fix cycles clean / tests-first-recovery /
+  explore-recovery; the other verifiable categories carry clean +
+  recovery variants), **recovery beats with REAL observations** (~51%
+  of records contain a genuine wrong turn — a read of src/<module>
+  that genuinely fails — then correction; tagged `recovery-demo`),
+  **category expansion** (feature_add / build_repair / dependency /
+  testing / regression added; the dependency demo's recovery is
+  natural — the missing module genuinely fails to import — and the
+  testing fixture's declared shape puts multiply in test_calc_ops.py,
+  so the demo's test imports from the module that actually exists),
+  and **goal-phrasing variety** (3 templates per category). `qa
+  build-corpus --category` enables single-category builds.
+  **Live: 96/96 runs verified in 34.1 s** (bug_fix 40, feature_add
+  24, build_repair 8, dependency 8, testing 8, regression 8;
+  recovery-strategy 51) — store 243 experiences, curation
+  ACCEPT=236 / REVIEW=6 / REJECT=1, **training set 26 → 122
+  verified step-trainable records**, first-tool distribution:
+  list_directory 84 / read_file 25 / run_tests 13 — discovery is
+  now the majority pattern the model will imitate. Docs/refactor
+  categories deferred (no honest verification gate for prose —
+  recorded in the roadmap). Suite 1570 OK. Spec: docs/s66-spec.md.
 - 2026-09-11 — **S64 verdict day — ep1 gen-1: protocol acquired,
   benchmark failed (recorded honestly)** — The Colab-trained ep1
   arrived speaking ("Paris") but ollama rendered it as one repeated
