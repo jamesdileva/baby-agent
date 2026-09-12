@@ -54,28 +54,40 @@ def _test_footer(module: str, cases: str) -> str:
         """)  # caller appends test class + main
 
 
+# (module_name, function, correct_body, defective_body, test_case)
+# module-level so the S64 corpus builder can script demonstrators that
+# fix the DECLARED defect with exact old/new strings
+_BUG_FIX_VARIANTS = [
+    ("math_ops", "add",
+     "    return a + b", "    return a - b",
+     'self.assertEqual(add(2, 3), 5)'),
+    ("string_ops", "join_words",
+     '    return " ".join(words)', '    return "".join(words)',
+     'self.assertEqual(join_words(["a", "b"]), "a b")'),
+    ("list_ops", "last_item",
+     "    return items[-1]", "    return items[0]",
+     'self.assertEqual(last_item([1, 2, 3]), 3)'),
+    ("math_ops", "clamp",
+     "    return max(low, min(high, value))",
+     "    return min(low, max(high, value))",
+     'self.assertEqual(clamp(15, 0, 10), 10)'),
+    ("string_ops", "count_vowels",
+     "    return sum(1 for ch in text if ch.lower() in \"aeiou\")",
+     "    return sum(1 for ch in text if ch.lower() not in \"aeiou\")",
+     'self.assertEqual(count_vowels("hello"), 2)'),
+]
+
+
+def bug_fix_defect(variant: int):
+    """S64: the declared defect for one bug_fix variant — (module,
+    function, correct_body, defective_body) for scripted demonstrators."""
+    module, func, good, bad, _test = _BUG_FIX_VARIANTS[variant % len(_BUG_FIX_VARIANTS)]
+    return module, func, good, bad
+
+
 def _bug_fix_fixture(variant: int, level: int):
     """Module contains a deliberate defect; tests fail until fixed."""
-    variants = [
-        # (module_name, function, correct_body, defective_body, test_case)
-        ("math_ops", "add",
-         "    return a + b", "    return a - b",
-         'self.assertEqual(add(2, 3), 5)'),
-        ("string_ops", "join_words",
-         '    return " ".join(words)', '    return "".join(words)',
-         'self.assertEqual(join_words(["a", "b"]), "a b")'),
-        ("list_ops", "last_item",
-         "    return items[-1]", "    return items[0]",
-         'self.assertEqual(last_item([1, 2, 3]), 3)'),
-        ("math_ops", "clamp",
-         "    return max(low, min(high, value))",
-         "    return min(low, max(high, value))",
-         'self.assertEqual(clamp(15, 0, 10), 10)'),
-        ("string_ops", "count_vowels",
-         "    return sum(1 for ch in text if ch.lower() in \"aeiou\")",
-         "    return sum(1 for ch in text if ch.lower() not in \"aeiou\")",
-         'self.assertEqual(count_vowels("hello"), 2)'),
-    ]
+    variants = _BUG_FIX_VARIANTS
     module, func, good, bad, test = variants[variant % len(variants)]
     # level scales subtlety: higher levels append a decoy correct
     # function so the fix requires reading, not pattern-matching

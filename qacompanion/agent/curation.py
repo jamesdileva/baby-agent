@@ -329,6 +329,7 @@ class CuratedTrajectory:
     verification: Dict[str, Any] = field(default_factory=dict)
     steps: List[Dict[str, Any]] = field(default_factory=list)
     final_answer: Optional[str] = None
+    model: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -354,6 +355,7 @@ class CuratedTrajectory:
             "verification": self.verification,
             "steps": self.steps,
             "final_answer": self.final_answer,
+            "model": self.model,
         }
 
 
@@ -377,6 +379,13 @@ def _steps_of(experience: Experience) -> List[Dict[str, Any]]:
 def _final_answer_of(experience: Experience) -> Optional[str]:
     answer = experience.context.get("final_answer")
     return answer if isinstance(answer, str) else None
+
+
+def _model_of(experience: Experience) -> Optional[str]:
+    """The recorded model/provider tag (e.g. `scripted-demo`) — the
+    provenance chain the training corpus must carry."""
+    model = experience.context.get("model")
+    return model if isinstance(model, str) else None
 
 
 class TrajectoryCurator:
@@ -475,6 +484,7 @@ class TrajectoryCurator:
             verification=dict(experience.verification or {}),
             steps=_steps_of(experience),
             final_answer=_final_answer_of(experience),
+            model=_model_of(experience),
         )
 
     def _apply_diversity(self, trajectories: List[CuratedTrajectory]) -> None:

@@ -605,6 +605,41 @@ def build_parser():
         help="report counts without writing exports",
     )
 
+    corpus = sub.add_parser(
+        "build-corpus",
+        help="S64: generate the ep1 training corpus from scripted "
+             "curriculum demonstrators",
+        epilog=(
+            "Runs every bug_fix variant x level through the REAL loop "
+            "with declared-defect scripted demonstrators; only "
+            "verification-passing runs become records (tagged "
+            "scripted-demo), then curate + build-training run the full "
+            "chain and the external-compute training kit is exported. "
+            "Exit contract: 0 success, 1 operational error."
+        ),
+    )
+    corpus.add_argument(
+        "--store", dest="store_path", default=None, metavar="PATH",
+        help="experience store file (default: QA_EXPERIENCE_FILE or "
+             "experience.jsonl)")
+    corpus.add_argument(
+        "--curated-dir", default=None, metavar="DIR",
+        help="curation export directory (default: QA_CURATED_DIR or "
+             "curated/)")
+    corpus.add_argument(
+        "--training-dir", default=None, metavar="DIR",
+        help="training export directory (default: QA_TRAINING_DIR or "
+             "training/)")
+    corpus.add_argument(
+        "--kit-dir", default=None, metavar="DIR",
+        help="training kit output directory (default: training-kit/)")
+    corpus.add_argument(
+        "--variants", type=int, default=None, metavar="N",
+        help="first N bug_fix variants (default: all 5)")
+    corpus.add_argument(
+        "--levels", type=int, default=None, metavar="N",
+        help="levels 1..N (default: 5)")
+
     server = sub.add_parser(
         "serve",
         help="dashboard API server — localhost UI for the agent runtime",
@@ -1212,6 +1247,36 @@ def _cmd_build_training(args):
     return 0
 
 
+def _cmd_build_corpus(args):
+    """S64: scripted curriculum demonstrators -> verified corpus ->
+    curate -> build-training -> training kit export."""
+    import sys as _sys
+
+    from .agent.curation import TrajectoryCurator, format_report as \
+        _format_curation
+    from .agent.ep1 import (build_corpus, export_training_kit,
+                            format_corpus_report)
+    from .agent.experience import ExperienceStore
+    from .agent.training import build_training, format_report as \
+        _format_training
+    store = ExperienceStore(args.store_path)
+    kwargs = {}
+    if args.variants:
+        kwargs["variants"] = tuple(range(args.variants))
+    if args.levels:
+        kwargs["levels"] = tuple(range(1, args.levels + 1))
+    stats = build_corpus(store, python=_sys.executable, **kwargs)
+    print(format_corpus_report(stats))
+    curation = TrajectoryCurator(store).curate(out_dir=args.curated_dir)
+    print(_format_curation(curation))
+    training = build_training(curated_dir=args.curated_dir,
+                              out_dir=args.training_dir)
+    print(_format_training(training))
+    kit = export_training_kit(out_dir=args.kit_dir)
+    print(f"training kit: {kit['out_dir']} ({', '.join(kit['files'])})")
+    return 0
+
+
 def _cmd_serve(args):
     """S52: boot the localhost dashboard API and serve until Ctrl+C."""
     from .agent.experience import ExperienceStore
@@ -1280,6 +1345,7 @@ _COMMANDS = {
     "mine-sessions": _cmd_mine_sessions,
     "curate": _cmd_curate,
     "build-training": _cmd_build_training,
+    "build-corpus": _cmd_build_corpus,
     "watch": _cmd_watch,
     "serve": _cmd_serve,
 }

@@ -42,6 +42,19 @@ BINARY_EXTENSIONS = frozenset({
 })
 
 
+def _ensure_fresh_mtime(target: Path, previous_mtime: float) -> None:
+    """CPython's bytecode staleness check is (int(source mtime), size).
+    An edit that lands in the SAME second as the previously compiled
+    source AND preserves its byte length leaves the stale .pyc 'valid' —
+    a subsequent subprocess silently imports the OLD code (found via the
+    S64 corpus chain: same-size defect fix + fast test rerun). Guarantee
+    the written file's mtime differs from the recorded one."""
+    now = os.stat(target).st_mtime
+    if int(now) == int(previous_mtime):
+        bumped = previous_mtime + 1.05
+        os.utime(target, (bumped, bumped))
+
+
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with open(path, "rb") as fh:
@@ -181,6 +194,8 @@ class FilesystemToolkit:
                 f"(pass overwrite=true): {self._rel(target)}"
             )
         sha_before = _sha256_file(target) if existed else None
+        previous_mtime = (os.stat(target).st_mtime
+                          if existed else None)
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
             tmp = target.with_name(target.name + ".tmp-write")
@@ -190,6 +205,8 @@ class FilesystemToolkit:
             raise ToolOperationError(
                 f"write failed: {self._rel(target)} ({exc})"
             ) from exc
+        if previous_mtime is not None:
+            _ensure_fresh_mtime(target, previous_mtime)
         sha_after = _sha256_file(target)
         self.ledger.record("write", self._rel(target), sha_before, sha_after)
         return self._json({
@@ -224,6 +241,7 @@ class FilesystemToolkit:
                 f"{self._rel(target)} — add surrounding context"
             )
         sha_before = _sha256_file(target)
+        previous_mtime = os.stat(target).st_mtime
         updated = text.replace(old_string, new_string, 1)
         try:
             tmp = target.with_name(target.name + ".tmp-edit")
@@ -233,6 +251,7 @@ class FilesystemToolkit:
             raise ToolOperationError(
                 f"edit failed: {self._rel(target)} ({exc})"
             ) from exc
+        _ensure_fresh_mtime(target, previous_mtime)
         sha_after = _sha256_file(target)
         self.ledger.record("edit", self._rel(target), sha_before, sha_after)
         return self._json({

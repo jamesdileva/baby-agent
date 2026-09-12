@@ -106,7 +106,8 @@ def _record_from_trajectory(traj: Dict[str, Any]) -> TrajectoryRecord:
         session_id=traj.get("session_id"),
         context={
             "project_tag": _project_tag(traj),
-            "model": (traj.get("verification") or {}).get("model"),
+            "model": traj.get("model") or (traj.get("verification")
+                                           or {}).get("model"),
             "state": (traj.get("verification") or {}).get("state"),
         },
         actions=[str(a) for a in (traj.get("actions") or [])][:MAX_STEPS],
@@ -199,6 +200,7 @@ def _chat_record(record: TrajectoryRecord) -> Dict[str, Any]:
     return {"messages": messages,
             "metadata": {"session_id": record.session_id,
                          "source": record.source,
+                         "model": record.context.get("model"),
                          "steps": len(record.steps)}}
 
 

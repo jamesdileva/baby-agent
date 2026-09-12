@@ -5,7 +5,10 @@ registry.execute — the same pipeline the model loop will use.
 """
 
 import json
+import os
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -411,6 +414,47 @@ class TestChangeLedger(unittest.TestCase):
                                 for e in toolkit.ledger.entries))
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+class StaleBytecodeRaceTests(unittest.TestCase):
+    """S64 finding: an edit that lands in the same second as the
+    previously compiled source AND preserves byte length left CPython's
+    stale .pyc 'valid' — subprocesses silently imported the OLD code.
+    edit_file/write_file now guarantee a strictly-fresh mtime."""
+
+    def test_same_second_same_size_edit_is_visible_to_subprocess(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            module = Path(tmp) / "widget.py"
+            module.write_text(
+                "def add(a, b):\n    return a - b\n",
+                encoding="utf-8")
+            (Path(tmp) / "test_widget.py").write_text(
+                "import unittest\nfrom widget import add\n"
+                "class T(unittest.TestCase):\n"
+                "    def test_add(self):\n"
+                "        self.assertEqual(add(2, 3), 5)\n",
+                encoding="utf-8")
+            # compile the DEFECTIVE version into __pycache__
+            broken = subprocess.run(
+                [sys.executable, "-m", "unittest"], cwd=tmp,
+                capture_output=True, text=True)
+            self.assertNotEqual(0, broken.returncode)
+            # pin the source mtime to right now so the edit lands in the
+            # same int-second the bytecode recorded
+            now = module.stat().st_mtime
+            os.utime(module, (now, now))
+
+            ws = Workspace(Path(tmp))
+            toolkit = FilesystemToolkit(ws)
+            result = json.loads(toolkit.edit_file(
+                "widget.py", "return a - b", "return a + b"))
+            self.assertEqual(32, result["bytes"])  # same-size edit
+
+            fixed = subprocess.run(
+                [sys.executable, "-m", "unittest"], cwd=tmp,
+                capture_output=True, text=True)
+            self.assertEqual(0, fixed.returncode,
+                             fixed.stdout + fixed.stderr)
 
 
 if __name__ == "__main__":
