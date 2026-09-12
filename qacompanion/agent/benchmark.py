@@ -164,11 +164,13 @@ def run_benchmark(provider, config=None, workspace_root=None,
                   quiet: bool = True,
                   tool_catalog=LEAN_MODEL_CATALOG,
                   fixture_writer=create_fixture,
-                  goal: str = BENCHMARK_GOAL) -> BenchmarkReport:
+                  goal: str = BENCHMARK_GOAL,
+                  context_builder=None) -> BenchmarkReport:
     """Run one autonomous defect-fix attempt and return honest metrics.
     fixture_writer defaults to the S48 calculator fixture; the S57
     evaluation passes its per-task fixture writers. goal defaults to
-    the S48 natural-language goal."""
+    the S48 natural-language goal. context_builder (S64 slice 2) enables
+    the ep0.5 A/B: demonstration injection vs plain assembly."""
     root = Path(workspace_root or tempfile.mkdtemp(prefix="benchmark-"))
     workspace = Workspace(root)
     fixture_writer(workspace)
@@ -179,7 +181,8 @@ def run_benchmark(provider, config=None, workspace_root=None,
 
     started = time.monotonic()
     loop = AgentLoop(provider, registry, workspace, config=config,
-                     verifier=verifier, events=events)
+                     verifier=verifier, events=events,
+                     context_builder=context_builder)
     session = loop.run(goal)
     duration = time.monotonic() - started
 

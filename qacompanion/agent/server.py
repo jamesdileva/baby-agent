@@ -41,10 +41,22 @@ from .workspace import Workspace
 
 
 def default_provider_factory(model: Optional[str] = None):
-    """Default model backend: local Ollama."""
-    from .providers import OllamaProvider
+    """Default model backend: local Ollama. QA_AGENT_PROVIDER=gemini
+    selects the free-tier cloud brain (S64 slice 3) — dashboard
+    sessions then show a working brain instead of the latency-bound
+    locals. Any other value is an honest startup error."""
+    import os as _os
 
-    return OllamaProvider(model=model)
+    selected = (_os.environ.get("QA_AGENT_PROVIDER") or "ollama").lower()
+    if selected == "ollama":
+        from .providers import OllamaProvider
+        return OllamaProvider(model=model)
+    if selected == "gemini":
+        from .providers import GeminiModelProvider
+        return GeminiModelProvider()
+    raise ValueError(
+        f"unknown QA_AGENT_PROVIDER {selected!r} "
+        "(expected 'ollama' or 'gemini')")
 
 
 @dataclass

@@ -28,6 +28,7 @@ from .contracts import ModelResponse, ToolCall
 from .curriculum import _bug_fix_fixture, bug_fix_defect
 from .experience import ExperienceStore
 from .providers import FakeModelProvider
+from .training import format_tool_call
 
 DEMO_MODEL_TAG = "scripted-demo"
 
@@ -237,6 +238,31 @@ model-tagged records come from real provider runs. ep1 trained on
 scripted demos teaches protocol and procedure — the S55 finding says
 that is exactly what general small models lack.
 '''
+
+
+def format_demonstration(goal: str, steps: List[Dict[str, Any]],
+                         final_answer: Optional[str],
+                         model: Optional[str]) -> Optional[str]:
+    """S64 slice 2 (ep0.5): render a verified experience as a worked
+    example the model can imitate in-context — the adaptation half of
+    "fine-tune / adapt", no gradients required. Bounded: <=6 steps,
+    capped result heads. Returns None when there is nothing to show."""
+    if not steps:
+        return None
+    lines = [f"## Worked example (provenance: {model or 'unknown'})",
+             f"Goal: {str(goal)[:200]}"]
+    for index, step in enumerate(steps[:6], 1):
+        if not isinstance(step, dict) or not isinstance(
+                step.get("args"), dict):
+            continue
+        lines.append(f"{index}. {format_tool_call(step['tool'], step['args'])}")
+        head = str(step.get("result_head") or "")[:160]
+        if head:
+            lines.append(f"   -> {head}")
+    final = (final_answer or "").strip()
+    if final:
+        lines.append(f"Final answer: {final[:300]}")
+    return "\n".join(lines)
 
 
 def export_training_kit(out_dir=None) -> Dict[str, str]:

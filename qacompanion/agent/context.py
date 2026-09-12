@@ -100,10 +100,18 @@ def _digest(content: str) -> str:
 
 
 class MemoryRetriever:
-    """Injects source-labeled S47 memory for the goal at run start."""
+    """Injects source-labeled S47 memory for the goal at run start.
 
-    def __init__(self, memory_layer: Optional[MemoryLayer] = None):
+    demonstrations=True (default): when the top experience carries
+    captured steps AND a verified-success outcome, the block renders it
+    as a full worked example (S64 slice 2, ep0.5) — imitation-in-context
+    instead of gradient updates. Legacy records have no steps and are
+    unaffected."""
+
+    def __init__(self, memory_layer: Optional[MemoryLayer] = None,
+                 demonstrations: bool = True):
         self.memory_layer = memory_layer
+        self.demonstrations = demonstrations
 
     def retrieve(self, goal: str, k: int = 3) -> List[Dict[str, Any]]:
         if self.memory_layer is None or not goal.strip():
@@ -112,6 +120,22 @@ class MemoryRetriever:
             return self.memory_layer.search(goal, k_per_source=k)
         except Exception:
             return []  # degraded memory: honest silence
+
+    def _demonstration(self, results: List[Dict[str, Any]]) -> str:
+        """The first verified, step-carrying experience as a worked
+        example (lazy ep1 import keeps the dependency light)."""
+        for item in results:
+            if (item.get("source") == "experience"
+                    and item.get("outcome") == "success"
+                    and item.get("steps")):
+                from .ep1 import format_demonstration
+                demo = format_demonstration(
+                    item.get("goal") or "", item["steps"],
+                    item.get("final_answer"), item.get("model"))
+                if demo:
+                    return demo
+                return ""  # steps existed but none were renderable
+        return ""
 
     def block(self, goal: str, k: int = 3) -> str:
         results = self.retrieve(goal, k=k)
@@ -127,6 +151,11 @@ class MemoryRetriever:
             lines.append(f"- [{label}] {str(summary)[:140]}"
                          + (f" -> {str(detail)[:160]}"
                             if detail else ""))
+        if self.demonstrations:
+            demonstration = self._demonstration(results)
+            if demonstration:
+                lines.append("")
+                lines.append(demonstration)
         return "\n".join(lines)
 
 

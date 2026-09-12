@@ -227,6 +227,8 @@ class MemoryLayer:
     def _from_experiences(self, query, k):
         try:
             for experience in self.experiences.find_similar(query, k=k):
+                context = experience.context or {}
+                steps = context.get("tool_calls") or []
                 yield {
                     "source": "experience",
                     "score": 3.0 + experience.confidence,
@@ -235,6 +237,11 @@ class MemoryLayer:
                     "diagnosis": experience.diagnosis,
                     "resolution": experience.resolution,
                     "times_seen": experience.times_seen,
+                    # S64 slice 2 (ep0.5): captured trajectory data for
+                    # demonstration injection (absent in legacy records)
+                    "steps": steps if isinstance(steps, list) else [],
+                    "final_answer": context.get("final_answer"),
+                    "model": context.get("model"),
                 }
         except (OSError, ValueError):
             pass  # degraded source: honest empty
