@@ -80,6 +80,32 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-12 — **S67 Gen-2 verdict — no benchmark win yet; the metrics
+  did their job** — ep2 imported with ZERO local surgery (the first
+  export through the hardened kit: untie + rope_theta + explicit
+  lm_head all verified in Colab; fp16 9.0 s / q4 6.0 s sanity probes,
+  both answering "Paris" cleanly). **Verdict (3 tasks, textual
+  contract, recorded): ep2 0/3, ep1 0/3** — but the shape differs:
+  ep2 runs are 3-10× faster (7-13 s vs 3-81 s) with 3× fewer tool
+  failures (4 vs 12), and its guesses are recovery-shaped
+  (guess → correct) where ep1 flailed. `protocol_metrics` (new, in
+  evaluation.py: discovery-first rate, with-calls rate, guessed-path
+  rate, success rate — recovery demos excluded from the guessing
+  population, not hidden) surfaced the uncomfortable findings: (1)
+  **discovery-first rate 0.0 for BOTH generations** — root cause
+  found in the training data: the store still carries the 25
+  stale-pattern gen-1 records (read-first), so ep2's 122-record
+  training set was only ~69% explore-first — the corpus ACCUMULATES
+  when it should have been rebuilt; (2) **ep2 fabricated a completion
+  claim** in the exact demo diagnosis format ("I replaced the
+  defective line...") after a failed edit — it learned to SOUND
+  finished; the S41 gate refused it, exactly as designed. Both are
+  gen-3 levers with evidence: rebuild the corpus clean (re-demo the
+  old records in the new style or exclude pre-S66 scripted records
+  from training), and keep leaning on the gate. Roadmap honesty rule:
+  gen-2 recorded as failed on the benchmark; protocol metrics
+  documented as the measurable delta. Suite 1573 OK. Spec:
+  docs/s67-spec.md.
 - 2026-09-12 — **S66 Demonstrator 2.0 (Gen-2 corpus)** — The gen-1
   verdict said ep1 had perfect syntax but flailed at tasks (guessed
   paths, never discovered the workspace) because the demos taught
