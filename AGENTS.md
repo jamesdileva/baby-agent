@@ -80,6 +80,32 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-12 — **S69 Protocol Consistency — the corpus now teaches a
+  dialect the runtime actually speaks** — The gen-3 verdict named three
+  data-format bugs; this sprint fixed all three at the source: (1)
+  **one escaping dialect** — `format_tool_call` now escapes newline/tab
+  exactly like backslash/quote, and `_parse_textual_tool_calls` is
+  escape-aware (new `[^"\\]|\\.` value pattern + mirror unescape set),
+  pinned by a render→parse round-trip test over adversarial values
+  (multi-line content, embedded quotes, backslash paths — previously
+  the corpus taught calls whose args parsed WRONG); (2) **quote-free
+  test commands** (`_tests_command` drops the interpreter-path quotes,
+  falls back to the PATH-resolved name) — gen-3's `command="\\"`
+  garbage eliminated at the source; (3) **provenance suffixes
+  stripped** from chat-record goals — the models parroted "benchmark
+  run <id>" back at us. **Corpus version tags** (`corpus-v3`): the
+  idempotent rebuild skips only CURRENT-format covered goals, and
+  mark_superseded_demos supersedes scripted demos lacking the tag —
+  so a format change invalidates the corpus automatically. **Live:
+  96/96 re-demoed in 45 s** (51 recovery-strategy), training export
+  verified — 0 suffix leakage, 0 quoted commands, 24 escaped-newline
+  write_file renders — **98 eligible step-trainable records = 96
+  current-format demos + 2 REAL Gemini passes**. Human-directed extra
+  drips: flash-lite **SUCCESS in 10 s** (6 iters, 5 calls, 0 failures
+  — fastest real pass in project history), flash-latest FAILED
+  honestly on a 429 after 10 real calls over 464 s (its bucket was
+  part-spent) — both daily buckets now spent, quota resets tomorrow.
+  Suite 1582 OK. Spec: docs/s69-spec.md.
 - 2026-09-12 — **S68.1 Gen-3 verdict — 0/3 again, and the failures are
   OURS: three data-format bugs named precisely** — ep3 imported clean
   (fixups automatic now) and the verdict (ep3-q4 vs ep2-q4, 3 tasks +
