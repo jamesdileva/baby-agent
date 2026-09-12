@@ -80,6 +80,42 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-11 — **S64 verdict day — ep1 gen-1: protocol acquired,
+  benchmark failed (recorded honestly)** — The Colab-trained ep1
+  arrived speaking ("Paris") but ollama rendered it as one repeated
+  token. Diagnosed with stdlib-only parsing, three conversion-layer
+  bugs in sequence: (1) ollama's converted template had no tool
+  support → Modelfile carries the qwen2.5-coder template; (2) ollama's
+  safetensors conversion DROPPED the tied lm_head (Qwen2.5-3B ties it)
+  → the GGUF shipped with no output.weight; fixed by cloning the
+  embedding into an explicit lm_head (stdlib safetensors surgery,
+  byte-verified); (3) transformers v5 writes rope_theta in a new
+  config format ollama's converter cannot read → freq_base came out
+  0.0 and the model still could not attend — patched to the legacy
+  key; sanity probe: "Paris", 8.5 s fp16 / 3.0 s q4. **Contract
+  finding**: the first verdict chain ran everything native-first —
+  ep1 emitted 0 structured calls (native-style JSON as plain text);
+  under its TRAINED textual contract it emitted 5–6 well-formed
+  [TOOL: ...] calls per run (correct arg names, one in-context
+  self-correction pattern→query) where its parent emitted ZERO under
+  either contract. **The honest verdict table** (same benchmark,
+  same settings): every model FAILED the defect fix — ep1-q4 6 iters
+  / 5 calls / 10 s, ep1-fp16 6 iters / 6 calls / 62 s, parent
+  qwen2.5-coder:3b 0 calls (native: JSON-as-text 31 s; textual: turn-1
+  timeout at 600 s), qwen3:4b native 6 calls / 1502 s. Generation 1 is
+  recorded as failed per the roadmap honesty rule — but the S55 gap
+  ("the protocol is what general small models lack") is MEASURABLY
+  closed: 26 records of SFT took ep1 from no-protocol to
+  consistently well-formed tool calling. Capability gap: ep1 guesses
+  paths and invents project types — syntax without task
+  understanding; the named levers are corpus scale/diversity (more
+  curriculum categories as demonstrators, more real passes). q4 is
+  the keeper variant (≈3× faster, same behavior). The in-memory untie
+  was also reverted by transformers v5's save — the kit now applies
+  the disk-level fixup (explicit lm_head + legacy rope_theta) AFTER
+  save_pretrained, and the sanity gate refused to celebrate early.
+  Suite 1558 OK (no runtime code changed beyond the earlier timeout
+  fix; verdict-day changes are kit-side). Spec: docs/s64-spec.md.
 - 2026-09-11 — **S64 slices 2+3 — ep0.5 demonstration injection +
   dashboard brain selection** — ep0.5 (the adaptation half of
   "fine-tune / adapt", no gradients): verified step-carrying
