@@ -167,12 +167,18 @@ def _step_trainable(record: TrajectoryRecord) -> bool:
 
 
 def format_tool_call(name: str, args: Dict[str, Any]) -> str:
-    """The taught textual protocol: [TOOL: name(k="v", k2="v2")]."""
+    """The taught textual protocol: [TOOL: name(k="v", k2="v2")].
+    S69 escaping dialect — the exact mirror of the runtime parser's
+    unescape set: backslash, quote, newline, tab. Values render as
+    single lines so the line-based parser sees the whole call."""
     parts = []
     for key, value in args.items():
         if isinstance(value, str):
-            rendered = '"' + value.replace("\\", "\\\\").replace('"', '\\"') \
-                + '"'
+            rendered = '"' + (value
+                              .replace("\\", "\\\\")
+                              .replace('"', '\\"')
+                              .replace("\n", "\\n")
+                              .replace("\t", "\\t")) + '"'
         elif isinstance(value, bool):
             rendered = "true" if value else "false"
         else:
@@ -184,12 +190,15 @@ def format_tool_call(name: str, args: Dict[str, Any]) -> str:
 def _chat_record(record: TrajectoryRecord) -> Dict[str, Any]:
     """SFT messages teaching the runtime's own tool protocol. The base
     prompt plus the [TOOL: ...] syntax section — the catalog is
-    task-specific, the protocol is what the corpus teaches."""
+    task-specific, the protocol is what the corpus teaches. S69: the
+    store's provenance suffix is stripped from the goal — it is not
+    task semantics, and gen-3's models parroted it back."""
     system = (build_system_prompt(tools=[], native_tools=False)
               + TOOL_PROTOCOL_PROMPT)
+    goal = record.goal.split(" (benchmark run")[0]
     messages: List[Dict[str, str]] = [{"role": "system", "content": system},
                                       {"role": "user",
-                                       "content": record.goal}]
+                                       "content": goal}]
     for step in record.steps:
         messages.append({"role": "assistant",
                          "content": format_tool_call(step["tool"],

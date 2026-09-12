@@ -63,6 +63,21 @@ class DemonstratorTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             build_demo("bug_fix", "yolo", 0, 1, sys.executable)
 
+    def test_commands_are_quote_free(self):
+        # S69: the taught protocol forbids quotes inside values, and
+        # gen-3 showed quoted interpreter paths mangling into
+        # command="\\" garbage
+        for category in ("bug_fix", "feature_add", "build_repair",
+                         "dependency", "testing", "regression"):
+            strategy = STRATEGIES[category][0]
+            script, _files, _goal, _tag = build_demo(
+                category, strategy, 0, 1, sys.executable)
+            for turn in script:
+                if getattr(turn, "name", None) in ("run_tests",
+                                                   "run_command"):
+                    self.assertNotIn('"', turn.arguments.get("command", ""),
+                                     (category, turn.arguments))
+
 
 class CorpusChainTests(unittest.TestCase):
     def setUp(self):
@@ -82,6 +97,8 @@ class CorpusChainTests(unittest.TestCase):
         record = records[0]
         self.assertEqual("success", record.outcome)
         self.assertIn(DEMO_MODEL_TAG, record.tags)
+        from qacompanion.agent.ep1 import VERSION_TAG
+        self.assertIn(VERSION_TAG, record.tags)
         self.assertIn("(benchmark run", record.goal)
         # S66: EXPLORE-FIRST — the first captured step is discovery
         steps = record.context["tool_calls"]
@@ -240,26 +257,31 @@ class SupersedeTests(unittest.TestCase):
             actions=[first_tool],
             context={"tool_calls": steps, "model": "scripted-demo"}))
 
-    def test_old_pattern_tagged_new_style_touched(self):
-        from qacompanion.agent.ep1 import mark_superseded_demos
+    def test_old_pattern_and_stale_format_superseded(self):
+        from qacompanion.agent.ep1 import VERSION_TAG, mark_superseded_demos
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
-            # distinct goals: the store's goal-dedupe would otherwise
-            # collapse the three records into one
+            # read-first without version tag: doubly stale
             self._record(store, first_tool="read_file", goal="task one")
+            # list-first but no version tag: stale FORMAT (S69)
             self._record(store, first_tool="list_directory",
                          goal="task two")
-            self._record(store, first_tool="read_file", goal="task three",
+            # list-first WITH the current version tag: current, kept
+            self._record(store, first_tool="list_directory",
+                         goal="task three")
+            records = store.load()
+            records[-1].tags.append(VERSION_TAG)
+            store.save(records)
+            # a non-scripted record is never touched
+            self._record(store, first_tool="read_file", goal="task four",
                          tag_model=False)
             stats = mark_superseded_demos(store)
-            self.assertEqual(3, stats["scanned"])
-            self.assertEqual(1, stats["superseded"])
-            records = store.load()
-            superseded = [r for r in records
+            self.assertEqual(4, stats["scanned"])
+            self.assertEqual(2, stats["superseded"])
+            superseded = [r for r in store.load()
                           if "superseded-pattern" in r.tags]
-            self.assertEqual(1, len(superseded))
-            self.assertEqual("read_file",
-                             superseded[0].context["tool_calls"][0]["tool"])
+            self.assertEqual({"task one", "task two"},
+                             {r.goal for r in superseded})
 
     def test_training_excludes_superseded_with_reason(self):
         with tempfile.TemporaryDirectory() as tmp:

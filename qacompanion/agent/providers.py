@@ -283,7 +283,10 @@ def _parse_textual_tool_calls(text: str) -> List[ToolCall]:
     Backward compatible with the S27 brain protocol: a single bare value
     ("[TOOL: case_search(\"x\")]") or one query=/pattern= pair maps to the
     tool's canonical keyword (journal_read -> pattern, else query).
-    Documented limits: no quotes or newlines inside argument values.
+    S69 escaping dialect: \', \\" and \n inside values are
+    unescaped after capture (the mirror of format_tool_call's
+    rendering), so quoted strings and multi-line content are
+    expressible.
     """
     calls: List[ToolCall] = []
     for line in text.splitlines():
@@ -294,7 +297,14 @@ def _parse_textual_tool_calls(text: str) -> List[ToolCall]:
         args: Dict[str, Any] = {}
         for pair in _ARG_PAIR_RE.finditer(argstr):
             key = pair.group(1) or pair.group(3)
-            args[key] = pair.group(2) if pair.group(1) else pair.group(4)
+            value = pair.group(2) if pair.group(1) else pair.group(4)
+            if pair.group(1):
+                # S69: one escaping dialect — unescape exactly what
+                # format_tool_call renders (backslash, quote, newline);
+                # single-quoted legacy values stay raw
+                value = _UNESCAPE_RE.sub(
+                    lambda m: _UNESCAPES[m.group(1)], value)
+            args[key] = value
         if not args:
             bare = _BARE_VALUE_RE.match(argstr)
             if bare:
@@ -304,8 +314,16 @@ def _parse_textual_tool_calls(text: str) -> List[ToolCall]:
 
 
 _TOOL_LINE_RE = re.compile(r"\[\s*TOOL:\s*(\w+)\s*\((.*)\)\s*\]")
-_ARG_PAIR_RE = re.compile(r"""(\w+)\s*=\s*"([^"]*)"|(\w+)\s*=\s*'([^']*)'""")
+# S69: escape-aware double-quoted values — (?:[^"\\]|\\.)* consumes \"
+# and \\ sequences so escaped quotes no longer terminate the value
+_ARG_PAIR_RE = re.compile(
+    r"""(\w+)\s*=\s*"((?:[^"\\]|\\.)*)"|(\w+)\s*=\s*'([^']*)'""")
 _BARE_VALUE_RE = re.compile(r"""^["']([^"']*)["']$""")
+
+# S69 escaping dialect (shared with training.format_tool_call):
+# backslash, quote, and newline are the escaped set
+_UNESCAPES = {"\\": "\\", '"': '"', "n": "\n", "t": "\t"}
+_UNESCAPE_RE = re.compile(r"\\(.)")
 
 
 class OllamaProvider(ModelProvider):

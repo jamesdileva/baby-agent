@@ -41,6 +41,13 @@ from .training import format_tool_call
 
 DEMO_MODEL_TAG = "scripted-demo"
 
+# S69: corpus format version — the rebuild skips only goals covered by
+# a CURRENT-version record, and mark_superseded_demos supersedes
+# scripted demos lacking the tag (their FORMAT is stale for training
+# even when the task itself is unchanged)
+CORPUS_VERSION = "v3"
+VERSION_TAG = f"corpus-{CORPUS_VERSION}"
+
 # the corpus recipe (S66): categories with declared shapes and honest
 # test gates; levels 1..8 (bug_fix decoys at >=3 teach read-before-fix)
 CATEGORY_VARIANTS = {
@@ -147,7 +154,13 @@ class ScriptedDemonstrator(FakeModelProvider):
 
 
 def _tests_command(python: str) -> str:
-    return f'"{python}" -m unittest -v'
+    # S69: quote-free — the taught protocol forbids quotes inside
+    # values, and gen-3 showed the model mangling quoted interpreter
+    # paths into command="\" garbage. Fall back to the PATH-resolved
+    # name when the interpreter path would need quoting.
+    if " " in python:
+        return "python -m unittest -v"
+    return f"{python} -m unittest -v"
 
 
 def _list() -> ToolCall:
@@ -347,12 +360,12 @@ def build_demo(category: str, strategy: str, variant: int, level: int,
 
 
 def mark_superseded_demos(store: ExperienceStore) -> Dict[str, Any]:
-    """S68 corpus hygiene: scripted-demo records whose FIRST captured
-    step is read_file carry the pre-S66 answer-reading policy — tagged
-    `superseded-pattern` so training excludes them. Precise identifier:
-    every S66 script starts with list_directory or run_tests, never
-    read_file. Kept in the store for provenance; the idempotent rebuild
-    re-demos their tasks explore-first."""
+    """S68/S69 corpus hygiene: scripted-demo records are superseded
+    when their FIRST captured step is read_file (the pre-S66
+    answer-reading policy — precise identifier: no current script
+    starts with a read) OR when they lack the current corpus version
+    tag (their FORMAT is stale for training). Kept in the store for
+    provenance; the idempotent rebuild re-demos their tasks."""
     records = store.load()
     superseded = 0
     for record in records:
@@ -360,7 +373,9 @@ def mark_superseded_demos(store: ExperienceStore) -> Dict[str, Any]:
         if "scripted-demo" not in tags or "superseded-pattern" in tags:
             continue
         steps = record.context.get("tool_calls") or []
-        if steps and steps[0].get("tool") == "read_file":
+        stale_first_step = bool(steps) and \
+            steps[0].get("tool") == "read_file"
+        if stale_first_step or VERSION_TAG not in tags:
             record.tags.append("superseded-pattern")
             superseded += 1
     if superseded:
@@ -393,6 +408,7 @@ def build_corpus(experience_store: ExperienceStore,
         tags = record.tags or []
         if ("scripted-demo" in tags
                 and "superseded-pattern" not in tags
+                and VERSION_TAG in tags
                 and record.outcome == "success"):
             # strip the session-unique suffix before normalizing: the
             # recorded goal carries " (benchmark run <id>)" but the
@@ -438,10 +454,16 @@ def build_corpus(experience_store: ExperienceStore,
                 if is_recovery:
                     stats["recovery"] += 1
                     per_cat["recovery"] += 1
-                if report.success and is_recovery:
+                if report.success:
+                    # S69: version-tag current-format records so the
+                    # idempotent rebuild recognizes them
                     records = experience_store.load()
-                    if records and "recovery-demo" not in records[-1].tags:
-                        records[-1].tags.append("recovery-demo")
+                    if records:
+                        last = records[-1]
+                        if VERSION_TAG not in last.tags:
+                            last.tags.append(VERSION_TAG)
+                        if is_recovery and "recovery-demo" not in last.tags:
+                            last.tags.append("recovery-demo")
                         experience_store.save(records)
                 stats["tasks"].append({
                     "category": category, "strategy": strategy,

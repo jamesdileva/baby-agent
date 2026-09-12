@@ -311,5 +311,37 @@ class EndToEndTests(unittest.TestCase):
                                 for m in assistants))
 
 
+class EscapingDialectTests(unittest.TestCase):
+    """S69: one escaping dialect — format_tool_call's rendering and the
+    runtime parser's unescape are exact mirrors."""
+
+    def test_render_parse_round_trip(self):
+        from qacompanion.agent.providers import _parse_textual_tool_calls
+        cases = [
+            ("run_tests", {"command": "C:/Py/python.exe -m unittest"}),
+            ("write_file", {"content": "line1\nline2 with \"quote\""
+                                       " and C:\\path\ttabbed"}),
+            ("edit_file", {"path": "src\\mod.py",
+                           "old_string": "a\\b", "new_string": "x"}),
+        ]
+        for name, args in cases:
+            with self.subTest(name=name):
+                rendered = format_tool_call(name, args)
+                parsed = _parse_textual_tool_calls(rendered)
+                self.assertTrue(parsed, rendered)
+                self.assertEqual(args, parsed[0].arguments)
+                # single line: the line-based parser sees everything
+                self.assertNotIn("\n", rendered)
+
+    def test_chat_record_strips_provenance_suffix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            curated = _write_curated(Path(tmp), [_eligible_row(
+                goal="fix the widget (benchmark run 6bd97c9c)")])
+            record = build_records(curated_dir=curated)[0]
+            chat = record.chat
+            self.assertEqual("fix the widget",
+                             chat["messages"][1]["content"])
+
+
 if __name__ == "__main__":
     unittest.main()
