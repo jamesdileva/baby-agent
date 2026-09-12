@@ -80,6 +80,30 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-11 — **S64 slices 2+3 — ep0.5 demonstration injection +
+  dashboard brain selection** — ep0.5 (the adaptation half of
+  "fine-tune / adapt", no gradients): verified step-carrying
+  experiences now render as protocol-shaped WORKED EXAMPLES inside the
+  S56 memory block — goal → `[TOOL: ...]` steps with observation heads
+  → final answer — so the model imitates in-context instead of
+  learning by weight updates. MemoryLayer carries steps /
+  final_answer / model additively (legacy records unaffected);
+  `MemoryRetriever(demonstrations=True)` renders only SUCCESS-outcome
+  experiences (failed outcomes never teach by imitation);
+  `run_benchmark` gained `context_builder=` passthrough as the A/B
+  harness. Hermeticity slip caught by review: the new tests initially
+  let MemoryLayer default to the repo's REAL cases.jsonl (the S49
+  lesson, 3rd+ occurrence — isolated paths now injected). Slice 3:
+  `QA_AGENT_PROVIDER=gemini` selects the free-tier brain for
+  dashboard sessions (default ollama unchanged; unknown values are
+  structured startup errors). **A/B experiment (human-directed): demo
+  injection provably reaches the model, but qwen3:4b on CPU could not
+  finish turn 1 within the 300 s budget with the enlarged context
+  (0 tool calls; baseline without the demo: 7 tool calls over 6
+  iterations)** — the context cost of ep0.5 is real on CPU; a 600 s
+  -budget retry was launched to answer the tool-call-quality question.
+  On Gemini-class providers the extra tokens are trivial. Suite
+  1558 OK. Spec: docs/s64-spec.md slices 2-3.
 - 2026-09-11 — **S64 Baby-Agent Ep1 (corpus + kit; training
   hardware-gated)** — `qacompanion/agent/ep1.py`: the ep1 process
   starts with DATA. **Hardware finding (probed): AMD Radeon RX 6400,
