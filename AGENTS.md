@@ -80,6 +80,24 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-12 — **S70 Dashboard Operations — the loop's buttons** — The
+  S68 commands are now dashboard buttons: a **job model** on the
+  server (`start_job`: background thread, status/summary, injectable
+  runners for hermetic tests) with **POST /api/drip** (one real
+  benchmark pass on the free-tier brain, recorded),
+  **POST /api/verdict** (models + task count → S68 run_verdict under
+  the trained textual contract), and **GET /api/jobs** (newest-first
+  list). The UI grew an **Operations panel** — drip button, verdict
+  models input, live job list polling every 3 s with running/done/
+  failed coloring. Safety posture: buttons only, never auto-fired —
+  opening the dashboard is looking, not doing (S38 philosophy); every
+  click spends real quota or CPU deliberately. **Live smoke**: the
+  drip endpoint launched a real pass that honestly FAILED on the
+  spent flash-lite quota — the 429 surfaced in the job summary
+  through the retry backoff, exactly the error-visibility the panel
+  exists for. Endpoints tested with injected fake runners (lifecycle,
+  model carry-through, 400 on empty models, newest-first ordering);
+  npm build green. Suite 1586 OK. Spec: docs/s70-spec.md.
 - 2026-09-12 — **S69 Protocol Consistency — the corpus now teaches a
   dialect the runtime actually speaks** — The gen-3 verdict named three
   data-format bugs; this sprint fixed all three at the source: (1)
