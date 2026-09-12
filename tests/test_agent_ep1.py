@@ -99,6 +99,11 @@ class TrainingKitTests(unittest.TestCase):
             self.assertIn("fp16=True", script)
             self.assertIn('"use_reentrant": False', script)
             self.assertIn("merge_and_unload", script)
+            # verdict-day fixes, pinned: disk-level untie + legacy
+            # rope_theta (transformers v5 config format broke ollama's
+            # converter -> freq_base 0.0 -> one repeated token)
+            self.assertIn('lm_head.weight', script)
+            self.assertIn('rope_theta', script)
             # the kit imports nothing from qacompanion — it runs outside
             # (prose mentions of the repo are fine; imports are not)
             self.assertNotIn("import qacompanion", script)

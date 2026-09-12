@@ -216,17 +216,33 @@ def main():
     # merge the adapter into the base so ollama (or llama.cpp) can take
     # the WHOLE model without any adapter dance
     merged = model.merge_and_unload()
-    # UNTIE the LM head: Qwen2.5-3B ties it to the embeddings, and
-    # ollama's safetensors conversion DROPS the tied head — the GGUF
-    # shipped with no output.weight and the model emitted one repeated
-    # token (found via the first ep1 verdict attempt, 2026-09-11)
-    import torch as _torch
-    merged.config.tie_word_embeddings = False
-    merged.lm_head.weight = _torch.nn.Parameter(
-        merged.get_input_embeddings().weight.detach().clone())
     merged.save_pretrained(MERGED_DIR)
     tokenizer.save_pretrained(MERGED_DIR)
-    print("merged model saved to", MERGED_DIR, "(lm_head untied)")
+
+    # DISK-LEVEL fixup (the first ep1 verdict attempt, 2026-09-11):
+    # in-memory config edits do NOT survive transformers v5's save —
+    # it re-tied the head and wrote rope_theta in a new config format
+    # ollama's converter cannot read (freq_base came out 0.0 and the
+    # model emitted one repeated token). Patch the SAVED files:
+    # explicit lm_head + legacy rope_theta key.
+    import glob as _glob
+    import json as _json
+    from safetensors.torch import load_file as _load, save_file as _save
+    for shard in _glob.glob(f"{MERGED_DIR}/*.safetensors"):
+        state = _load(shard)
+        if "model.embed_tokens.weight" in state                 and "lm_head.weight" not in state:
+            state["lm_head.weight"] =                 state["model.embed_tokens.weight"].clone()
+            _save(state, shard)
+            print("fixup: lm_head made explicit in", shard)
+    cfg_path = f"{MERGED_DIR}/config.json"
+    cfg = _json.load(open(cfg_path, encoding="utf-8"))
+    cfg["tie_word_embeddings"] = False
+    cfg["rope_theta"] = (cfg.get("rope_theta")
+                         or cfg.get("rope_parameters", {}).get("rope_theta")
+                         or 1000000.0)
+    _json.dump(cfg, open(cfg_path, "w", encoding="utf-8"), indent=2)
+    print("fixup: tie_word_embeddings=False, rope_theta =",
+          cfg["rope_theta"])
 
     # the honesty gate, in-process: never declare success on a model
     # that cannot speak — degenerate output ships silently otherwise
