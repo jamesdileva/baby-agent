@@ -80,6 +80,48 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-11 — **S63 Training Dataset Pipeline 2.0** —
+  `qacompanion/agent/training.py`: CURATED data → training corpus.
+  Source discipline enforced: training reads ONLY the S62 curated
+  export, never raw experience; the eligibility gate implements the
+  permanent dataset-separation rule — training.jsonl takes ONLY
+  ACCEPT + successful + verification evidence, every exclusion carries
+  a recorded reason, INVALID never becomes a record. Chat records
+  teach the EXACT runtime tool protocol (build_system_prompt +
+  TOOL_PROTOCOL_PROMPT): system → user goal → assistant
+  [TOOL: name(k="v", ...)] turns with REAL captured args → observation
+  result heads → final answer. No fabricated steps — records without
+  captured step data stay structured but not step-trainable (honest
+  notes). Capture upgrade (session_learning, additive): bounded
+  context["tool_calls"] (args + result heads, 50 cap) paired from
+  session.tool_calls × observations, plus context["final_answer"] from
+  session.final_result; actions stay names (S50 compat). Curated
+  trajectory export now carries the payload (redacted). New CLI:
+  `qa build-training`. **The live debug repaired Gemini native
+  calling**: the first real run failed HTTP 400 and the provider was
+  swallowing the body — surfacing bodies exposed three real protocol
+  bugs, fixed in sequence: (1) tool results replayed as model-role
+  TEXT → "requests ending with a model turn" — now user-turn
+  functionResponse parts; (2) thinking models require thoughtSignature
+  replayed at PART level; (3) 429 free-tier retry (60s wait). Contract
+  (additive): ModelMessage.tool_calls + ToolCall.thought_signature.
+  **Store finding (S59 suffix precedent)**: benchmark reruns share one
+  normalized goal, so the store's goal-dedupe collapsed every run into
+  ONE record and silently destroyed per-run trajectory data — harness
+  recordings now carry a session-unique goal suffix. **Live result:
+  the second honest benchmark PASS in project history**
+  (gemini-3.1-flash-lite over the repaired native protocol, 6
+  iterations, 0 tool failures) → curation ACCEPT=111 / REVIEW=0 /
+  REJECT=1 → **training.jsonl's first real verified step-trainable
+  record** (13 messages: protocol system prompt, goal, 5 tool turns
+  with real args, observations, the model's actual diagnosis as the
+  final answer). Free-tier note: gemini-flash-latest resolves to
+  gemini-3.8-flash at 20 requests/DAY — flash-lite has its own
+  bucket; pin GEMINI_MODEL for live runs. Also this cycle: the S62
+  human-review ruling landed first (goal substance gates the
+  high-value REVIEW claim; the session-closing template promoted to
+  boilerplate — DECISIONS 2026-09-11). Suite 1515 → 1540 OK. Spec:
+  docs/s63-spec.md.
 - 2026-09-11 — **S62 Trajectory Curation** —
   `qacompanion/agent/curation.py`: the §S62 gate between "something
   happened" and "should learn this" — deterministic, no LLM.
