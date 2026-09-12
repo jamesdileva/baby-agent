@@ -128,7 +128,12 @@ def _ollama_chat(messages, tools=None, model=None, url=None,
     num_ctx = _num_ctx()
     if num_ctx is not None:
         data["options"] = {"num_ctx": num_ctx}
-    result = _http_post(endpoint, data, timeout=300)
+    # S64 finding: the native path hardcoded a 300s ceiling and ignored
+    # OLLAMA_TIMEOUT — thinking models + big catalogs on CPU need more.
+    # Keep 300s as the floor (the historical native default) and let
+    # the knob raise it.
+    result = _http_post(endpoint, data,
+                        timeout=max(300, _configured_timeout()))
     return result
 
 

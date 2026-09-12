@@ -82,6 +82,24 @@ class TestOllamaNativeToolCalling(unittest.TestCase):
         self.assertIn("think", captured["data"])
         self.assertFalse(captured["data"]["think"])
 
+    def test_native_chat_timeout_floor_and_knob(self):
+        """S64 finding: the native path hardcoded a 300s ceiling and
+        ignored OLLAMA_TIMEOUT. Floor stays 300; the knob raises it."""
+        from unittest.mock import patch
+        captured = {}
+
+        def fake_post(url, data, timeout=None):
+            captured["timeout"] = timeout
+            return {"message": {"content": "ok"}}
+
+        with patch.object(bridge, "_http_post", side_effect=fake_post):
+            bridge._ollama_chat([{"role": "user", "content": "hi"}])
+            self.assertEqual(300, captured["timeout"])  # floor
+            with patch.dict(os.environ, {"OLLAMA_TIMEOUT": "600"}):
+                bridge._ollama_chat([{"role": "user", "content": "hi"}])
+                self.assertEqual(600, captured["timeout"])
+
+
     def test_textual_path_preserved_without_tools(self):
         # the 1.5B-era shim: no tools declared -> /api/generate textual
         from qacompanion.agent import OllamaProvider
