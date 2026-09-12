@@ -80,6 +80,36 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-11 — **S64 Baby-Agent Ep1 (corpus + kit; training
+  hardware-gated)** — `qacompanion/agent/ep1.py`: the ep1 process
+  starts with DATA. **Hardware finding (probed): AMD Radeon RX 6400,
+  4 GB, no CUDA — local fine-tuning impractical**; free-tier Gemini
+  caps model-generated data at a few passes/day. So: scripted
+  curriculum demonstrators — the S60 bug_fix variant table declares its
+  defects BY CONSTRUCTION, and a 5-turn demonstrator (inspect → tests
+  fail → surgical edit of the DECLARED old/new → tests pass → state
+  the diagnosis) runs through the REAL S37 loop, REAL subprocess test
+  execution, and the S41 gate; only verified passes become records,
+  tagged `scripted-demo` (honest provenance threaded through curation
+  → training metadata). `qa build-corpus` = corpus → curate →
+  build-training → kit export, all deterministic. **Live: 26 verified
+  step-trainable training records** (25 scripted + 1 real
+  gemini-3.1-flash-lite pass; avg 11.1 messages each) — up from 1,
+  zero LLM quota spent. **BONUS REGRESSION FIX found by the corpus
+  chain**: a same-second, same-size edit left CPython's stale .pyc
+  "valid" (its check is int-second + size), so subprocesses silently
+  imported the OLD code — write_file/edit_file now guarantee a
+  strictly-fresh mtime (regression test reproduces the race). Training
+  kit committed (training-kit/): single-file QLoRA SFT
+  (Qwen2.5-Coder-3B-Instruct base) + README documenting the honest
+  ep1 loop — external free compute (Colab/Kaggle, no billing) →
+  `ollama create baby-agent:ep1` → S57 run_evaluation + compare() as
+  the ONLY acceptance surface. **Local retest (human-directed,
+  bounded): qwen3:4b FAILED honestly** — 6 iterations / 883.5 s /
+  7 tool calls / 2 failures, max-iterations termination; the isolated
+  2-tool native probe still works (correct call, ~83 s/turn CPU) —
+  the gap stays CPU latency + sustained reasoning, which is exactly
+  what ep1 targets. Suite 1547 OK. Spec: docs/s64-spec.md.
 - 2026-09-11 — **S63 Training Dataset Pipeline 2.0** —
   `qacompanion/agent/training.py`: CURATED data → training corpus.
   Source discipline enforced: training reads ONLY the S62 curated
