@@ -222,6 +222,9 @@ Status: S31 is **next**; all others proposed until their slice commits.
 | S63 | Training Dataset Pipeline 2.0 | proposed |
 | S64 | Baby-Agent Ep1 | proposed |
 | S65+ | Generational Agents | long-term |
+| S66 | Demonstrator 2.0 (Gen-2 corpus) | proposed |
+| S67 | Gen-2 Training + Verdict Harness v2 | proposed |
+| S68 | The Self-Improvement Loop | proposed |
 
 ---
 
@@ -1088,6 +1091,91 @@ Targeted improvements per generation: planning, tool selection, iteration
 count, debugging, memory retrieval, skill reuse, verification, latency, model
 size, local inference, multimodal reasoning. **Every generation is
 benchmarked** — never assumed better.
+
+---
+
+## S66 — Demonstrator 2.0 (Gen-2 corpus: scale + the patterns gen-1 lacked)
+
+**Objective.** Gen-1's verdict was precise: ep1 acquired perfect tool-call
+SYNTAX but flailed at the task — it guessed paths, invented project types,
+and never discovered the workspace, because the gen-1 demonstrations taught
+"read the file the script already knew." Fix the corpus design, then scale
+it. No new sessions and no LLM quota required — the curriculum declares its
+shapes by construction.
+
+**Implement.**
+
+- **Explore-first demonstrators**: every demonstration starts with
+  `list_directory` → reads the DISCOVERED module → runs tests (fail) →
+  surgical edit → runs tests (pass) → final answer that names the file and
+  the defect. The model learns discovery, not answer-reading.
+- **Recovery demonstrations** (the roadmap's highest-value class, absent
+  in gen-1): a scripted wrong turn — read a hallucinated path, receive the
+  file-not-found observation, CORRECT to the real path — before success.
+  Teaching error-driven course correction, not perfection.
+- **Category expansion**: scripted demonstrators for the verifiable
+  curriculum categories beyond bug_fix (feature_add, build_repair,
+  dependency, testing — each declares its defect/shape by construction).
+  Corpus target: 26 → 100+ verified step-trainable records.
+- **Goal-phrasing variety**: paraphrase templates per record so the model
+  learns intent rather than one goal formula (gen-1 trained on one
+  sentence shape and the real benchmark's phrasing differed).
+- Corpus goes through the standing S62→S63 chain (curate →
+  build-training); provenance stays `scripted-demo`.
+
+**Verification.** Seeded and deterministic; every record passes curation
+eligibility and is step-trainable; an explicit corpus-level assertion that
+demonstrations START with discovery (first step is list_directory) and
+that at least a quarter of records contain a recovery turn. All through
+the S41 gate as before.
+
+**Deliberately deferred.** docs/refactor categories (no honest
+verification gate for prose changes yet — recorded, not silently dropped).
+
+---
+
+## S67 — Gen-2 training + verdict harness v2
+
+**Objective.** Retrain on the S66 corpus and judge ep2 fairly — across
+tasks, not just one fixture, with protocol quality measured explicitly.
+
+**Implement.**
+
+- Corpus rebuild → kit export → Colab retrain (the hardened kit: sanity
+  gate + disk fixup — one ~5-minute human-run job) → local
+  `ollama create` from the committed ModelFile recipe.
+- **Verdict harness v2**: the S57 `run_evaluation` cross product (3
+  defect tasks) for ep2 vs ep1 vs parent, PLUS protocol-quality metrics
+  computed from recorded trajectories: well-formed call rate, tool
+  failures, hallucinated-path rate, discovery-first rate.
+- `compare()` remains the only acceptance surface; regressions are
+  documented, not shipped silently.
+
+**Verification.** ep2 ≥ ep1 on protocol metrics; benchmark deltas
+reported honestly either way; every run recorded as a trajectory.
+
+---
+
+## S68 — The self-improvement loop (S65 realized as plumbing)
+
+**Objective.** Make generations continuous instead of episodic: one
+command per stage, every verdict run feeding the next corpus.
+
+**Implement.**
+
+- `qa build-corpus` gains the gen-2 demonstrator patterns (S66) behind
+  the same CLI.
+- A daily Gemini drip (quota permitting, ~2-3 real passes/day on
+  flash-lite) adds REAL verified records alongside the scripted ones —
+  the honest-provenance mix grows real-data share over time.
+- ep0.5 demonstration injection becomes a standard eval dimension of
+  the verdict harness (on/off A/B per generation).
+- Post-verdict: failure analysis of gen-N trajectories feeds gen-N+1
+  demonstrator design (gen-1's "guessing" finding is the template).
+
+**Verification.** The loop is re-runnable end-to-end without manual
+surgery; each generation's verdict lands in the worklog with the full
+metric table.
 
 ---
 
