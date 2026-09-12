@@ -330,6 +330,7 @@ class CuratedTrajectory:
     steps: List[Dict[str, Any]] = field(default_factory=list)
     final_answer: Optional[str] = None
     model: Optional[str] = None
+    tags: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -356,6 +357,7 @@ class CuratedTrajectory:
             "steps": self.steps,
             "final_answer": self.final_answer,
             "model": self.model,
+            "tags": self.tags,
         }
 
 
@@ -485,6 +487,7 @@ class TrajectoryCurator:
             steps=_steps_of(experience),
             final_answer=_final_answer_of(experience),
             model=_model_of(experience),
+            tags=list(experience.tags or []),
         )
 
     def _apply_diversity(self, trajectories: List[CuratedTrajectory]) -> None:

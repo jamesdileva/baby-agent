@@ -225,6 +225,168 @@ class TrainingKitTests(unittest.TestCase):
             self.assertIn("compare()", readme)
 
 
+class SupersedeTests(unittest.TestCase):
+    """S68 corpus hygiene: stale-policy demos are tagged and excluded."""
+
+    def _record(self, store, first_tool="read_file", tag_model=True,
+                goal="demo task"):
+        from qacompanion.agent.experience import Experience
+        steps = [{"tool": first_tool, "args": {"path": "x"},
+                  "ok": True, "result_head": "ok"}]
+        tags = ["autonomous-session", "scripted-demo"] if tag_model \
+            else ["autonomous-session"]
+        store.record(Experience(
+            goal=goal, outcome="success", tags=tags,
+            actions=[first_tool],
+            context={"tool_calls": steps, "model": "scripted-demo"}))
+
+    def test_old_pattern_tagged_new_style_touched(self):
+        from qacompanion.agent.ep1 import mark_superseded_demos
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ExperienceStore(Path(tmp) / "e.jsonl")
+            # distinct goals: the store's goal-dedupe would otherwise
+            # collapse the three records into one
+            self._record(store, first_tool="read_file", goal="task one")
+            self._record(store, first_tool="list_directory",
+                         goal="task two")
+            self._record(store, first_tool="read_file", goal="task three",
+                         tag_model=False)
+            stats = mark_superseded_demos(store)
+            self.assertEqual(3, stats["scanned"])
+            self.assertEqual(1, stats["superseded"])
+            records = store.load()
+            superseded = [r for r in records
+                          if "superseded-pattern" in r.tags]
+            self.assertEqual(1, len(superseded))
+            self.assertEqual("read_file",
+                             superseded[0].context["tool_calls"][0]["tool"])
+
+    def test_training_excludes_superseded_with_reason(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            curated = Path(tmp) / "curated"
+            curated.mkdir(parents=True)
+            row = {
+                "experience_id": "x1", "session_id": "s1",
+                "source": "opencode", "goal": "demo task",
+                "outcome": "success", "classification": "SUCCESS",
+                "verdict": "ACCEPT",
+                "score": {"overall": 0.7, "dimensions": {},
+                          "unknown_dims": []},
+                "hard_flags": [], "penalties": [], "reasons": [],
+                "confidence": 0.9, "times_seen": 1,
+                "diversity_score": 0.5, "actions": ["read_file"],
+                "failure": None, "diagnosis": None, "resolution": None,
+                "verification": {"attempts": [{"ok": True}]},
+                "steps": [{"tool": "read_file", "args": {"path": "x"},
+                           "ok": True, "result_head": "ok"}],
+                "final_answer": "done", "model": "scripted-demo",
+                "tags": ["autonomous-session", "scripted-demo",
+                         "superseded-pattern"],
+            }
+            (curated / "trajectory.jsonl").write_text(
+                json.dumps(row) + "\n", encoding="utf-8")
+            from qacompanion.agent.training import build_records
+            records = build_records(curated_dir=curated)
+            self.assertFalse(records[0].eligible)
+            self.assertTrue(any("superseded-pattern" in r
+                                for r in records[0].eligibility_reasons))
+
+
+class IdempotentRebuildTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+        self.store = ExperienceStore(self.tmp / "exp.jsonl")
+
+    def test_second_rebuild_skips_covered_tasks(self):
+        first = build_corpus(self.store, python=sys.executable,
+                             categories={"bug_fix": 1}, levels=(3,))
+        self.assertEqual(1, first["passed"])
+        second = build_corpus(self.store, python=sys.executable,
+                              categories={"bug_fix": 1}, levels=(3,))
+        self.assertEqual(0, second["runs"], second)
+        self.assertEqual(1, second["skipped_existing"])
+
+    def test_stale_goal_gets_redemoed_in_new_style(self):
+        from qacompanion.agent.experience import Experience
+        goal = ("The test suite in this project fails because add is "
+                "implemented incorrectly. Find the bug, fix it, and run "
+                "the tests to verify they pass.")
+        self.store.record(Experience(
+            goal=goal, outcome="success",
+            tags=["autonomous-session", "scripted-demo"],
+            actions=["read_file"],
+            context={"tool_calls": [{"tool": "read_file",
+                                     "args": {"path": "math_ops.py"},
+                                     "ok": True, "result_head": "x"}],
+                     "model": "scripted-demo"}))
+        stats = build_corpus(self.store, python=sys.executable,
+                             categories={"bug_fix": 1}, levels=(3,))
+        # the old goal == the (0,3) task's goal -> re-demoed new-style
+        self.assertEqual(1, stats["runs"], stats)
+        self.assertEqual(1, stats["superseded"])
+        new_record = self.store.load()[-1]
+        self.assertEqual("list_directory",
+                         new_record.context["tool_calls"][0]["tool"])
+
+
+class VerdictTests(unittest.TestCase):
+    """S68: run_verdict with injected fakes — structure + metrics."""
+
+    def test_verdict_structure_and_metrics(self):
+        from qacompanion.agent import (FakeModelProvider, ModelResponse,
+                                       ToolCall)
+        from qacompanion.agent.ep1 import run_verdict
+
+        class _Stateless(FakeModelProvider):
+            def __init__(self):
+                super().__init__([])
+
+            def generate(self, request):
+                has_tool_result = any(m.role == "tool"
+                                      for m in request.messages)
+                if has_tool_result:
+                    return ModelResponse(text="fixed",
+                                         finish_reason="stop")
+                return ModelResponse(text="", tool_calls=[
+                    ToolCall(name="edit_file", arguments={
+                        "path": "calculator.py",
+                        "old_string": "    return a - b",
+                        "new_string": "    return a + b",
+                    })], finish_reason="tool_calls")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ExperienceStore(Path(tmp) / "e.jsonl")
+            verdict = run_verdict({"fake": _Stateless()}, task_count=1,
+                                  store=store, max_iterations=6,
+                                  ab_demos=True)
+            self.assertEqual(["defect-fix-calculator"], verdict["tasks"])
+            self.assertIn("fake", verdict["results"])
+            self.assertIn("fake", verdict["metrics"])
+            metrics = verdict["metrics"]["fake"]
+            self.assertEqual(1.0, metrics["with_calls_rate"])
+            pair = verdict["ab_demos"]["fake"]
+            self.assertEqual({"without", "with"}, set(pair))
+
+    def test_format_verdict_lines(self):
+        from qacompanion.agent.ep1 import format_verdict
+        verdict = {"tasks": ["t1"],
+                   "results": {"m": {"t1": {
+                       "success": False,
+                       "termination_reason": "max iterations reached (6)",
+                       "iterations": 6, "tool_calls": 4,
+                       "tool_failures": 1}}},
+                   "metrics": {"m": {"runs": 1, "with_calls_rate": 1.0,
+                                     "discovery_first_rate": 0.0,
+                                     "success_rate": 0.0,
+                                     "guessed_path_rate": 0.0,
+                                     "tool_failures": 1}}}
+        text = format_verdict(verdict)
+        self.assertIn("m / t1: FAILED", text)
+        self.assertIn("metrics m:", text)
+
+
 class ReportFormatTests(unittest.TestCase):
     def test_report_lists_failures_honestly(self):
         stats = {"runs": 2, "passed": 1, "failed": 1, "recovery": 1,

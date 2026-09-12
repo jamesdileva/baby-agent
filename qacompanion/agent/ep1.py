@@ -346,6 +346,28 @@ def build_demo(category: str, strategy: str, variant: int, level: int,
     return _SCRIPT_BUILDERS[category](strategy, variant, level, python)
 
 
+def mark_superseded_demos(store: ExperienceStore) -> Dict[str, Any]:
+    """S68 corpus hygiene: scripted-demo records whose FIRST captured
+    step is read_file carry the pre-S66 answer-reading policy — tagged
+    `superseded-pattern` so training excludes them. Precise identifier:
+    every S66 script starts with list_directory or run_tests, never
+    read_file. Kept in the store for provenance; the idempotent rebuild
+    re-demos their tasks explore-first."""
+    records = store.load()
+    superseded = 0
+    for record in records:
+        tags = record.tags or []
+        if "scripted-demo" not in tags or "superseded-pattern" in tags:
+            continue
+        steps = record.context.get("tool_calls") or []
+        if steps and steps[0].get("tool") == "read_file":
+            record.tags.append("superseded-pattern")
+            superseded += 1
+    if superseded:
+        store.save(records)
+    return {"scanned": len(records), "superseded": superseded}
+
+
 def build_corpus(experience_store: ExperienceStore,
                  python: str,
                  categories: Optional[Dict[str, int]] = None,
@@ -358,10 +380,29 @@ def build_corpus(experience_store: ExperienceStore,
     failures are kept as failed trajectories, never hidden."""
     import sys
 
+    from .experience import _normalize_goal
+
     python = python or sys.executable
     categories = dict(categories or CATEGORY_VARIANTS)
+    # S68: hygiene first, then an IDEMPOTENT rebuild — skip tasks whose
+    # normalized goal already has a successful non-superseded scripted
+    # demo, which re-demos exactly the stale goals and nothing else
+    hygiene = mark_superseded_demos(experience_store)
+    covered = set()
+    for record in experience_store.load():
+        tags = record.tags or []
+        if ("scripted-demo" in tags
+                and "superseded-pattern" not in tags
+                and record.outcome == "success"):
+            # strip the session-unique suffix before normalizing: the
+            # recorded goal carries " (benchmark run <id>)" but the
+            # build-task goal does not
+            base_goal = record.goal.split(" (benchmark run")[0]
+            covered.add(_normalize_goal(base_goal))
     stats: Dict[str, Any] = {"runs": 0, "passed": 0, "failed": 0,
-                             "recovery": 0, "durations_s": 0.0,
+                             "recovery": 0, "skipped_existing": 0,
+                             "superseded": hygiene["superseded"],
+                             "durations_s": 0.0,
                              "by_category": {}, "tasks": []}
     for category, variant_count in categories.items():
         for variant in range(variant_count):
@@ -370,6 +411,9 @@ def build_corpus(experience_store: ExperienceStore,
                 strategy = strategies[(variant + level) % len(strategies)]
                 script, files, goal, tag = build_demo(
                     category, strategy, variant, level, python)
+                if _normalize_goal(goal) in covered:
+                    stats["skipped_existing"] += 1
+                    continue
                 provider = ScriptedDemonstrator(script)
 
                 def fixture_writer(ws, _files=files):
@@ -637,12 +681,94 @@ def export_training_kit(out_dir=None) -> Dict[str, str]:
     return {"out_dir": str(directory), "files": sorted(paths)}
 
 
+def run_verdict(providers: Dict[str, Any], task_count: int = 3,
+                store: Optional[ExperienceStore] = None,
+                max_iterations: int = 6,
+                ab_demos: bool = False) -> Dict[str, Any]:
+    """S68: the generation verdict — task_count evaluation tasks per
+    provider under the trained textual contract, every run recorded;
+    protocol metrics per provider; optional ep0.5 on/off A/B for the
+    first provider's first task. providers maps name -> ModelProvider
+    (the CLI maps model names to OllamaProviders; tests inject fakes).
+    The metrics slice assumes the store's tail holds exactly this
+    verdict's runs (single-threaded use, immediately after)."""
+    from . import AgentConfig
+    from .context import ContextBuilder, MemoryRetriever
+    from .evaluation import default_tasks, protocol_metrics
+    from .experience import MemoryLayer
+
+    store = store or ExperienceStore()
+    tasks = default_tasks()[:max(1, task_count)]
+    results: Dict[str, Any] = {}
+    for name, provider in providers.items():
+        results[name] = {}
+        for task in tasks:
+            report = run_benchmark(
+                provider,
+                config=AgentConfig(max_iterations=max_iterations),
+                experience_store=store,
+                fixture_writer=lambda ws, _t=task: _t.write_fixture(
+                    ws.root),
+                goal=task.goal,
+            )
+            results[name][task.name] = report.to_dict()
+    fresh = store.load()[-len(providers) * len(tasks):]
+    metrics = {}
+    for name in providers:
+        runs = [r for r in fresh if r.context.get("model") == name]
+        metrics[name] = protocol_metrics(runs)
+    verdict: Dict[str, Any] = {"tasks": [t.name for t in tasks],
+                               "results": results, "metrics": metrics}
+    if ab_demos and providers:
+        name, provider = next(iter(providers.items()))
+        task = tasks[0]
+        builder = ContextBuilder(memory_retriever=MemoryRetriever(
+            memory_layer=MemoryLayer(experience_store=store)))
+        pair: Dict[str, Any] = {}
+        for label, kwargs in (("without", {}),
+                              ("with", {"context_builder": builder})):
+            report = run_benchmark(
+                provider,
+                config=AgentConfig(max_iterations=max_iterations),
+                experience_store=store,
+                fixture_writer=lambda ws, _t=task: _t.write_fixture(
+                    ws.root),
+                goal=task.goal, **kwargs)
+            pair[label] = report.to_dict()
+        verdict["ab_demos"] = {name: pair}
+    return verdict
+
+
+def format_verdict(verdict: Dict[str, Any]) -> str:
+    lines = ["generation verdict:"]
+    for name, per_task in verdict["results"].items():
+        for task, result in per_task.items():
+            lines.append(
+                f"  {name} / {task}: "
+                f"{'SUCCESS' if result['success'] else 'FAILED'}"
+                f" | {result['termination_reason']}"
+                f" | iters={result['iterations']}"
+                f" | calls={result['tool_calls']}"
+                f" | failures={result['tool_failures']}")
+    for name, metrics in verdict["metrics"].items():
+        lines.append(f"  metrics {name}: {metrics}")
+    for name, pair in verdict.get("ab_demos", {}).items():
+        for label, result in pair.items():
+            lines.append(
+                f"  ep0.5 A/B {name} [{label}]: "
+                f"{'SUCCESS' if result['success'] else 'FAILED'}"
+                f" | calls={result['tool_calls']}")
+    return "\n".join(lines)
+
+
 def format_corpus_report(stats: Dict[str, Any]) -> str:
     lines = [
         "ep1 corpus report:",
         f"  runs: {stats['runs']} (passed: {stats['passed']}, "
         f"failed: {stats['failed']}, recovery-strategy: "
         f"{stats['recovery']})",
+        f"  hygiene: superseded {stats.get('superseded', 0)}, "
+        f"skipped already-covered: {stats.get('skipped_existing', 0)}",
         f"  total duration: {stats['durations_s']:.1f}s",
     ]
     for category, per in stats["by_category"].items():

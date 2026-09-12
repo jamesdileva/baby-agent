@@ -140,8 +140,13 @@ def _project_tag(traj: Dict[str, Any]) -> str:
 
 def _eligibility(record: TrajectoryRecord,
                  traj: Dict[str, Any]) -> "tuple[bool, List[str]]":
-    """The dataset-separation gate: ACCEPT + SUCCESS + verification."""
+    """The dataset-separation gate: ACCEPT + SUCCESS + verification.
+    S68: superseded-pattern demos (stale pre-S66 policy, kept in the
+    store for provenance) are excluded with a reason."""
     reasons: List[str] = []
+    if "superseded-pattern" in (traj.get("tags") or []):
+        reasons.append("superseded-pattern: stale demo policy replaced "
+                       "by the S66 explore-first corpus")
     if record.verdict != "ACCEPT":
         reasons.append(f"curation verdict {record.verdict}, not ACCEPT")
     if record.trajectory_class != "successful":

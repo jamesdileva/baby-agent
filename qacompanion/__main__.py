@@ -641,6 +641,51 @@ def build_parser():
         "--levels", type=int, default=None, metavar="N",
         help="levels 1..N (default: 8)")
 
+    dripper = sub.add_parser(
+        "gemini-drip",
+        help="S68: one real benchmark pass on the free-tier brain",
+        epilog=(
+            "Records one genuine verified-or-failed run into the "
+            "experience store (~7 requests of the 20/day flash-lite "
+            "budget). Run daily; the next curate chain picks it up. "
+            "Exit contract: 0 recorded, 1 provider/quota error."
+        ),
+    )
+    dripper.add_argument(
+        "--store", dest="store_path", default=None, metavar="PATH",
+        help="experience store file (default: QA_EXPERIENCE_FILE or "
+             "experience.jsonl)")
+
+    verdicter = sub.add_parser(
+        "verdict",
+        help="S68: the generation verdict — tasks + protocol metrics",
+        epilog=(
+            "Runs the S57 evaluation tasks per model under the trained "
+            "textual contract, records every run, and prints the "
+            "protocol-metric table (discovery-first, with-calls, "
+            "guessed-path, success). --ab-demos adds the ep0.5 "
+            "on/off pair for the first model. Exit contract: 0 "
+            "verdict produced, 1 operational error."
+        ),
+    )
+    verdicter.add_argument(
+        "--models", required=True, metavar="A,B,C",
+        help="comma-separated ollama model names (first = newest)")
+    verdicter.add_argument(
+        "--tasks", type=int, default=3, metavar="N",
+        help="number of evaluation tasks (default: 3)")
+    verdicter.add_argument(
+        "--max-iterations", type=int, default=6, metavar="K",
+        help="iteration budget per run (default: 6)")
+    verdicter.add_argument(
+        "--ab-demos", action="store_true",
+        help="ep0.5 A/B: first model, first task, with and without "
+             "demonstration injection")
+    verdicter.add_argument(
+        "--store", dest="store_path", default=None, metavar="PATH",
+        help="experience store file (default: QA_EXPERIENCE_FILE or "
+             "experience.jsonl)")
+
     server = sub.add_parser(
         "serve",
         help="dashboard API server — localhost UI for the agent runtime",
@@ -1284,6 +1329,46 @@ def _cmd_build_corpus(args):
     return 0
 
 
+def _cmd_gemini_drip(args):
+    """S68: one real benchmark pass on the free-tier brain, recorded."""
+    from .agent.benchmark import run_benchmark
+    from .agent.experience import ExperienceStore
+    from .agent.providers import GeminiModelProvider
+    try:
+        report = run_benchmark(GeminiModelProvider(),
+                               experience_store=ExperienceStore(
+                                   args.store_path))
+    except Exception as exc:  # quota/HTTP/network surface honestly
+        print(f"error: {str(exc)[:400]}", file=sys.stderr)
+        return 1
+    print(f"gemini drip: {'SUCCESS' if report.success else 'FAILED'}"
+          f" | {report.termination_reason}"
+          f" | iters={report.iterations}"
+          f" | calls={report.tool_calls}"
+          f" | failures={report.tool_failures}")
+    return 0
+
+
+def _cmd_verdict(args):
+    """S68: the generation verdict — tasks + protocol metrics + A/B."""
+    from .agent.ep1 import format_verdict, run_verdict
+    from .agent.experience import ExperienceStore
+    from .agent.providers import OllamaProvider
+    models = [m.strip() for m in args.models.split(",") if m.strip()]
+    if not models:
+        print("error: --models required", file=sys.stderr)
+        return 1
+    store = ExperienceStore(args.store_path)
+    providers = {model: OllamaProvider(model=model, native_tools=False)
+                 for model in models}
+    verdict = run_verdict(providers, task_count=args.tasks,
+                          store=store,
+                          max_iterations=args.max_iterations,
+                          ab_demos=args.ab_demos)
+    print(format_verdict(verdict))
+    return 0
+
+
 def _cmd_serve(args):
     """S52: boot the localhost dashboard API and serve until Ctrl+C."""
     from .agent.experience import ExperienceStore
@@ -1353,6 +1438,8 @@ _COMMANDS = {
     "curate": _cmd_curate,
     "build-training": _cmd_build_training,
     "build-corpus": _cmd_build_corpus,
+    "gemini-drip": _cmd_gemini_drip,
+    "verdict": _cmd_verdict,
     "watch": _cmd_watch,
     "serve": _cmd_serve,
 }
