@@ -80,6 +80,28 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-12 — **S68.1 Gen-3 verdict — 0/3 again, and the failures are
+  OURS: three data-format bugs named precisely** — ep3 imported clean
+  (fixups automatic now) and the verdict (ep3-q4 vs ep2-q4, 3 tasks +
+  A/B, recorded): **0/3 both**, but ep3 halved ep2's tool failures (5
+  vs 10) at the same call quality. The trajectory analysis turned up
+  three corpus artifacts INDUCING the failures: (1) the corpus's test
+  commands contain quotes (`"C:\...\python.exe" -m unittest`) which
+  the taught textual protocol forbids inside values — the model's
+  every run opens with mangled `command="\\"` calls; (2)
+  `format_tool_call` escapes backslashes/quotes JSON-style while the
+  runtime parser reads them RAW — the corpus taught the model to
+  write calls whose args parse WRONG (doubled-backslash paths →
+  file-not-found); (3) the S63 session-suffix goals leak into chat
+  records — ep3's fabricated final answers parrot "benchmark run
+  6bd97c9c" (a training-goal suffix). Plus the ep0.5 A/B on ep3:
+  with the worked example the model made 0 calls (vs 6 without) —
+  demo injection induces final-answer imitation at this model scale;
+  recorded net-negative. Gen-4 fixes are surgical: quote-free test
+  commands, raw-value rendering consistent with the parser, suffix-
+  stripped goals in chat records. The loop is producing OUR bugs,
+  not just model verdicts. Suite 1579 OK (metrics unchanged; verdict
+  runs recorded).
 - 2026-09-12 — **S68 The Self-Improvement Loop — the generation cycle
   is now standing plumbing** — Everything gen-3 needs, one command per
   stage: (1) **corpus hygiene automated** — `mark_superseded_demos`
