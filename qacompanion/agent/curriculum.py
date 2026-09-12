@@ -117,20 +117,32 @@ def _bug_fix_fixture(variant: int, level: int):
     return module_code, test_code, goal, failure, skills, module, func
 
 
+_FEATURE_ADD_VARIANTS = [
+    ("stats_ops", "average",
+     "def average(values):\n    "
+     "return sum(values) / len(values) if values else 0",
+     'self.assertEqual(average([2, 4, 6]), 4)'),
+    ("text_ops", "capitalize_words",
+     "def capitalize_words(text):\n    "
+     "return \" \".join(w.capitalize() for w in text.split())",
+     'self.assertEqual(capitalize_words("a b"), "A B")'),
+    ("math_ops", "is_even",
+     "def is_even(n):\n    return n % 2 == 0",
+     'self.assertTrue(is_even(4))'),
+]
+
+
+def feature_add_spec(variant: int):
+    """S66: the declared feature for one feature_add variant — (module,
+    function, implementation source, test assertion) for scripted
+    demonstrators."""
+    module, func, impl, test = _FEATURE_ADD_VARIANTS[
+        variant % len(_FEATURE_ADD_VARIANTS)]
+    return module, func, impl, test
+
+
 def _feature_add_fixture(variant: int, level: int):
-    variants = [
-        ("stats_ops", "average",
-         "def average(values):\n    "
-         "return sum(values) / len(values) if values else 0",
-         'self.assertEqual(average([2, 4, 6]), 4)'),
-        ("text_ops", "capitalize_words",
-         "def capitalize_words(text):\n    "
-         "return \" \".join(w.capitalize() for w in text.split())",
-         'self.assertEqual(capitalize_words("a b"), "A B")'),
-        ("math_ops", "is_even",
-         "def is_even(n):\n    return n % 2 == 0",
-         'self.assertTrue(is_even(4))'),
-    ]
+    variants = _FEATURE_ADD_VARIANTS
     module, func, impl, test = variants[variant % len(variants)]
     module_code = (f"# {func} is not implemented yet — that is the "
                    f"task.\n\n\n")

@@ -634,11 +634,12 @@ def build_parser():
         "--kit-dir", default=None, metavar="DIR",
         help="training kit output directory (default: training-kit/)")
     corpus.add_argument(
-        "--variants", type=int, default=None, metavar="N",
-        help="first N bug_fix variants (default: all 5)")
+        "--category", default=None, metavar="NAME",
+        help="build only one category (bug_fix, feature_add, "
+             "build_repair, dependency, testing, regression)")
     corpus.add_argument(
         "--levels", type=int, default=None, metavar="N",
-        help="levels 1..N (default: 5)")
+        help="levels 1..N (default: 8)")
 
     server = sub.add_parser(
         "serve",
@@ -1248,21 +1249,27 @@ def _cmd_build_training(args):
 
 
 def _cmd_build_corpus(args):
-    """S64: scripted curriculum demonstrators -> verified corpus ->
+    """S64/S66: scripted curriculum demonstrators -> verified corpus ->
     curate -> build-training -> training kit export."""
     import sys as _sys
 
     from .agent.curation import TrajectoryCurator, format_report as \
         _format_curation
-    from .agent.ep1 import (build_corpus, export_training_kit,
-                            format_corpus_report)
+    from .agent.ep1 import (CATEGORY_VARIANTS, build_corpus,
+                            export_training_kit, format_corpus_report)
     from .agent.experience import ExperienceStore
     from .agent.training import build_training, format_report as \
         _format_training
     store = ExperienceStore(args.store_path)
     kwargs = {}
-    if args.variants:
-        kwargs["variants"] = tuple(range(args.variants))
+    if args.category:
+        if args.category not in CATEGORY_VARIANTS:
+            print(f"error: unknown category {args.category!r} "
+                  f"(expected one of {sorted(CATEGORY_VARIANTS)})",
+                  file=sys.stderr)
+            return 1
+        kwargs["categories"] = {args.category:
+                                CATEGORY_VARIANTS[args.category]}
     if args.levels:
         kwargs["levels"] = tuple(range(1, args.levels + 1))
     stats = build_corpus(store, python=_sys.executable, **kwargs)

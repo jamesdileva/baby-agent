@@ -16,109 +16,396 @@ exactly what it is.
 Pins (fixtures-first discipline):
 - only runs that pass the S41 verification gate become records (the
   S63 eligibility gate re-checks at training time);
-- the demonstrator's edit uses the declared old/new strings — never a
-  whole-file rewrite, so the demonstration teaches surgical editing;
-- deterministic: same variants x levels = same corpus content.
+- demonstrations are EXPLORE-FIRST (list the workspace before reading —
+  gen-1 taught answer-reading and the benchmark exposed it) and embed
+  RECOVERY beats (a real wrong turn, a real file-not-found observation,
+  then correction) in ~half the records — the roadmap's most valuable
+  class;
+- the demonstrator's edits use declared old/new strings — never a
+  whole-file rewrite, so the demonstration teaches surgical editing
+  (write_file only for genuinely NEW files);
+- deterministic: same categories x levels = same corpus content.
 """
 
 from typing import Any, Dict, List, Optional, Tuple
 
 from .benchmark import run_benchmark
 from .contracts import ModelResponse, ToolCall
-from .curriculum import _bug_fix_fixture, bug_fix_defect
+from .curriculum import (_bug_fix_fixture, _build_repair_fixture,
+                         _dependency_fixture, _feature_add_fixture,
+                         _regression_fixture, _testing_fixture,
+                         bug_fix_defect, feature_add_spec)
 from .experience import ExperienceStore
 from .providers import FakeModelProvider
 from .training import format_tool_call
 
 DEMO_MODEL_TAG = "scripted-demo"
 
-# the corpus recipe: every bug_fix variant across levels 1..5 (higher
-# levels add the decoy function, teaching read-before-fix)
-DEFAULT_VARIANTS = tuple(range(5))
-DEFAULT_LEVELS = (1, 2, 3, 4, 5)
+# the corpus recipe (S66): categories with declared shapes and honest
+# test gates; levels 1..8 (bug_fix decoys at >=3 teach read-before-fix)
+CATEGORY_VARIANTS = {
+    "bug_fix": 5,
+    "feature_add": 3,
+    "build_repair": 1,
+    "dependency": 1,
+    "testing": 1,
+    "regression": 1,
+}
+DEFAULT_LEVELS = tuple(range(1, 9))
+
+# strategy diversity (human-directed, S66): several VALID procedures per
+# category, cycled across the family's tasks — the model learns there is
+# more than one path, and the recovery beats live inside the strategies.
+# dependency/testing/regression have ONE natural script each (the
+# dependency flow is inherently recovery-shaped: the missing module
+# genuinely fails to import), so their strategy list is singular.
+STRATEGIES = {
+    "bug_fix": ("explore_clean", "tests_first_recovery", "explore_recovery"),
+    "feature_add": ("explore_clean", "explore_recovery"),
+    "build_repair": ("explore_clean", "explore_recovery"),
+    "dependency": ("explore_recovery",),
+    "testing": ("explore_clean",),
+    "regression": ("explore_clean",),
+}
+
+# goal-phrasing variety: 3 templates per category (gen-1 trained on one
+# sentence shape; the real benchmark phrased things differently)
+GOAL_TEMPLATES = {
+    "bug_fix": (
+        "The test suite in this project fails because {func} is "
+        "implemented incorrectly. Find the bug, fix it, and run the "
+        "tests to verify they pass.",
+        "Tests are failing here — {func} does the wrong thing. Track "
+        "the bug down, repair it, and prove the suite green.",
+        "{func} is buggy and the tests catch it. Debug the module, "
+        "apply the smallest correct fix, and rerun the tests.",
+    ),
+    "feature_add": (
+        "The module {module} is missing the {func} function that its "
+        "tests expect. Implement it and run the tests to verify they "
+        "pass.",
+        "{module} needs a {func} function — the tests already expect "
+        "it. Write the implementation and run the tests.",
+        "Implement {func} in {module}: the test file defines the "
+        "expected behavior. Make the tests pass.",
+    ),
+    "build_repair": (
+        "The module in this project has a syntax error and cannot even "
+        "be imported. Repair it and run the tests to verify.",
+        "This project won't import — one of its modules has a syntax "
+        "error. Fix the file and verify with the test suite.",
+        "A syntax error is blocking the test run. Find the broken "
+        "module, repair it, and run the tests.",
+    ),
+    "dependency": (
+        "The {module} module imports a helpers module that doesn't "
+        "exist. Create it so the import works and the tests pass.",
+        "An import in this project points at a module that doesn't "
+        "exist yet. Create the missing module and run the tests.",
+        "The tests fail on a missing module. Implement whatever the "
+        "import needs and verify the suite passes.",
+    ),
+    "testing": (
+        "The module {module} has no tests. Write a unittest test file "
+        "that verifies {func} works, and run it to confirm your tests "
+        "pass.",
+        "{module} is untested. Add unittest coverage for its functions "
+        "and run your tests.",
+        "Write a unittest test file for the module in this workspace "
+        "and run it to show the tests pass.",
+    ),
+    "regression": (
+        "sort_words was fixed after a case-sensitivity bug. Add a "
+        "unittest test file that pins the correct behavior, and run it "
+        "to confirm your tests pass.",
+        "A regression slipped through {module} once already. Write "
+        "unittest tests that pin the current behavior so it cannot "
+        "break silently, and run them.",
+        "Guard {module} against regressions: add unittest tests for "
+        "{func} and run the suite to show they pass.",
+    ),
+}
+
+
+def _phrase_goal(category: str, variant: int, level: int,
+                 module: str, func: str) -> str:
+    templates = GOAL_TEMPLATES[category]
+    return templates[(variant + level) % len(templates)].format(
+        module=module, func=func)
 
 
 class ScriptedDemonstrator(FakeModelProvider):
-    """A turn-scripted perfect fixer for one declared curriculum defect.
-
-    Script: inspect -> run tests (fail) -> surgical edit -> run tests
-    (pass) -> state the diagnosis. Model tag is `scripted-demo` so the
-    recorded provenance is honest."""
+    """A turn-scripted demonstrator. The SCRIPT comes from the category
+    strategy builders below; this class only carries it and the honest
+    provenance tag. Model tag stays `scripted-demo`."""
 
     name = DEMO_MODEL_TAG
     model = DEMO_MODEL_TAG
 
-    def __init__(self, module_file: str, test_command: str,
-                 old_string: str, new_string: str, diagnosis: str):
-        super().__init__([
-            ToolCall(name="read_file", arguments={"path": module_file}),
-            ToolCall(name="run_tests", arguments={"command": test_command}),
-            ToolCall(name="edit_file", arguments={
-                "path": module_file,
-                "old_string": old_string,
-                "new_string": new_string,
-            }),
-            ToolCall(name="run_tests", arguments={"command": test_command}),
-            ModelResponse(text=diagnosis, finish_reason="stop"),
-        ])
+    def __init__(self, script):
+        super().__init__(script)
 
 
-def _demonstrator_for(variant: int, level: int,
-                      python: str) -> Tuple[ScriptedDemonstrator, dict, str]:
-    """Build the demonstrator + fixture files + goal for one task."""
-    module_code, test_code, goal, _failure, _skills, module, func = \
+def _tests_command(python: str) -> str:
+    return f'"{python}" -m unittest -v'
+
+
+def _list() -> ToolCall:
+    return ToolCall(name="list_directory", arguments={"path": "."})
+
+
+def _read(path: str) -> ToolCall:
+    return ToolCall(name="read_file", arguments={"path": path})
+
+
+def _tests(python: str) -> ToolCall:
+    return ToolCall(name="run_tests",
+                    arguments={"command": _tests_command(python)})
+
+
+def _edit(path: str, old: str, new: str) -> ToolCall:
+    return ToolCall(name="edit_file", arguments={
+        "path": path, "old_string": old, "new_string": new})
+
+
+def _write(path: str, content: str) -> ToolCall:
+    return ToolCall(name="write_file", arguments={"path": path,
+                                                  "content": content})
+
+
+def _final(text: str) -> ModelResponse:
+    return ModelResponse(text=text, finish_reason="stop")
+
+
+# --- category strategy builders ------------------------------------------
+# each returns (script, fixture files, goal, strategy tag)
+
+def _bug_fix_script(strategy: str, variant: int, level: int,
+                    python: str):
+    module_code, test_code, _goal, _f, _s, module, func = \
         _bug_fix_fixture(variant, level)
-    _module, _func, good, bad = bug_fix_defect(variant)
-    module_file = f"{module}.py"
-    test_command = f'"{python}" -m unittest -v'
+    _m, _fn, good, bad = bug_fix_defect(variant)
+    path = f"{module}.py"
     diagnosis = (
         f"The test suite failed because {func} was implemented "
         f"incorrectly: the body was `{bad.strip()}` instead of "
-        f"`{good.strip()}`. I replaced the defective line and the "
-        f"tests pass.")
-    provider = ScriptedDemonstrator(
-        module_file=module_file, test_command=test_command,
-        old_string=bad, new_string=good, diagnosis=diagnosis)
-    files = {module_file: module_code, f"test_{module}.py": test_code}
-    return provider, files, goal
+        f"`{good.strip()}`. I replaced the defective line in {path} "
+        f"and the tests pass.")
+    core = [_read(path), _tests(python), _edit(path, bad, good),
+            _tests(python)]
+    if strategy == "explore_clean":
+        script = [_list()] + core + [_final(diagnosis)]
+    elif strategy == "explore_recovery":
+        # deliberate wrong turn: guess a src/ location first, receive
+        # the REAL file-not-found observation, then correct
+        script = [_list(), _read(f"src/{path}")] + core + [_final(diagnosis)]
+    else:  # tests_first_recovery: learn from the failure output first
+        script = ([_tests(python), _read(f"src/{path}"), _list()] + core
+                  + [_final(diagnosis)])
+    files = {path: module_code, f"test_{module}.py": test_code}
+    goal = _phrase_goal("bug_fix", variant, level, module, func)
+    return script, files, goal, strategy
+
+
+def _feature_add_script(strategy: str, variant: int, level: int,
+                        python: str):
+    module_code, test_code, _goal, _f, _s, module, func = \
+        _feature_add_fixture(variant, level)
+    _m, _fn, impl, _test = feature_add_spec(variant)
+    path = f"{module}.py"
+    marker = f"# {func} is not implemented yet — that is the task.\n"
+    diagnosis = (
+        f"{module}.py was missing {func}. I implemented it to match "
+        f"what the tests expect and the suite passes.")
+    core = [_read(path), _tests(python),
+            _edit(path, marker, impl + "\n\n\n"), _tests(python)]
+    script = [_list()] + core + [_final(diagnosis)]
+    if strategy == "explore_recovery":
+        script = [_list(), _read(f"src/{path}")] + core + [_final(diagnosis)]
+    files = {path: module_code, f"test_{module}.py": test_code}
+    goal = _phrase_goal("feature_add", variant, level, module, func)
+    return script, files, goal, strategy
+
+
+def _build_repair_script(strategy: str, variant: int, level: int,
+                         python: str):
+    module_code, test_code, _goal, _f, _s, module, func = \
+        _build_repair_fixture(variant, level)
+    path = f"{module}.py"
+    broken_line = "    return sum(values\n"
+    fixed_line = "    return sum(values)\n"
+    diagnosis = (
+        f"{path} had a syntax error (an unclosed call on the total "
+        f"line). I repaired the line and the tests pass.")
+    core = [_read(path), _tests(python),
+            _edit(path, broken_line, fixed_line), _tests(python)]
+    script = [_list()] + core + [_final(diagnosis)]
+    if strategy == "explore_recovery":
+        script = [_list(), _read(f"src/{path}")] + core + [_final(diagnosis)]
+    files = {path: module_code, f"test_{module}.py": test_code}
+    goal = _phrase_goal("build_repair", variant, level, module, func)
+    return script, files, goal, strategy
+
+
+def _dependency_script(strategy: str, variant: int, level: int,
+                       python: str):
+    module_code, test_code, _goal, _f, _s, module, func = \
+        _dependency_fixture(variant, level)
+    helpers = 'def format_money(amount):\n    return f"${amount}.00"\n'
+    diagnosis = (
+        f"{module}.py imports helpers, which did not exist. I read the "
+        f"call site, created helpers.py with the needed function, and "
+        f"the tests pass.")
+    script = [
+        _list(),
+        _read(f"{module}.py"),
+        _tests(python),            # ModuleNotFoundError: helpers
+        _read("helpers.py"),       # genuinely not found: the recovery beat
+        _write("helpers.py", helpers),
+        _tests(python),
+        _final(diagnosis),
+    ]
+    files = {f"{module}.py": module_code, f"test_{module}.py": test_code}
+    goal = _phrase_goal("dependency", variant, level, module, func)
+    return script, files, goal, "explore_recovery"
+
+
+def _testing_script(strategy: str, variant: int, level: int,
+                    python: str):
+    module_code, test_code, _goal, _f, _s, module, func = \
+        _testing_fixture(variant, level)
+    test_file = "test_multiply.py"
+    # NOTE: the fixture's declared shape puts multiply IN
+    # test_calc_ops.py (module name is "test_calc_ops") — the demo's
+    # test imports from the module that actually exists
+    content = (
+        "import unittest\n\nfrom test_calc_ops import multiply\n\n\n"
+        "class TestMultiply(unittest.TestCase):\n"
+        "    def test_multiply(self):\n"
+        "        self.assertEqual(multiply(2, 3), 6)\n"
+        "        self.assertEqual(multiply(-1, 4), -4)\n\n\n"
+        'if __name__ == "__main__":\n    unittest.main()\n')
+    diagnosis = (
+        f"{module} had no tests. I added {test_file} covering {func} "
+        f"and the suite passes with the new tests.")
+    script = [
+        _list(),
+        _read(f"{module}.py"),
+        _tests(python),            # 0 tests: the gap the goal names
+        _write(test_file, content),
+        _tests(python),
+        _final(diagnosis),
+    ]
+    files = {f"{module}.py": module_code, f"test_{module}.py": test_code}
+    goal = _phrase_goal("testing", variant, level, module, func)
+    return script, files, goal, "explore_clean"
+
+
+def _regression_script(strategy: str, variant: int, level: int,
+                       python: str):
+    module_code, test_code, _goal, _f, _s, module, func = \
+        _regression_fixture(variant, level)
+    test_file = "test_sort_words.py"
+    content = (
+        "import unittest\n\nfrom sort_mod import sort_words\n\n\n"
+        "class TestSortWords(unittest.TestCase):\n"
+        "    def test_mixed_case(self):\n"
+        '        self.assertEqual(sort_words(["b", "A", "c"]), '
+        '["A", "b", "c"])\n\n\n'
+        'if __name__ == "__main__":\n    unittest.main()\n')
+    diagnosis = (
+        f"I pinned {module}.{func}'s behavior with {test_file} and the "
+        f"suite passes with the new tests.")
+    script = [
+        _list(),
+        _read(f"{module}.py"),
+        _write(test_file, content),
+        _tests(python),
+        _final(diagnosis),
+    ]
+    files = {f"{module}.py": module_code, f"test_{module}.py": test_code}
+    goal = _phrase_goal("regression", variant, level, module, func)
+    return script, files, goal, "explore_clean"
+
+
+_SCRIPT_BUILDERS = {
+    "bug_fix": _bug_fix_script,
+    "feature_add": _feature_add_script,
+    "build_repair": _build_repair_script,
+    "dependency": _dependency_script,
+    "testing": _testing_script,
+    "regression": _regression_script,
+}
+
+
+def build_demo(category: str, strategy: str, variant: int, level: int,
+               python: str):
+    """One demonstrator task: (script, fixture files, goal, tag)."""
+    if strategy not in STRATEGIES.get(category, ()):
+        raise KeyError(f"unknown strategy {strategy!r} for {category}")
+    return _SCRIPT_BUILDERS[category](strategy, variant, level, python)
 
 
 def build_corpus(experience_store: ExperienceStore,
-                 python: str, variants: Tuple[int, ...] = DEFAULT_VARIANTS,
+                 python: str,
+                 categories: Optional[Dict[str, int]] = None,
                  levels: Tuple[int, ...] = DEFAULT_LEVELS
                  ) -> Dict[str, Any]:
-    """Run every (variant, level) demonstrator through the benchmark;
-    each verified pass is recorded with the S63 session-unique goal
-    suffix. Returns honest stats; failures are kept as failed
-    trajectories, never hidden."""
+    """Run every (category, variant, level) demonstrator — strategies
+    cycled per task — through the benchmark; each verified pass is
+    recorded with the S63 session-unique goal suffix. Recovery-strategy
+    records get an honest `recovery-demo` tag. Returns honest stats;
+    failures are kept as failed trajectories, never hidden."""
     import sys
 
     python = python or sys.executable
+    categories = dict(categories or CATEGORY_VARIANTS)
     stats: Dict[str, Any] = {"runs": 0, "passed": 0, "failed": 0,
-                             "durations_s": 0.0, "tasks": []}
-    for variant in variants:
-        for level in levels:
-            provider, files, goal = _demonstrator_for(variant, level, python)
+                             "recovery": 0, "durations_s": 0.0,
+                             "by_category": {}, "tasks": []}
+    for category, variant_count in categories.items():
+        for variant in range(variant_count):
+            for level in levels:
+                strategies = STRATEGIES[category]
+                strategy = strategies[(variant + level) % len(strategies)]
+                script, files, goal, tag = build_demo(
+                    category, strategy, variant, level, python)
+                provider = ScriptedDemonstrator(script)
 
-            def fixture_writer(ws, _files=files):
-                for name, content in _files.items():
-                    (ws.root / name).write_text(content, encoding="utf-8")
+                def fixture_writer(ws, _files=files):
+                    for name, content in _files.items():
+                        (ws.root / name).write_text(content,
+                                                    encoding="utf-8")
 
-            report = run_benchmark(provider, fixture_writer=fixture_writer,
-                                   goal=goal,
-                                   experience_store=experience_store)
-            stats["runs"] += 1
-            stats["durations_s"] += report.duration_seconds
-            if report.success:
-                stats["passed"] += 1
-            else:
-                stats["failed"] += 1
-            stats["tasks"].append({
-                "variant": variant, "level": level, "goal": goal,
-                "success": report.success,
-                "iterations": report.iterations,
-                "termination": report.termination_reason,
-            })
+                report = run_benchmark(
+                    provider, fixture_writer=fixture_writer, goal=goal,
+                    experience_store=experience_store)
+                stats["runs"] += 1
+                stats["durations_s"] += report.duration_seconds
+                per_cat = stats["by_category"].setdefault(
+                    category, {"runs": 0, "passed": 0, "recovery": 0})
+                per_cat["runs"] += 1
+                if report.success:
+                    stats["passed"] += 1
+                    per_cat["passed"] += 1
+                else:
+                    stats["failed"] += 1
+                is_recovery = "recovery" in strategy
+                if is_recovery:
+                    stats["recovery"] += 1
+                    per_cat["recovery"] += 1
+                if report.success and is_recovery:
+                    records = experience_store.load()
+                    if records and "recovery-demo" not in records[-1].tags:
+                        records[-1].tags.append("recovery-demo")
+                        experience_store.save(records)
+                stats["tasks"].append({
+                    "category": category, "strategy": strategy,
+                    "variant": variant, "level": level, "goal": goal,
+                    "success": report.success,
+                    "iterations": report.iterations,
+                    "termination": report.termination_reason,
+                })
     return stats
 
 
@@ -354,14 +641,18 @@ def format_corpus_report(stats: Dict[str, Any]) -> str:
     lines = [
         "ep1 corpus report:",
         f"  runs: {stats['runs']} (passed: {stats['passed']}, "
-        f"failed: {stats['failed']})",
+        f"failed: {stats['failed']}, recovery-strategy: "
+        f"{stats['recovery']})",
         f"  total duration: {stats['durations_s']:.1f}s",
     ]
+    for category, per in stats["by_category"].items():
+        lines.append(f"    {category}: runs {per['runs']}, "
+                     f"passed {per['passed']}, recovery {per['recovery']}")
     for task in stats["tasks"]:
         if not task["success"]:
-            lines.append(f"  FAILED variant={task['variant']} "
-                         f"level={task['level']}: "
-                         f"{task['termination']}")
+            lines.append(f"  FAILED {task['category']}"
+                         f"/{task['strategy']} v{task['variant']} "
+                         f"L{task['level']}: {task['termination']}")
     if stats["passed"] == stats["runs"]:
         lines.append("  all demonstrations verified")
     return "\n".join(lines)
