@@ -80,6 +80,32 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-13 — **S71.1 Gen-5 verdict — the narrative transferred, the
+  behavior didn't** — ep5 imported clean (fixups automatic) and the
+  verdict (ep5-q4 vs ep4-q4, 3 tasks + A/B, recorded): **0/3 both**;
+  ep5 makes FEWER, cleaner calls (1-4 per run, 2 total tool failures
+  vs ep4's 10) — but **diagnosis_chaining_rate 0.0 for BOTH** despite
+  41 chain-shaped training demos, and the trajectory analysis shows
+  why: ep5 emits the demos' diagnosis NARRATIVE verbatim — run 3's
+  final ("The failing tests pointed at calculator.py. Reading the
+  suite showed the add test was the problem...") appears with ZERO
+  tool calls; run 2 runs the suite blindly twice then quotes the
+  trained diagnosis text. **The SFT objective rewarded the report of
+  success over the process**: the final-answer text is the easiest
+  sequence to imitate, and nothing in the training data distinguishes
+  "final after working" from "final without working." The verifier
+  caught every fabrication (all runs died in unit-tests=FAIL). Every
+  run also ended in the state we never demonstrated: the loop's
+  verification-failed recovery (5 rejected attempts). **Gen-6 levers
+  (evidence-named): (1) premature-final recovery demos** — the
+  demonstrator emits an early final, the verifier rejects it, the
+  script CONTINUES to the real fix (teaches the off-distribution
+  recovery state; still 100% verified-success); (2) system-prompt
+  catalog alignment — training renders no tool catalog while the
+  runtime shows one; (3) curriculum/tool-schema audit (memory_search's
+  pattern-vs-query confusion came from ep3). ep0.5 A/B: FOURTH
+  consecutive net-negative (with-demos 0 calls). Suite 1587 OK.
+  Spec: docs/s71-spec.md.
 - 2026-09-12 — **S71 Demonstrator 3.0 — the diagnosis chain taught**
   Scope discipline held (human-directed): gen-5's ONE variable is the
   demonstrator redesign; session mining and drips continue as the
