@@ -679,6 +679,10 @@ def build_parser():
         help="iteration budget per run (default: 12 — the taught "
              "diagnostic chain is 7-9 turns)")
     verdicter.add_argument(
+        "--repetitions", type=int, default=3, metavar="N",
+        help="runs per model x task (S74: n=1 verdicts are noise; "
+             "default: 3)")
+    verdicter.add_argument(
         "--ab-demos", action="store_true",
         help="ep0.5 A/B: first model, first task, with and without "
              "demonstration injection")
@@ -1365,7 +1369,8 @@ def _cmd_verdict(args):
     verdict = run_verdict(providers, task_count=args.tasks,
                           store=store,
                           max_iterations=args.max_iterations,
-                          ab_demos=args.ab_demos)
+                          ab_demos=args.ab_demos,
+                          repetitions=args.repetitions)
     print(format_verdict(verdict))
     return 0
 

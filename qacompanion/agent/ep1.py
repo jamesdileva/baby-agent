@@ -834,14 +834,18 @@ def export_training_kit(out_dir=None) -> Dict[str, str]:
 def run_verdict(providers: Dict[str, Any], task_count: int = 3,
                 store: Optional[ExperienceStore] = None,
                 max_iterations: int = 12,
-                ab_demos: bool = False) -> Dict[str, Any]:
-    """S68: the generation verdict — task_count evaluation tasks per
-    provider under the trained textual contract, every run recorded;
-    protocol metrics per provider; optional ep0.5 on/off A/B for the
-    first provider's first task. providers maps name -> ModelProvider
-    (the CLI maps model names to OllamaProviders; tests inject fakes).
-    The metrics slice assumes the store's tail holds exactly this
-    verdict's runs (single-threaded use, immediately after).
+                ab_demos: bool = False,
+                repetitions: int = 3) -> Dict[str, Any]:
+    """S68/S74: the generation verdict — task_count evaluation tasks
+    per provider under the trained textual contract, REPEATED
+    `repetitions` times (S74: n=1 verdicts cannot distinguish
+    capability from sampling luck at this capability level); every run
+    recorded; per-task success counts + rates are the headline;
+    protocol metrics cover all repetitions (the population is computed
+    from a pre-run store snapshot, not a tail count); optional ep0.5
+    on/off A/B for the first provider's first task. providers maps
+    name -> ModelProvider (the CLI maps model names to
+    OllamaProviders; tests inject fakes).
     S72.2: the default budget is 12 — the taught diagnostic chain is
     7-9 turns and the premature-recovery variant 9-11; 6 starved the
     taught behavior (gen-6's calculator win came at 7)."""
@@ -852,25 +856,36 @@ def run_verdict(providers: Dict[str, Any], task_count: int = 3,
 
     store = store or ExperienceStore()
     tasks = default_tasks()[:max(1, task_count)]
+    reps = max(1, repetitions)
+    snapshot = len(store.load())  # pre-run marker: everything after is
     results: Dict[str, Any] = {}
     for name, provider in providers.items():
         results[name] = {}
         for task in tasks:
-            report = run_benchmark(
-                provider,
-                config=AgentConfig(max_iterations=max_iterations),
-                experience_store=store,
-                fixture_writer=lambda ws, _t=task: _t.write_fixture(
-                    ws.root),
-                goal=task.goal,
-            )
-            results[name][task.name] = report.to_dict()
-    fresh = store.load()[-len(providers) * len(tasks):]
+            runs = []
+            for _ in range(reps):
+                report = run_benchmark(
+                    provider,
+                    config=AgentConfig(max_iterations=max_iterations),
+                    experience_store=store,
+                    fixture_writer=lambda ws, _t=task: _t.write_fixture(
+                        ws.root),
+                    goal=task.goal,
+                )
+                runs.append(report.to_dict())
+            success_count = sum(1 for r in runs if r["success"])
+            results[name][task.name] = {
+                "runs": runs,
+                "success_count": success_count,
+                "success_rate": round(success_count / reps, 4),
+            }
+    fresh = store.load()[snapshot:]
     metrics = {}
     for name in providers:
         runs = [r for r in fresh if r.context.get("model") == name]
         metrics[name] = protocol_metrics(runs)
     verdict: Dict[str, Any] = {"tasks": [t.name for t in tasks],
+                               "repetitions": reps,
                                "results": results, "metrics": metrics}
     if ab_demos and providers:
         name, provider = next(iter(providers.items()))
@@ -893,16 +908,31 @@ def run_verdict(providers: Dict[str, Any], task_count: int = 3,
 
 
 def format_verdict(verdict: Dict[str, Any]) -> str:
-    lines = ["generation verdict:"]
+    lines = [f"generation verdict (n={verdict.get('repetitions', 1)}):"]
     for name, per_task in verdict["results"].items():
         for task, result in per_task.items():
-            lines.append(
-                f"  {name} / {task}: "
-                f"{'SUCCESS' if result['success'] else 'FAILED'}"
-                f" | {result['termination_reason']}"
-                f" | iters={result['iterations']}"
-                f" | calls={result['tool_calls']}"
-                f" | failures={result['tool_failures']}")
+            if "runs" in result:  # S74 repeated-run shape
+                lines.append(
+                    f"  {name} / {task}: "
+                    f"{result['success_count']}/{len(result['runs'])}"
+                    f" SUCCESS"
+                    f" | rate={result['success_rate']}")
+                for i, run in enumerate(result["runs"], 1):
+                    lines.append(
+                        f"    run {i}: "
+                        f"{'SUCCESS' if run['success'] else 'FAILED'}"
+                        f" | {run['termination_reason']}"
+                        f" | iters={run['iterations']}"
+                        f" | calls={run['tool_calls']}"
+                        f" | failures={run['tool_failures']}")
+            else:  # legacy single-run shape (ep0.5 A/B pairs)
+                lines.append(
+                    f"  {name} / {task}: "
+                    f"{'SUCCESS' if result['success'] else 'FAILED'}"
+                    f" | {result['termination_reason']}"
+                    f" | iters={result['iterations']}"
+                    f" | calls={result['tool_calls']}"
+                    f" | failures={result['tool_failures']}")
     for name, metrics in verdict["metrics"].items():
         lines.append(f"  metrics {name}: {metrics}")
     for name, pair in verdict.get("ab_demos", {}).items():

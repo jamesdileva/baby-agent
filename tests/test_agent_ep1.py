@@ -469,9 +469,13 @@ class VerdictTests(unittest.TestCase):
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             verdict = run_verdict({"fake": _Stateless()}, task_count=1,
                                   store=store, max_iterations=6,
-                                  ab_demos=True)
+                                  ab_demos=True, repetitions=2)
             self.assertEqual(["defect-fix-calculator"], verdict["tasks"])
+            self.assertEqual(2, verdict["repetitions"])
             self.assertIn("fake", verdict["results"])
+            task_result = verdict["results"]["fake"]["defect-fix-calculator"]
+            self.assertEqual(2, len(task_result["runs"]))
+            self.assertIn(task_result["success_count"], (0, 1, 2))
             self.assertIn("fake", verdict["metrics"])
             metrics = verdict["metrics"]["fake"]
             self.assertEqual(1.0, metrics["with_calls_rate"])
@@ -480,19 +484,33 @@ class VerdictTests(unittest.TestCase):
 
     def test_format_verdict_lines(self):
         from qacompanion.agent.ep1 import format_verdict
-        verdict = {"tasks": ["t1"],
+        verdict = {"tasks": ["t1"], "repetitions": 3,
                    "results": {"m": {"t1": {
-                       "success": False,
-                       "termination_reason": "max iterations reached (6)",
-                       "iterations": 6, "tool_calls": 4,
-                       "tool_failures": 1}}},
-                   "metrics": {"m": {"runs": 1, "with_calls_rate": 1.0,
+                       "success_count": 1, "success_rate": 0.3333,
+                       "runs": [
+                           {"success": True,
+                            "termination_reason": "goal completed",
+                            "iterations": 7, "tool_calls": 6,
+                            "tool_failures": 0},
+                           {"success": False,
+                            "termination_reason": "max iterations",
+                            "iterations": 12, "tool_calls": 10,
+                            "tool_failures": 3},
+                           {"success": False,
+                            "termination_reason": "max iterations",
+                            "iterations": 12, "tool_calls": 9,
+                            "tool_failures": 2}]}}},
+                   "metrics": {"m": {"runs": 3, "with_calls_rate": 1.0,
                                      "discovery_first_rate": 0.0,
-                                     "success_rate": 0.0,
+                                     "success_rate": 0.3333,
                                      "guessed_path_rate": 0.0,
-                                     "tool_failures": 1}}}
+                                     "diagnosis_chaining_rate": 1.0,
+                                     "tool_failures": 5}}}
         text = format_verdict(verdict)
-        self.assertIn("m / t1: FAILED", text)
+        self.assertIn("generation verdict (n=3):", text)
+        self.assertIn("m / t1: 1/3 SUCCESS | rate=0.3333", text)
+        self.assertIn("run 1: SUCCESS", text)
+        self.assertIn("run 3: FAILED", text)
         self.assertIn("metrics m:", text)
 
 
