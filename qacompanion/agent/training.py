@@ -97,6 +97,21 @@ class TrajectoryRecord:
         }
 
 
+def _with_after_steps(failures: List[Any],
+                      verification: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Merge the loop's after_step markers into captured failure states
+    (older store records captured the rejection text without the step
+    index; the attempts always carried it)."""
+    clean = [f for f in failures if isinstance(f, dict)][:3]
+    failed_attempts = [a for a in (verification.get("attempts") or [])
+                       if isinstance(a, dict) and not a.get("ok")]
+    for failure, attempt in zip(clean, failed_attempts):
+        after = attempt.get("after_step")
+        if isinstance(after, int):
+            failure.setdefault("after_step", after)
+    return clean
+
+
 def _record_from_trajectory(traj: Dict[str, Any]) -> TrajectoryRecord:
     classification = traj.get("classification") or "PARTIAL"
     penalties = traj.get("penalties") or []
@@ -119,7 +134,9 @@ def _record_from_trajectory(traj: Dict[str, Any]) -> TrajectoryRecord:
         diagnosis=traj.get("diagnosis"),
         resolution=traj.get("resolution"),
         verification=traj.get("verification") or {},
-        verification_failures=[f for f in (traj.get("verification_failures") or []) if isinstance(f, dict)][:3],
+        verification_failures=_with_after_steps(
+            traj.get("verification_failures") or [],
+            traj.get("verification") or {}),
         outcome=traj.get("outcome") or "",
         final_answer=traj.get("final_answer"),
         inefficient=any(p.get("dimension") == "efficiency"

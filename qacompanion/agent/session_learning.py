@@ -152,6 +152,15 @@ def _verification_failures(session: AgentSession) -> List[Dict[str, Any]]:
                 "premature_final": premature,
                 "detail": message.content.strip()[:300],
             })
+    # merge the loop's recorded after_step markers (how many tool calls
+    # preceded each rejected attempt) so the training pipeline can
+    # interleave faithfully
+    failed_attempts = [a for a in session.verification_results
+                       if not a.get("ok")]
+    for failure, attempt in zip(failures, failed_attempts):
+        after = attempt.get("after_step")
+        if isinstance(after, int):
+            failure["after_step"] = after
     return failures
 
 
