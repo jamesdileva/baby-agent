@@ -80,6 +80,29 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-12 — **S71 Demonstrator 3.0 — the diagnosis chain taught**
+  Scope discipline held (human-directed): gen-5's ONE variable is the
+  demonstrator redesign; session mining and drips continue as the
+  standing loop but cannot affect training (unverified partials are
+  permanently excluded). Three refinements as one lesson — derive the
+  fix from the evidence: (1) **diagnosis-chain scripts** (failing
+  suite → read the TEST file → read the MODULE → smallest edit; final
+  answers walk the chain: "the failing tests pointed at add. Reading
+  test_math_ops.py showed the expectation, and reading math_ops.py
+  showed the defect..."), (2) **rational recovery ordering** (the
+  wrong turn now comes BEFORE discovery — a first hypothesis the
+  evidence overturns; gen-3's version taught "list, then guess
+  anyway"), (3) **tool coverage where natural** (code_diagnostics
+  opens build_repair — argument-free, the exact call gen-3 invented
+  args for; dependency reads the test for the expected format).
+  New metric: **diagnosis_chaining_rate** (failed suite → a read
+  within 2 steps; the gen-3/gen-4 recorded runs sit at ~0 — that
+  number moving is the gen-5 experiment). corpus-v4 tags invalidated
+  the v3 records automatically. **Live: 96/96 verified, export
+  checked — 41 chain-shaped openings, 8/8 code_diagnostics calls
+  exactly `[TOOL: code_diagnostics()]`, 0 suffix leakage — 99
+  eligible = 96 v4 demos + 3 real passes.** Suite 1587 OK. Spec:
+  docs/s71-spec.md.
 - 2026-09-12 — **S70.1 Gen-4 verdict — the fixes landed in behavior;
   the gap is now precisely the diagnosis chain** — ep4 imported
   zero-surgery and the verdict (ep4-q4 vs ep3-q4, 3 tasks + A/B,
