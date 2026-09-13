@@ -752,7 +752,7 @@ def export_training_kit(out_dir=None) -> Dict[str, str]:
 
 def run_verdict(providers: Dict[str, Any], task_count: int = 3,
                 store: Optional[ExperienceStore] = None,
-                max_iterations: int = 6,
+                max_iterations: int = 12,
                 ab_demos: bool = False) -> Dict[str, Any]:
     """S68: the generation verdict — task_count evaluation tasks per
     provider under the trained textual contract, every run recorded;
@@ -760,7 +760,10 @@ def run_verdict(providers: Dict[str, Any], task_count: int = 3,
     first provider's first task. providers maps name -> ModelProvider
     (the CLI maps model names to OllamaProviders; tests inject fakes).
     The metrics slice assumes the store's tail holds exactly this
-    verdict's runs (single-threaded use, immediately after)."""
+    verdict's runs (single-threaded use, immediately after).
+    S72.2: the default budget is 12 — the taught diagnostic chain is
+    7-9 turns and the premature-recovery variant 9-11; 6 starved the
+    taught behavior (gen-6's calculator win came at 7)."""
     from . import AgentConfig
     from .context import ContextBuilder, MemoryRetriever
     from .evaluation import default_tasks, protocol_metrics
