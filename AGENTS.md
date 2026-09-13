@@ -80,6 +80,23 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-13 — **S73 Gen-7 Corpus — coverage targeting the unhit
+  tasks** — The gen-6 milestone left two eval tasks the corpus never
+  covered: string reverse and nested JSON lookup. Gen-7's ONE variable:
+  **coverage expansion mirroring those shapes** — two new
+  demonstrator categories (string_reverse: `return text` →
+  `return text[::-1]`; nested_lookup: `data.get(key)` →
+  `data.get("settings", {}).get(key)` — the exact S57 default-task
+  defects), each with the full S71/S72 recipe (diagnostic chain,
+  recovery variants, goal variety, corpus-v6 tags). Verdict default
+  budget landed at **12** (taught chain 7-9 turns + premature-recovery
+  9-11; 15 rejected for CPU wall-clock risk). Research-informed recipe
+  changes (loss masking, SRFT) stay queued for gen-8 — gen-7
+  attributes cleanly to coverage. **Live: 112/112 runs verified**
+  (16 new runs across the two categories), export **116 eligible
+  step-trainable records** (96 v5 demos + 16 v6 + 4 real passes).
+  Drip attempt hit an honest 429 (flash-lite bucket spent until
+  reset). Suite 1594 OK. Spec: docs/s73-spec.md.
 - 2026-09-13 — **S72.2 Gen-6 at budget 10 — THE FIRST TRAINED-
   GENERATION BENCHMARK SUCCESS** — Re-verdicted at max_iterations=10
   (the budget artifact fix): **baby-agent:ep6-q4 completed
