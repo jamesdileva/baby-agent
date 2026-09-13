@@ -80,6 +80,25 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-13 — **S72.1 Gen-6 verdict — the diagnosis chain landed
+  (0.0 → 1.0); the harness budget is now the binding constraint** —
+  ep6 imported clean and the verdict (ep6-q4 vs ep5-q4, 3 tasks + A/B,
+  recorded): **0/3 both** — but **diagnosis_chaining_rate 0.0 → 1.0**:
+  after every failed test run, ep6 READS. Run 1 executed the full
+  trained chain at inference — guessed src/budgeting.py (real
+  file-not-found), listed the directory, read the TEST file, ran the
+  suite, read the MODULE — the exact sequence the failure-state corpus
+  teaches, ending in an empty final with no edit left before the
+  budget ran out. discovery_first 0.0 → 0.33; ep5's premature-final
+  signature (verification failed after 4 attempts ×2) became ep6
+  max-iterations (it kept WORKING instead of re-answering — the
+  failure-state training visible). ep0.5 A/B: with-demos 4 calls vs
+  without 3 — the demo paralysis broke (fifth data point, first
+  non-negative). **The harness artifact named: the verdict budget is
+  6 iterations; the taught diagnostic chain needs 7-9 turns — the
+  model cannot complete the taught behavior within the budget.** Gen-7
+  levers: raise the verdict budget to 10 (match the taught chain) and
+  the corpus already teaches the rest. Suite 1591 OK.
 - 2026-09-13 — **S72 Failure-State Demos + Catalog Alignment — gen-6
   teaches the state every generation died in** — The gen-5 verdict
   showed the mechanism: SFT rewarded the report of success, and the
