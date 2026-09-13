@@ -80,6 +80,33 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-13 — **S72 Failure-State Demos + Catalog Alignment — gen-6
+  teaches the state every generation died in** — The gen-5 verdict
+  showed the mechanism: SFT rewarded the report of success, and the
+  loop's verification-failed recovery state was never demonstrated.
+  Gen-6's one variable: **make training match the runtime's actual
+  state distribution**. (1) **premature_final_recovery strategy**
+  (bug_fix + feature_add): the demonstrator claims success BEFORE
+  acting, the loop's verifier rejects it, the recovery prompt arrives,
+  and the script continues to the real fix — the honest final ADMITS
+  the premature claim ("My first summary was premature — I claimed a
+  fix I had not actually made..."); the run still ends verified. (2)
+  **RECOVERED-with-evidence is now training-eligible** (the final
+  state passed the gate; teaching recovery is the point — mined
+  partials still fail the evidence check). (3) **Catalog alignment**:
+  training renders the runtime's ACTUAL lean catalog into the system
+  prompt (gen-5 trained catalog-less and met 12 tools at inference).
+  (4) **Faithful interleave**: the loop records `after_step` per
+  verification attempt, session_learning captures the failure states,
+  and training.py renders premature claim → rejection → continuation
+  at the recorded step positions (an after_step merge fixes older
+  records). **Live: 96/96 re-demoed, 18 RECOVERED records, export
+  verified — 99 eligible with the interleave and catalog in every
+  record.** Research survey (applied per the attribution rule): our
+  loop is structurally RFT (validated); loss masking + SRFT
+  (JetBrains 2026, failed-trajectory signal) documented as
+  post-stabilization levers; imported datasets stay rejected. Suite
+  1591 OK. Spec: docs/s72-spec.md.
 - 2026-09-13 — **S71.1 Gen-5 verdict — the narrative transferred, the
   behavior didn't** — ep5 imported clean (fixups automatic) and the
   verdict (ep5-q4 vs ep4-q4, 3 tasks + A/B, recorded): **0/3 both**;
