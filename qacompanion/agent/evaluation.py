@@ -321,6 +321,23 @@ def protocol_metrics(records) -> Dict[str, Any]:
                 if step["tool"] in ("read_file", "edit_file") and                         "file not found" in str(step.get("result_head", "")):
                     guessed += 1
     successes = [r for r in runs if r.outcome == "success"]
+    # S71: the gen-5 experiment metric — after a failing test run, does
+    # the model go READ something (the diagnosis chain) or keep
+    # re-running blindly? A failed test step is one whose captured
+    # result head shows a nonzero exit (the pipeline ran the command;
+    # the suite failed inside it).
+    chaining_hits = 0
+    chaining_population = 0
+    for r in benchmark_runs:
+        steps = r.context["tool_calls"]
+        for index, step in enumerate(steps):
+            if step["tool"] == "run_tests" and step.get("result_head") \
+                    and '"exit_code": 0' not in step["result_head"]:
+                chaining_population += 1
+                window = steps[index + 1:index + 3]
+                if any(s["tool"] == "read_file" for s in window):
+                    chaining_hits += 1
+                break
     return {
         "runs": total,
         "with_calls_rate": round(len(with_calls) / total, 4),
@@ -329,5 +346,7 @@ def protocol_metrics(records) -> Dict[str, Any]:
         "success_rate": round(len(successes) / total, 4),
         "guessed_path_rate": round(guessed / max(len(benchmark_runs), 1),
                                    4),
+        "diagnosis_chaining_rate": round(
+            chaining_hits / max(chaining_population, 1), 4),
         "tool_failures": tool_failures,
     }

@@ -21,33 +21,40 @@ import sys
 class DemonstratorTests(unittest.TestCase):
     """S66 contract: explore-first scripts, strategy diversity."""
 
-    def test_explore_clean_starts_with_discovery(self):
-        script, files, goal, tag = build_demo(
-            "bug_fix", "explore_clean", 0, 3, sys.executable)
-        self.assertEqual("explore_clean", tag)
-        self.assertEqual("list_directory", script[0].name)
-        self.assertEqual("read_file", script[1].name)
+    def test_diagnostic_clean_derives_the_fix(self):
+        # S71: the failing suite is RUN FIRST, then the test file and
+        # the module are read BEFORE the edit — the fix is derived
+        script, _files, _goal, tag = build_demo(
+            "bug_fix", "diagnostic_clean", 0, 3, sys.executable)
+        self.assertEqual("diagnostic_clean", tag)
+        names = [t.name for t in script if getattr(t, "name", None)]
+        self.assertEqual(
+            ["list_directory", "run_tests", "read_file", "read_file",
+             "edit_file", "run_tests"], names)
         edit = [t for t in script
                 if getattr(t, "name", None) == "edit_file"][0]
         _module, func, good, bad = bug_fix_defect(0)
         self.assertEqual(bad, edit.arguments["old_string"])
         self.assertEqual(good, edit.arguments["new_string"])
-        self.assertIn(func, script[-1].text)
-        # every read/edit targets the DISCOVERED module, no guesses
-        calls = [t for t in script if getattr(t, "name", None) in
-                 ("read_file", "edit_file")]
-        self.assertTrue(all("src/" not in str(t.arguments.get("path", ""))
-                            for t in calls))
-
-    def test_explore_recovery_embeds_a_real_wrong_turn(self):
-        script, _files, _goal, tag = build_demo(
-            "bug_fix", "explore_recovery", 1, 1, sys.executable)
-        self.assertEqual("explore_recovery", tag)
-        reads = [t for t in script
+        # the final answer WALKS the chain
+        self.assertIn("Reading", script[-1].text)
+        # the reads target the test file and the module — no guesses
+        paths = [t.arguments["path"] for t in script
                  if getattr(t, "name", None) == "read_file"]
-        self.assertTrue(any(str(t.arguments["path"]).startswith("src/")
-                            for t in reads),
-                        "recovery scripts must contain the wrong turn")
+        self.assertNotIn("src/" + paths[-1], paths)
+
+    def test_diagnostic_recovery_guesses_before_discovery(self):
+        # S71: the wrong turn moves BEFORE discovery — a rational first
+        # hypothesis overturned by the evidence (gen-3's version taught
+        # "list, then guess anyway")
+        script, _files, _goal, tag = build_demo(
+            "bug_fix", "diagnostic_recovery", 1, 1, sys.executable)
+        self.assertEqual("diagnostic_recovery", tag)
+        self.assertEqual("read_file", script[0].name)
+        self.assertTrue(script[0].arguments["path"].startswith("src/"))
+        names = [t.name for t in script if getattr(t, "name", None)]
+        self.assertEqual("read_file", names[0])
+        self.assertGreater(names.index("list_directory"), 0)
 
     def test_tests_first_strategy_runs_the_suite_before_reading(self):
         script, _files, _goal, tag = build_demo(
@@ -106,8 +113,8 @@ class CorpusChainTests(unittest.TestCase):
         self.assertTrue(steps[0]["ok"])
         edit = [s for s in steps if s["tool"] == "edit_file"][0]
         self.assertTrue(edit["ok"])
-        self.assertIn("implemented incorrectly",
-                      record.context["final_answer"])
+        # S71: the final answer walks the diagnosis chain
+        self.assertIn("Reading test_", record.context["final_answer"])
 
     def test_recovery_record_is_tagged(self):
         # (variant 0, level 1) cycles to tests_first_recovery
@@ -124,8 +131,9 @@ class CorpusChainTests(unittest.TestCase):
         self.assertTrue(failed_reads, "the wrong turn must really fail")
 
     def test_full_chain_to_step_trainable_training_record(self):
+        # (variant 0, level 3) cycles to the diagnostic_clean strategy
         build_corpus(self.store, python=sys.executable,
-                     categories={"bug_fix": 1}, levels=(2,))
+                     categories={"bug_fix": 1}, levels=(3,))
         curated = self.tmp / "curated"
         TrajectoryCurator(self.store).curate(out_dir=curated)
         training = build_training(curated_dir=curated,

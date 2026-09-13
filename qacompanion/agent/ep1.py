@@ -45,7 +45,7 @@ DEMO_MODEL_TAG = "scripted-demo"
 # a CURRENT-version record, and mark_superseded_demos supersedes
 # scripted demos lacking the tag (their FORMAT is stale for training
 # even when the task itself is unchanged)
-CORPUS_VERSION = "v3"
+CORPUS_VERSION = "v4"
 VERSION_TAG = f"corpus-{CORPUS_VERSION}"
 
 # the corpus recipe (S66): categories with declared shapes and honest
@@ -60,17 +60,18 @@ CATEGORY_VARIANTS = {
 }
 DEFAULT_LEVELS = tuple(range(1, 9))
 
-# strategy diversity (human-directed, S66): several VALID procedures per
-# category, cycled across the family's tasks — the model learns there is
-# more than one path, and the recovery beats live inside the strategies.
-# dependency/testing/regression have ONE natural script each (the
-# dependency flow is inherently recovery-shaped: the missing module
-# genuinely fails to import), so their strategy list is singular.
+# strategy diversity (S71 Demonstrator 3.0): every fix-category script
+# teaches the DIAGNOSIS CHAIN — the edit is derived from evidence
+# (failing test output -> read the test -> read the module -> smallest
+# change) instead of demonstrator-omniscience. Recovery variants place
+# the wrong turn BEFORE discovery: a rational first guess that the
+# evidence overturns.
 STRATEGIES = {
-    "bug_fix": ("explore_clean", "tests_first_recovery", "explore_recovery"),
-    "feature_add": ("explore_clean", "explore_recovery"),
-    "build_repair": ("explore_clean", "explore_recovery"),
-    "dependency": ("explore_recovery",),
+    "bug_fix": ("diagnostic_clean", "tests_first_recovery",
+                "diagnostic_recovery"),
+    "feature_add": ("diagnostic_clean", "diagnostic_recovery"),
+    "build_repair": ("diagnostic_clean", "diagnostic_recovery"),
+    "dependency": ("diagnostic_recovery",),
     "testing": ("explore_clean",),
     "regression": ("explore_clean",),
 }
@@ -199,23 +200,27 @@ def _bug_fix_script(strategy: str, variant: int, level: int,
         _bug_fix_fixture(variant, level)
     _m, _fn, good, bad = bug_fix_defect(variant)
     path = f"{module}.py"
+    test_path = f"test_{module}.py"
     diagnosis = (
-        f"The test suite failed because {func} was implemented "
-        f"incorrectly: the body was `{bad.strip()}` instead of "
-        f"`{good.strip()}`. I replaced the defective line in {path} "
-        f"and the tests pass.")
-    core = [_read(path), _tests(python), _edit(path, bad, good),
-            _tests(python)]
-    if strategy == "explore_clean":
+        f"The failing tests pointed at {func}. Reading {test_path} "
+        f"showed the expectation, and reading {path} showed the "
+        f"defect: the body was `{bad.strip()}` instead of "
+        f"`{good.strip()}`. I replaced the defective line and the "
+        f"tests pass.")
+    # S71: the DIAGNOSIS CHAIN — the failing suite names the test, the
+    # test states the expectation, the module shows the gap
+    core = [_tests(python), _read(test_path), _read(path),
+            _edit(path, bad, good), _tests(python)]
+    if strategy == "diagnostic_clean":
         script = [_list()] + core + [_final(diagnosis)]
-    elif strategy == "explore_recovery":
-        # deliberate wrong turn: guess a src/ location first, receive
-        # the REAL file-not-found observation, then correct
-        script = [_list(), _read(f"src/{path}")] + core + [_final(diagnosis)]
-    else:  # tests_first_recovery: learn from the failure output first
+    elif strategy == "diagnostic_recovery":
+        # rational first hypothesis, overturned by the evidence
+        script = ([_read(f"src/{path}"), _list()] + core
+                  + [_final(diagnosis)])
+    else:  # tests_first_recovery: the failure output is the clue
         script = ([_tests(python), _read(f"src/{path}"), _list()] + core
                   + [_final(diagnosis)])
-    files = {path: module_code, f"test_{module}.py": test_code}
+    files = {path: module_code, test_path: test_code}
     goal = _phrase_goal("bug_fix", variant, level, module, func)
     return script, files, goal, strategy
 
@@ -226,16 +231,19 @@ def _feature_add_script(strategy: str, variant: int, level: int,
         _feature_add_fixture(variant, level)
     _m, _fn, impl, _test = feature_add_spec(variant)
     path = f"{module}.py"
+    test_path = f"test_{module}.py"
     marker = f"# {func} is not implemented yet — that is the task.\n"
     diagnosis = (
-        f"{module}.py was missing {func}. I implemented it to match "
-        f"what the tests expect and the suite passes.")
-    core = [_read(path), _tests(python),
+        f"The tests import {func} from {module}, so the failing suite "
+        f"meant the function was missing. Reading {test_path} showed "
+        f"the expected behavior, and {path} held only the task marker. "
+        f"I implemented {func} and the suite passes.")
+    core = [_tests(python), _read(test_path), _read(path),
             _edit(path, marker, impl + "\n\n\n"), _tests(python)]
     script = [_list()] + core + [_final(diagnosis)]
-    if strategy == "explore_recovery":
-        script = [_list(), _read(f"src/{path}")] + core + [_final(diagnosis)]
-    files = {path: module_code, f"test_{module}.py": test_code}
+    if strategy == "diagnostic_recovery":
+        script = [_read(f"src/{path}"), _list()] + core + [_final(diagnosis)]
+    files = {path: module_code, test_path: test_code}
     goal = _phrase_goal("feature_add", variant, level, module, func)
     return script, files, goal, strategy
 
@@ -245,17 +253,22 @@ def _build_repair_script(strategy: str, variant: int, level: int,
     module_code, test_code, _goal, _f, _s, module, func = \
         _build_repair_fixture(variant, level)
     path = f"{module}.py"
+    test_path = f"test_{module}.py"
     broken_line = "    return sum(values\n"
     fixed_line = "    return sum(values)\n"
     diagnosis = (
-        f"{path} had a syntax error (an unclosed call on the total "
-        f"line). I repaired the line and the tests pass.")
-    core = [_read(path), _tests(python),
-            _edit(path, broken_line, fixed_line), _tests(python)]
+        f"code_diagnostics flagged {path} as unparseable. Reading it "
+        f"showed a syntax error — an unclosed call on the total line. "
+        f"I repaired the line and the tests pass.")
+    # S71: code_diagnostics takes NO arguments (gen-3 invented args for
+    # it) and naturally opens the diagnosis: it names the broken file
+    core = [ToolCall(name="code_diagnostics", arguments={}),
+            _tests(python), _read(path), _edit(path, broken_line, fixed_line),
+            _tests(python)]
     script = [_list()] + core + [_final(diagnosis)]
-    if strategy == "explore_recovery":
-        script = [_list(), _read(f"src/{path}")] + core + [_final(diagnosis)]
-    files = {path: module_code, f"test_{module}.py": test_code}
+    if strategy == "diagnostic_recovery":
+        script = [_read(f"src/{path}"), _list()] + core + [_final(diagnosis)]
+    files = {path: module_code, test_path: test_code}
     goal = _phrase_goal("build_repair", variant, level, module, func)
     return script, files, goal, strategy
 
@@ -266,14 +279,17 @@ def _dependency_script(strategy: str, variant: int, level: int,
         _dependency_fixture(variant, level)
     helpers = 'def format_money(amount):\n    return f"${amount}.00"\n'
     diagnosis = (
-        f"{module}.py imports helpers, which did not exist. I read the "
-        f"call site, created helpers.py with the needed function, and "
-        f"the tests pass.")
+        f"{module}.py imports helpers, which did not exist — the "
+        f"failing suite said so. Reading {module}.py showed the call "
+        f"site, and reading the test showed the expected format. I "
+        f"created helpers.py with the needed function and the tests "
+        f"pass.")
     script = [
         _list(),
         _read(f"{module}.py"),
         _tests(python),            # ModuleNotFoundError: helpers
         _read("helpers.py"),       # genuinely not found: the recovery beat
+        _read(f"test_{module}.py"),  # what the tests expect ($5.00)
         _write("helpers.py", helpers),
         _tests(python),
         _final(diagnosis),

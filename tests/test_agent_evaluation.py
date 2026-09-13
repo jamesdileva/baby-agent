@@ -253,3 +253,22 @@ class ProtocolMetricsTests(unittest.TestCase):
     def test_empty_population_is_honest(self):
         from qacompanion.agent.evaluation import protocol_metrics
         self.assertEqual({"runs": 0}, protocol_metrics([]))
+
+    def test_diagnosis_chaining_rate(self):
+        from qacompanion.agent.evaluation import protocol_metrics
+        failing = {"tool": "run_tests", "args": {"command": "x"},
+                   "ok": True,
+                   "result_head": '{"command": "x", "exit_code": 1}'}
+        passing = {"tool": "run_tests", "args": {"command": "x"},
+                   "ok": True,
+                   "result_head": '{"command": "x", "exit_code": 0}'}
+        read = {"tool": "read_file", "args": {"path": "a.py"},
+                "ok": True, "result_head": "x"}
+        # a failed suite followed by a read: chaining
+        chainer = self._record([failing, read, passing])
+        # a failed suite followed by blind re-runs: not chaining
+        rerunner = self._record([failing, failing, failing])
+        # a passing suite never enters the population
+        passer = self._record([passing])
+        m = protocol_metrics([chainer, rerunner, passer])
+        self.assertEqual(0.5, m["diagnosis_chaining_rate"])
