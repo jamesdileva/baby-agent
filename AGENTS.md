@@ -80,6 +80,27 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-13 — **S72.2 Gen-6 at budget 10 — THE FIRST TRAINED-
+  GENERATION BENCHMARK SUCCESS** — Re-verdicted at max_iterations=10
+  (the budget artifact fix): **baby-agent:ep6-q4 completed
+  defect-fix-calculator — SUCCESS, 7 iterations, 6 calls, 0 failures,
+  goal completed** — the first benchmark win for any trained
+  generation (gen-1 through gen-5: 0/3 each; the only prior passes
+  were the raw Gemini brain). The attribution is clean: ep5 at the
+  SAME budget failed all three tasks by emitting 6-9 rejected
+  premature finals per task ("verification failed after N attempts"
+  ×3) — it had room to work and just re-answered; ep6 went to work.
+  The failure-state training did exactly what it was designed to do,
+  and the budget was the binding constraint on completing the taught
+  chain. Honest notes: ep6's strings run died on a provider timeout
+  (q4 CPU + 10 iterations against the 600 s wall) and json hit
+  max-iterations while still attempting (10 calls) — success 1/3, not
+  a solved benchmark; guessed-path occurrences rise with exploration
+  (2.33/run) — the cost of checking before acting. The
+  generation-over-generation arc, fully measured: gen-1 protocol →
+  gen-2 speed/recovery → gen-3 our format bugs → gen-4 behavior
+  fixes → gen-5 mechanism isolated → gen-6 failure states + budget =
+  first success. Suite 1591 OK.
 - 2026-09-13 — **S72.1 Gen-6 verdict — the diagnosis chain landed
   (0.0 → 1.0); the harness budget is now the binding constraint** —
   ep6 imported clean and the verdict (ep6-q4 vs ep5-q4, 3 tasks + A/B,
