@@ -330,6 +330,7 @@ class CuratedTrajectory:
     steps: List[Dict[str, Any]] = field(default_factory=list)
     final_answer: Optional[str] = None
     model: Optional[str] = None
+    verification_failures: List[Dict[str, Any]] = field(default_factory=list)
     tags: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -357,6 +358,7 @@ class CuratedTrajectory:
             "steps": self.steps,
             "final_answer": self.final_answer,
             "model": self.model,
+            "verification_failures": self.verification_failures,
             "tags": self.tags,
         }
 
@@ -381,6 +383,12 @@ def _steps_of(experience: Experience) -> List[Dict[str, Any]]:
 def _final_answer_of(experience: Experience) -> Optional[str]:
     answer = experience.context.get("final_answer")
     return answer if isinstance(answer, str) else None
+
+
+def _failures_of(experience: Experience) -> List[Dict[str, Any]]:
+    """S72: captured verification-failed recovery states."""
+    failures = experience.context.get("verification_failures") or []
+    return failures if isinstance(failures, list) else []
 
 
 def _model_of(experience: Experience) -> Optional[str]:
@@ -487,6 +495,7 @@ class TrajectoryCurator:
             steps=_steps_of(experience),
             final_answer=_final_answer_of(experience),
             model=_model_of(experience),
+            verification_failures=_failures_of(experience),
             tags=list(experience.tags or []),
         )
 

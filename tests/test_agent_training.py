@@ -98,7 +98,7 @@ class EligibilityGateTests(unittest.TestCase):
     def test_mined_partial_never_eligible(self):
         record = self._build([_curated_row()])[0]
         self.assertFalse(record.eligible)
-        self.assertTrue(any("not successful" in r
+        self.assertTrue(any("partial" in r
                             for r in record.eligibility_reasons))
         self.assertIsNone(record.chat)
 
@@ -341,6 +341,59 @@ class EscapingDialectTests(unittest.TestCase):
             chat = record.chat
             self.assertEqual("fix the widget",
                              chat["messages"][1]["content"])
+
+    def test_chat_system_prompt_carries_the_runtime_catalog(self):
+        # S72 catalog alignment: training renders the ACTUAL lean
+        # catalog — gen-5 met a 12-tool catalog it never trained on
+        with tempfile.TemporaryDirectory() as tmp:
+            curated = _write_curated(Path(tmp), [_eligible_row()])
+            record = build_records(curated_dir=curated)[0]
+            system = record.chat["messages"][0]["content"]
+            self.assertIn("Available tools:", system)
+            self.assertIn("list_directory", system)
+
+    def test_verification_failure_interleaves_faithfully(self):
+        # S72: the premature claim + the rejection render at the
+        # recorded step position, then the continuation
+        with tempfile.TemporaryDirectory() as tmp:
+            steps = [
+                {"tool": "list_directory", "args": {"path": "."},
+                 "ok": True, "result_head": "files"},
+                {"tool": "read_file", "args": {"path": "w.py"},
+                 "ok": True, "result_head": "def add(a, b):"},
+                {"tool": "edit_file", "args": {"path": "w.py",
+                                               "old_string": "a",
+                                               "new_string": "b"},
+                 "ok": True, "result_head": "edit applied"},
+            ]
+            row = _curated_row(
+                outcome="recovered", classification="RECOVERED",
+                verdict="ACCEPT",
+                verification={"attempts": [
+                    {"ok": False, "after_step": 1}, {"ok": True}]},
+                steps=steps,
+                actions=["list_directory", "read_file", "edit_file"],
+                final_answer="Fixed and verified.",
+                verification_failures=[{
+                    "premature_final": "I have fixed it.",
+                    "detail": "Verification failed: unit-tests=FAIL.",
+                    "after_step": 1}])
+            curated = _write_curated(Path(tmp), [row])
+            record = build_records(curated_dir=curated)[0]
+            self.assertTrue(record.eligible,
+                            record.eligibility_reasons)
+            contents = [m["content"] for m in record.chat["messages"]]
+            premature_at = contents.index("I have fixed it.")
+            rejection_at = contents.index(
+                "Verification failed: unit-tests=FAIL.")
+            # step 0 rendered before the failure (call + observation);
+            # steps 1-2 after the rejection
+            self.assertIn("[TOOL: list_directory(",
+                          contents[premature_at - 2])
+            self.assertEqual("files", contents[premature_at - 1])
+            self.assertIn("[TOOL: read_file(",
+                          contents[rejection_at + 1])
+            self.assertLess(premature_at, rejection_at)
 
 
 if __name__ == "__main__":

@@ -132,6 +132,29 @@ def _final_answer(session: AgentSession) -> Optional[str]:
     return None
 
 
+def _verification_failures(session: AgentSession) -> List[Dict[str, Any]]:
+    """S72: the loop's verification-failed recovery states — the
+    premature final text + the rejection detail. This is the state
+    gen-5 died in and no demo ever showed; capturing it lets the
+    training records teach the recovery. Empty for legacy records."""
+    failures: List[Dict[str, Any]] = []
+    messages = session.messages
+    for index, message in enumerate(messages):
+        if message.role == "user" and \
+                message.content.startswith("Verification failed:"):
+            premature = None
+            for prev in reversed(messages[:index]):
+                if prev.role == "assistant" and \
+                        (prev.content or "").strip():
+                    premature = prev.content.strip()[:500]
+                    break
+            failures.append({
+                "premature_final": premature,
+                "detail": message.content.strip()[:300],
+            })
+    return failures
+
+
 def session_to_experience(session: AgentSession, model: Optional[str] = None,
                           goal_suffix: Optional[str] = None) -> Experience:
     """Convert a finished session into an Experience record. goal_suffix
@@ -163,6 +186,7 @@ def session_to_experience(session: AgentSession, model: Optional[str] = None,
             "model": model,
             "tool_calls": _bounded_tool_calls(session),
             "final_answer": _final_answer(session),
+            "verification_failures": _verification_failures(session),
         },
         failure=failure,
         diagnosis=(advice[0].get("diagnosis") if advice else None),

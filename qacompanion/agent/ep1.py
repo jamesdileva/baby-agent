@@ -45,7 +45,7 @@ DEMO_MODEL_TAG = "scripted-demo"
 # a CURRENT-version record, and mark_superseded_demos supersedes
 # scripted demos lacking the tag (their FORMAT is stale for training
 # even when the task itself is unchanged)
-CORPUS_VERSION = "v4"
+CORPUS_VERSION = "v5"
 VERSION_TAG = f"corpus-{CORPUS_VERSION}"
 
 # the corpus recipe (S66): categories with declared shapes and honest
@@ -60,16 +60,19 @@ CATEGORY_VARIANTS = {
 }
 DEFAULT_LEVELS = tuple(range(1, 9))
 
-# strategy diversity (S71 Demonstrator 3.0): every fix-category script
-# teaches the DIAGNOSIS CHAIN — the edit is derived from evidence
-# (failing test output -> read the test -> read the module -> smallest
-# change) instead of demonstrator-omniscience. Recovery variants place
-# the wrong turn BEFORE discovery: a rational first guess that the
-# evidence overturns.
+# strategy diversity (S72 failure-state demos): the gen-5 verdict
+# showed every run dying in the loop's verification-failed recovery
+# state — a state NO demonstration ever showed. The
+# premature_final_recovery strategy teaches exactly that state: the
+# demonstrator claims success before acting, the verifier rejects it,
+# and the script continues to the real fix (the run still ends
+# verified-successful). The other strategies keep the S71 diagnosis
+# chain with rational recovery ordering.
 STRATEGIES = {
     "bug_fix": ("diagnostic_clean", "tests_first_recovery",
-                "diagnostic_recovery"),
-    "feature_add": ("diagnostic_clean", "diagnostic_recovery"),
+                "diagnostic_recovery", "premature_final_recovery"),
+    "feature_add": ("diagnostic_clean", "diagnostic_recovery",
+                    "premature_final_recovery"),
     "build_repair": ("diagnostic_clean", "diagnostic_recovery"),
     "dependency": ("diagnostic_recovery",),
     "testing": ("explore_clean",),
@@ -217,6 +220,22 @@ def _bug_fix_script(strategy: str, variant: int, level: int,
         # rational first hypothesis, overturned by the evidence
         script = ([_read(f"src/{path}"), _list()] + core
                   + [_final(diagnosis)])
+    elif strategy == "premature_final_recovery":
+        # S72: THE failure state — claim success before acting, take
+        # the verifier's rejection, then do the real work; the honest
+        # final ADMITS the premature claim
+        premature = (
+            f"The failing tests pointed at {func}. I have corrected "
+            f"the implementation and the tests pass.")
+        recovery_diagnosis = (
+            f"My first summary was premature — I claimed a fix I had "
+            f"not actually made. The failing tests pointed at {func}: "
+            f"reading {test_path} showed the expectation, and reading "
+            f"{path} showed the defect: the body was `{bad.strip()}` "
+            f"instead of `{good.strip()}`. I replaced the defective "
+            f"line and this time the tests pass.")
+        script = ([_list(), _tests(python), _final(premature)]
+                  + core + [_final(recovery_diagnosis)])
     else:  # tests_first_recovery: the failure output is the clue
         script = ([_tests(python), _read(f"src/{path}"), _list()] + core
                   + [_final(diagnosis)])
@@ -243,6 +262,18 @@ def _feature_add_script(strategy: str, variant: int, level: int,
     script = [_list()] + core + [_final(diagnosis)]
     if strategy == "diagnostic_recovery":
         script = [_read(f"src/{path}"), _list()] + core + [_final(diagnosis)]
+    if strategy == "premature_final_recovery":
+        premature = (
+            f"The tests expect {func} in {module}. I have implemented "
+            f"it and the tests pass.")
+        recovery_diagnosis = (
+            f"That summary was premature — nothing had been written "
+            f"yet, and the suite was still failing. Reading {test_path} "
+            f"showed the expected behavior, and {path} held only the "
+            f"task marker. I implemented {func} and now the suite "
+            f"passes.")
+        script = ([_list(), _tests(python), _final(premature)]
+                  + core + [_final(recovery_diagnosis)])
     files = {path: module_code, test_path: test_code}
     goal = _phrase_goal("feature_add", variant, level, module, func)
     return script, files, goal, strategy
@@ -425,7 +456,7 @@ def build_corpus(experience_store: ExperienceStore,
         if ("scripted-demo" in tags
                 and "superseded-pattern" not in tags
                 and VERSION_TAG in tags
-                and record.outcome == "success"):
+                and record.outcome in ("success", "recovered")):
             # strip the session-unique suffix before normalizing: the
             # recorded goal carries " (benchmark run <id>)" but the
             # build-task goal does not

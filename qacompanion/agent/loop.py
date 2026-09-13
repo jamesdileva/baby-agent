@@ -253,6 +253,10 @@ class AgentLoop:
                     session.verification_results.append({
                         "ok": ok, "detail": detail,
                         "at": session.updated_at,
+                        # S72: how many tool calls preceded this
+                        # attempt — lets the training pipeline
+                        # interleave verification failures faithfully
+                        "after_step": len(session.tool_calls),
                     })
                     self._emit("verification_completed", session,
                                attempt=attempt, ok=ok, detail=detail)

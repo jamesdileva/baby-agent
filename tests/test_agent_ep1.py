@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from qacompanion.agent import ModelResponse
 from qacompanion.agent.curation import TrajectoryCurator
 from qacompanion.agent.ep1 import (
     DEMO_MODEL_TAG, STRATEGIES, ScriptedDemonstrator, build_corpus,
@@ -102,7 +103,9 @@ class CorpusChainTests(unittest.TestCase):
         records = self.store.load()
         self.assertEqual(1, len(records))
         record = records[0]
-        self.assertEqual("success", record.outcome)
+        # (0, 3) cycles to premature_final_recovery: first verification
+        # attempt failed, the retry passed -> honestly RECOVERED
+        self.assertEqual("recovered", record.outcome)
         self.assertIn(DEMO_MODEL_TAG, record.tags)
         from qacompanion.agent.ep1 import VERSION_TAG
         self.assertIn(VERSION_TAG, record.tags)
@@ -113,8 +116,9 @@ class CorpusChainTests(unittest.TestCase):
         self.assertTrue(steps[0]["ok"])
         edit = [s for s in steps if s["tool"] == "edit_file"][0]
         self.assertTrue(edit["ok"])
-        # S71: the final answer walks the diagnosis chain
-        self.assertIn("Reading test_", record.context["final_answer"])
+        # S71/S72: the final answer walks the chain and admits the
+        # premature claim
+        self.assertIn("reading test_", record.context["final_answer"])
 
     def test_recovery_record_is_tagged(self):
         # (variant 0, level 1) cycles to tests_first_recovery
@@ -359,6 +363,41 @@ class IdempotentRebuildTests(unittest.TestCase):
         new_record = self.store.load()[-1]
         self.assertEqual("list_directory",
                          new_record.context["tool_calls"][0]["tool"])
+
+
+    def test_premature_final_recovery_teaches_the_failure_state(self):
+        # S72: claim success before acting -> the verifier rejects it ->
+        # the real work -> an honest final that admits the premature
+        # claim. The run still ends verified-successful.
+        script, _files, _goal, tag = build_demo(
+            "bug_fix", "premature_final_recovery", 0, 3, sys.executable)
+        self.assertEqual("premature_final_recovery", tag)
+        finals = [t for t in script
+                  if isinstance(t, ModelResponse)]
+        self.assertEqual(2, len(finals))
+        edit_index = [i for i, t in enumerate(script)
+                      if getattr(t, "name", None) == "edit_file"][0]
+        premature_index = script.index(finals[0])
+        self.assertLess(premature_index, edit_index,
+                        "the premature claim must precede any edit")
+        self.assertIn("I have corrected", finals[0].text)
+        self.assertIn("premature", finals[1].text.lower())
+
+    def test_premature_final_run_passes_end_to_end(self):
+        # (variant 0, level 3) cycles to premature_final_recovery under
+        # the 4-strategy bug_fix rotation — the loop's verifier must
+        # reject the premature final and the run must still complete
+        stats = build_corpus(self.store, python=sys.executable,
+                             categories={"bug_fix": 1}, levels=(3,))
+        self.assertEqual(1, stats["passed"], stats)
+        record = self.store.load()[-1]
+        self.assertEqual("recovered", record.outcome)
+        failures = record.context["verification_failures"]
+        self.assertTrue(failures, "the rejected attempt must be captured")
+        self.assertIn("I have corrected",
+                      failures[0]["premature_final"])
+        self.assertIn("Verification failed", failures[0]["detail"])
+        self.assertIn("recovery-demo", record.tags)
 
 
 class VerdictTests(unittest.TestCase):

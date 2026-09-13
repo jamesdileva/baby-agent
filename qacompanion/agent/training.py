@@ -65,6 +65,7 @@ class TrajectoryRecord:
     verification: Dict[str, Any] = field(default_factory=dict)
     outcome: str = ""
     final_answer: Optional[str] = None
+    verification_failures: List[Dict[str, Any]] = field(default_factory=list)
     inefficient: bool = False
     provenance: Dict[str, Any] = field(default_factory=dict)
     eligible: bool = False
@@ -85,6 +86,7 @@ class TrajectoryRecord:
             "diagnosis": self.diagnosis,
             "resolution": self.resolution,
             "verification": self.verification,
+            "verification_failures": self.verification_failures,
             "outcome": self.outcome,
             "final_answer": self.final_answer,
             "inefficient": self.inefficient,
@@ -117,6 +119,7 @@ def _record_from_trajectory(traj: Dict[str, Any]) -> TrajectoryRecord:
         diagnosis=traj.get("diagnosis"),
         resolution=traj.get("resolution"),
         verification=traj.get("verification") or {},
+        verification_failures=[f for f in (traj.get("verification_failures") or []) if isinstance(f, dict)][:3],
         outcome=traj.get("outcome") or "",
         final_answer=traj.get("final_answer"),
         inefficient=any(p.get("dimension") == "efficiency"
@@ -140,23 +143,27 @@ def _project_tag(traj: Dict[str, Any]) -> str:
 
 def _eligibility(record: TrajectoryRecord,
                  traj: Dict[str, Any]) -> "tuple[bool, List[str]]":
-    """The dataset-separation gate: ACCEPT + SUCCESS + verification.
-    S68: superseded-pattern demos (stale pre-S66 policy, kept in the
-    store for provenance) are excluded with a reason."""
+    """The dataset-separation gate: ACCEPT + verified success. S72:
+    RECOVERED trajectories whose FINAL state passed verification are
+    eligible too — teaching recovery is the point of the failure-state
+    demos, and the final-state verification is the proof. Partial/mined
+    provenance still cannot pass (no verification evidence)."""
     reasons: List[str] = []
     if "superseded-pattern" in (traj.get("tags") or []):
         reasons.append("superseded-pattern: stale demo policy replaced "
                        "by the S66 explore-first corpus")
     if record.verdict != "ACCEPT":
         reasons.append(f"curation verdict {record.verdict}, not ACCEPT")
-    if record.trajectory_class != "successful":
-        reasons.append(f"class {record.trajectory_class}, not successful "
-                       "(only verified success enters training data)")
+    verified_classes = ("successful", "recovered")
+    if record.trajectory_class not in verified_classes:
+        reasons.append(f"class {record.trajectory_class}, not a verified "
+                       "success or verified recovery (only the final "
+                       "state passing the gate enters training data)")
     verification = record.verification or {}
     attempts = verification.get("attempts") or []
     has_evidence = bool(verification.get("ok")) or any(
         isinstance(a, dict) and a.get("ok") for a in attempts)
-    if record.trajectory_class == "successful" and not has_evidence:
+    if record.trajectory_class in verified_classes and not has_evidence:
         reasons.append("no verification evidence recorded")
     return (not reasons, reasons)
 
@@ -187,19 +194,49 @@ def format_tool_call(name: str, args: Dict[str, Any]) -> str:
     return f"[TOOL: {name}({', '.join(parts)})]"
 
 
+_RUNTIME_CATALOG: Optional[List[Any]] = None
+
+
+def _runtime_catalog() -> List[Any]:
+    """Resolve the benchmark's lean catalog names to ToolDefinitions
+    from a throwaway registry (cached per process) — the training
+    system prompt then matches the runtime's rendering exactly."""
+    global _RUNTIME_CATALOG
+    if _RUNTIME_CATALOG is None:
+        import tempfile
+        from .benchmark import (coding_registry, create_fixture,
+                                LEAN_MODEL_CATALOG)
+        from .workspace import Workspace
+        workspace = Workspace(Path(tempfile.mkdtemp(
+            prefix="training-catalog-")))
+        create_fixture(workspace)
+        registry = coding_registry(workspace)
+        by_name = {tool.definition.name: tool.definition
+                   for tool in registry._tools.values()}
+        _RUNTIME_CATALOG = [by_name[name] for name in
+                            sorted(LEAN_MODEL_CATALOG)
+                            if name in by_name]
+    return _RUNTIME_CATALOG
+
+
 def _chat_record(record: TrajectoryRecord) -> Dict[str, Any]:
-    """SFT messages teaching the runtime's own tool protocol. The base
-    prompt plus the [TOOL: ...] syntax section — the catalog is
-    task-specific, the protocol is what the corpus teaches. S69: the
-    store's provenance suffix is stripped from the goal — it is not
-    task semantics, and gen-3's models parroted it back."""
-    system = (build_system_prompt(tools=[], native_tools=False)
+    """SFT messages teaching the runtime's own tool protocol. S72
+    catalog alignment: the system prompt renders the runtime's ACTUAL
+    lean catalog — gen-5 trained on a catalog-less prompt and met a
+    12-tool catalog at inference; that distribution gap closes by
+    construction. S69: the store's provenance suffix is stripped from
+    the goal — it is not task semantics, and gen-3's models parroted
+    it back."""
+    system = (build_system_prompt(tools=_runtime_catalog(),
+                                  native_tools=False)
               + TOOL_PROTOCOL_PROMPT)
     goal = record.goal.split(" (benchmark run")[0]
     messages: List[Dict[str, str]] = [{"role": "system", "content": system},
                                       {"role": "user",
                                        "content": goal}]
-    for step in record.steps:
+    failures = record.verification_failures or []
+
+    def _render_step(step: Dict[str, Any]) -> None:
         messages.append({"role": "assistant",
                          "content": format_tool_call(step["tool"],
                                                      step["args"])})
@@ -208,6 +245,29 @@ def _chat_record(record: TrajectoryRecord) -> Dict[str, Any]:
             "ok" if step.get("ok") else "no output captured")
         messages.append({"role": "user",
                          "content": observation[:MAX_TEXT_CHARS]})
+
+    # S72: interleave the captured verification-failed recovery states
+    # faithfully — each failure renders the steps up to its recorded
+    # position, then the premature claim, then the rejection, and the
+    # pointer advances so the continuation follows
+    rendered = 0
+    for failure in failures:
+        cut = failure.get("after_step")
+        if not isinstance(cut, int) or not rendered < cut \
+                <= len(record.steps):
+            continue
+        for step in record.steps[rendered:cut]:
+            _render_step(step)
+        premature = str(failure.get("premature_final") or "")
+        if premature:
+            messages.append({"role": "assistant",
+                             "content": premature[:MAX_TEXT_CHARS]})
+        detail = str(failure.get("detail") or "")
+        messages.append({"role": "user",
+                         "content": detail[:MAX_TEXT_CHARS]})
+        rendered = cut
+    for step in record.steps[rendered:]:
+        _render_step(step)
     final = record.final_answer or (
         f"Completed: {record.goal[:MAX_TEXT_CHARS]}")
     messages.append({"role": "assistant", "content": final})
