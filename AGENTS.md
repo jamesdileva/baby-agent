@@ -80,6 +80,31 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-12 — **S70.1 Gen-4 verdict — the fixes landed in behavior;
+  the gap is now precisely the diagnosis chain** — ep4 imported
+  zero-surgery and the verdict (ep4-q4 vs ep3-q4, 3 tasks + A/B,
+  recorded): **0/3 both** — but the S69 fixes are visible IN the
+  model's behavior: run_tests commands are cleanly formed (unquoted,
+  single-backslash — the `command="\\"` garbage is gone at inference),
+  the recovery instinct generalized into path-CHECKING before editing
+  (file_metadata/file_exists → exists:false → no blind edit), and
+  in-context arg self-correction persists (memory_search pattern→query
+  after a tool error). Metrics: guessed_path 1.0 → 0.33, with-calls
+  1.0 held; tool failures 10 → 14 (more attempts, different kinds).
+  The remaining failure modes are BEHAVIORAL and named: (1) no
+  diagnosis chaining — ep4 reran the failing suite 3× without once
+  reading the failing file (the demos' edits derive from
+  demonstrator-omniscience, so the fix-from-failure-output lesson was
+  never taught); (2) fabricated finals with ZERO tool calls persist
+  (the demo narrative imitated without work — same signature the A/B
+  shows: with-demos 0 calls vs without 4, third generation running);
+  (3) unpracticed tools still get invented args (code_diagnostics).
+  Gen-5 levers (queued from the earlier analysis): diagnosis-driven
+  demos (final answers walk failure-output → file → line → fix),
+  rational recovery ordering (guess BEFORE discovery), and exercising
+  more of the offered tools. ep0.5 injection: three consecutive
+  net-negative results at this model scale — flag it do-not-default.
+  Suite 1586 OK. Spec: docs/s69-spec.md (fixes) / verdict-day entry.
 - 2026-09-12 — **S70 Dashboard Operations — the loop's buttons** — The
   S68 commands are now dashboard buttons: a **job model** on the
   server (`start_job`: background thread, status/summary, injectable
