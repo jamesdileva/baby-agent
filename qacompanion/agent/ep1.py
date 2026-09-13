@@ -45,7 +45,7 @@ DEMO_MODEL_TAG = "scripted-demo"
 # a CURRENT-version record, and mark_superseded_demos supersedes
 # scripted demos lacking the tag (their FORMAT is stale for training
 # even when the task itself is unchanged)
-CORPUS_VERSION = "v5"
+CORPUS_VERSION = "v6"
 VERSION_TAG = f"corpus-{CORPUS_VERSION}"
 
 # the corpus recipe (S66): categories with declared shapes and honest
@@ -57,6 +57,10 @@ CATEGORY_VARIANTS = {
     "dependency": 1,
     "testing": 1,
     "regression": 1,
+    # S73: coverage targeting — mirroring the two S57 evaluation tasks
+    # the gen-6 corpus never covered (string reverse, nested lookup)
+    "string_reverse": 1,
+    "nested_lookup": 1,
 }
 DEFAULT_LEVELS = tuple(range(1, 9))
 
@@ -77,6 +81,8 @@ STRATEGIES = {
     "dependency": ("diagnostic_recovery",),
     "testing": ("explore_clean",),
     "regression": ("explore_clean",),
+    "string_reverse": ("diagnostic_clean", "diagnostic_recovery"),
+    "nested_lookup": ("diagnostic_clean", "diagnostic_recovery"),
 }
 
 # goal-phrasing variety: 3 templates per category (gen-1 trained on one
@@ -388,6 +394,79 @@ def _regression_script(strategy: str, variant: int, level: int,
     return script, files, goal, "explore_clean"
 
 
+def _string_reverse_script(strategy: str, variant: int, level: int,
+                           python: str):
+    """S73: mirrors the S57 string-reverse eval task — the corpus never
+    covered this shape."""
+    module = "string_utils"
+    func = "reverse"
+    path = f"{module}.py"
+    test_path = f"test_{module}.py"
+    module_code = 'def reverse(text):\n    return text\n'
+    test_code = (
+        "import unittest\n\nfrom string_utils import reverse\n\n\n"
+        "class TestReverse(unittest.TestCase):\n"
+        "    def test_reverse(self):\n"
+        '        self.assertEqual(reverse("abc"), "cba")\n\n\n'
+        'if __name__ == "__main__":\n    unittest.main()\n')
+    broken = "    return text\n"
+    fixed = "    return text[::-1]\n"
+    diagnosis = (
+        f"The failing test showed reverse(\"abc\") should be \"cba\", "
+        f"but {path} returned its input unchanged. I replaced the body "
+        f"with a slice step of -1 and the tests pass.")
+    core = [_tests(python), _read(test_path), _read(path),
+            _edit(path, broken, fixed), _tests(python)]
+    script = [_list()] + core + [_final(diagnosis)]
+    if strategy == "diagnostic_recovery":
+        script = [_read(f"src/{path}"), _list()] + core + [_final(diagnosis)]
+    files = {path: module_code, test_path: test_code}
+    goal = (
+        "The tests in this project are failing. Find the bug, fix it, "
+        "and run the tests to verify they pass."
+        if (variant + level) % 2 == 0 else
+        "A string utility in this project fails its test. Track down "
+        "the bug, repair it, and prove the suite green.")
+    return script, files, goal, strategy
+
+
+def _nested_lookup_script(strategy: str, variant: int, level: int,
+                          python: str):
+    """S73: mirrors the S57 nested-JSON-lookup eval task."""
+    module = "config_parser"
+    func = "lookup"
+    path = f"{module}.py"
+    test_path = f"test_{module}.py"
+    module_code = ('def lookup(data, key):\n    return data.get(key)\n')
+    test_code = (
+        "import unittest\n\nfrom config_parser import lookup\n\n\n"
+        "class TestLookup(unittest.TestCase):\n"
+        "    def test_nested(self):\n"
+        "        data = {\"settings\": {\"timeout\": 30}}\n"
+        "        self.assertEqual(lookup(data, \"timeout\"), 30)\n\n\n"
+        'if __name__ == "__main__":\n    unittest.main()\n')
+    broken = "    return data.get(key)\n"
+    fixed = '    return data.get("settings", {}).get(key)\n'
+    diagnosis = (
+        f"The test showed lookup should find keys nested under the "
+        f"settings section of {path}'s data, but the code only checked "
+        f"the top level. I chained the lookup into the settings dict "
+        f"and the tests pass.")
+    core = [_tests(python), _read(test_path), _read(path),
+            _edit(path, broken, fixed), _tests(python)]
+    script = [_list()] + core + [_final(diagnosis)]
+    if strategy == "diagnostic_recovery":
+        script = [_read(f"src/{path}"), _list()] + core + [_final(diagnosis)]
+    files = {path: module_code, test_path: test_code}
+    goal = (
+        "The tests in this project are failing. Find the bug, fix it, "
+        "and run the tests to verify they pass."
+        if (variant + level) % 2 == 0 else
+        "The config lookup in this project is not finding nested keys. "
+        "Diagnose the failure and repair the lookup.")
+    return script, files, goal, strategy
+
+
 _SCRIPT_BUILDERS = {
     "bug_fix": _bug_fix_script,
     "feature_add": _feature_add_script,
@@ -395,6 +474,8 @@ _SCRIPT_BUILDERS = {
     "dependency": _dependency_script,
     "testing": _testing_script,
     "regression": _regression_script,
+    "string_reverse": _string_reverse_script,
+    "nested_lookup": _nested_lookup_script,
 }
 
 

@@ -224,6 +224,46 @@ class CategoryCoverageTests(unittest.TestCase):
         self.assertGreaterEqual(recovery / max(total, 1), 0.25)
 
 
+class CoverageTargetingTests(unittest.TestCase):
+    """S73: the two S57 eval-task shapes the gen-6 corpus never covered."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+        self.store = ExperienceStore(self.tmp / "exp.jsonl")
+
+    def test_string_reverse_demo_fixes_the_task_shape(self):
+        stats = build_corpus(self.store, python=sys.executable,
+                             categories={"string_reverse": 1},
+                             levels=(1,))
+        self.assertEqual(1, stats["passed"], stats)
+        record = self.store.load()[-1]
+        edit = [s for s in record.context["tool_calls"]
+                if s["tool"] == "edit_file"][0]
+        self.assertIn("return text[::-1]",
+                      edit["args"]["new_string"])
+        self.assertEqual("success", record.outcome)
+
+    def test_nested_lookup_demo_fixes_the_task_shape(self):
+        stats = build_corpus(self.store, python=sys.executable,
+                             categories={"nested_lookup": 1},
+                             levels=(1,))
+        self.assertEqual(1, stats["passed"], stats)
+        edit = [s for s in self.store.load()[-1].context["tool_calls"]
+                if s["tool"] == "edit_file"][0]
+        self.assertIn('data.get("settings", {})',
+                      edit["args"]["new_string"])
+        self.assertEqual("success", self.store.load()[-1].outcome)
+
+    def test_goal_phrasing_varies_in_new_categories(self):
+        build_corpus(self.store, python=sys.executable,
+                     categories={"string_reverse": 1}, levels=(1, 2))
+        goals = [r.goal.split(" (benchmark run")[0]
+                 for r in self.store.load()]
+        self.assertGreater(len(set(goals)), 1)
+
+
 class TrainingKitTests(unittest.TestCase):
     def test_kit_export_writes_selfcontained_files(self):
         with tempfile.TemporaryDirectory() as tmp:
