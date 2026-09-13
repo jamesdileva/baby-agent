@@ -80,6 +80,26 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-13 — **S73.1 Gen-7 verdict — recorded as failed; the n=1
+  measurement problem named** — ep7 imported clean and the verdict
+  (ep7-q4 vs ep6-q4, 3 tasks, budget 12, recorded): **0/3 both, ep7
+  REGRESSED on most metrics** (tool failures 16 vs 8, guessed-path
+  4.67 vs 0.0, discovery 0.0 vs 0.67; chaining held at 1.0). The
+  trajectories decompose it: (1) **ep6's calculator success did NOT
+  reproduce** at the same budget — its re-run hit max-iterations with
+  12 calls — so the gen-6 win was a marginal-capability + sampling-
+  variance data point, and **n=1 verdicts cannot distinguish
+  capability from luck**; (2) ep7 LOOPED — identical failing calls
+  repeated (re-reading the same nonexistent file ×4, re-running the
+  suite ×3, re-reading one test ×3) and one run ended in a degenerate
+  ECHO of the user's own goal as the final answer; (3) the coverage
+  DID work partially — the strings run found the right files
+  immediately (the trained shape) but never pulled the edit trigger.
+  **Gen-8 lever (measurement before training): repeated-run verdicts**
+  — n=3 per task with success RATE as the metric; n=1 verdicts are
+  reading tea leaves at this capability level. Corpus stays at v6 —
+  no training change until the measurement upgrade lands. Suite 1594
+  OK. Spec: docs/s73-spec.md.
 - 2026-09-13 — **S73 Gen-7 Corpus — coverage targeting the unhit
   tasks** — The gen-6 milestone left two eval tasks the corpus never
   covered: string reverse and nested JSON lookup. Gen-7's ONE variable:
