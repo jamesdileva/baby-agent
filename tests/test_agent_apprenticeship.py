@@ -51,7 +51,13 @@ class LabBase(unittest.TestCase):
 
 class AttemptFactory:
     """Provider factory where attempt N is scripted: attempt 1 fails,
-    later attempts apply the lesson (or claim fine if learn=False)."""
+    later attempts apply the lesson (or claim fine if learn=False).
+
+    NOTE (super-audit S4): this stub switches behavior by attempt count —
+    it models independent recovery, NOT lesson transfer. It accepts the
+    lesson channel but ignores it. Lesson transfer itself is covered by
+    LessonGatedFactory below, whose retry can only pass from the
+    delivered lesson."""
 
     def __init__(self, task_name, learn=True):
         path, old, new = LESSONS[task_name]
@@ -60,7 +66,7 @@ class AttemptFactory:
             "path": path, "old_string": old, "new_string": new})
         self.learn = learn
 
-    def __call__(self, model=None):
+    def __call__(self, model=None, lesson=None):
         attempt = self.attempt
         self.attempt += 1
         if attempt == 0 or not self.learn:
@@ -70,6 +76,36 @@ class AttemptFactory:
         return FakeModelProvider([
             self._edit,
             ModelResponse(text="applied the lesson", finish_reason="stop"),
+        ])
+
+
+class LessonGatedFactory:
+    """No hardcoded fix: attempt 1 fails unaided, and the retry applies
+    ONLY the delivered lesson's first action. The session can reach
+    ACCEPTED only if the lab actually transmits the lesson."""
+
+    def __init__(self):
+        self.attempt = 0
+        self.seen_lessons = []
+
+    def __call__(self, model=None, lesson=None):
+        attempt = self.attempt
+        self.attempt += 1
+        self.seen_lessons.append(lesson)
+        if attempt == 0:
+            return FakeModelProvider([
+                ModelResponse(text="looks fine to me",
+                              finish_reason="stop")])
+        if lesson is None or not lesson.actions:
+            return FakeModelProvider([
+                ModelResponse(text="nothing taught, still fine",
+                              finish_reason="stop")])
+        action = lesson.actions[0]
+        return FakeModelProvider([
+            ToolCall(name=action["tool"],
+                     arguments=dict(action.get("arguments", {}))),
+            ModelResponse(text="applied the delivered lesson",
+                          finish_reason="stop"),
         ])
 
 
@@ -114,6 +150,39 @@ class TestApprenticeshipFlow(LabBase):
         self.assertIn("settings", lesson.actions[0]["arguments"]["new_string"])
         round_trip = Lesson.from_dict(lesson.to_dict())
         self.assertEqual(round_trip.explanation, lesson.explanation)
+
+
+class TestLessonDelivery(LabBase):
+    """Super-audit S4 (G3): the retry must RECEIVE the lesson — acceptance
+    has to prove transfer, not independent recovery."""
+
+    def test_retry_passes_only_from_delivered_lesson(self):
+        task = self.tasks["defect-fix-calculator"]
+        teacher = ScriptedTeacherProvider(_lesson_for(task.name))
+        factory = LessonGatedFactory()
+        record = self.lab.run_session(task, factory, teacher)
+        self.assertEqual("accepted", record.status)
+        self.assertTrue(record.verified)
+        self.assertTrue(record.lesson_delivered)
+        # the unaided baseline saw no lesson; the retry saw the teacher's
+        self.assertIsNone(factory.seen_lessons[0])
+        self.assertIsNotNone(factory.seen_lessons[1])
+        self.assertTrue(factory.seen_lessons[1].actions)
+
+    def test_factory_without_lesson_channel_rejects_session(self):
+        task = self.tasks["defect-fix-calculator"]
+        teacher = ScriptedTeacherProvider(_lesson_for(task.name))
+
+        def legacy_factory(model=None):
+            return FakeModelProvider([
+                ModelResponse(text="looks fine to me",
+                              finish_reason="stop")])
+
+        record = self.lab.run_session(task, legacy_factory, teacher)
+        self.assertEqual("rejected", record.status)
+        self.assertIn("does not accept", record.reject_reason)
+        self.assertFalse(record.lesson_delivered)
+        self.assertEqual(self.store.load(), [])  # nothing stored
 
 
 class TestLabReport(LabBase):

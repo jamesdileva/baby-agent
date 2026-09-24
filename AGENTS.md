@@ -80,6 +80,21 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-24 — **S75.4 Super-audit S4 — apprenticeship lesson actually
+  delivered (D7/G3)** — `run_session` now builds students via
+  `_make_student` under the uniform `student_factory(model=None,
+  lesson=None)` contract: the unaided baseline gets `lesson=None`, the
+  retry gets the teacher's `Lesson` object, and `record.lesson_delivered`
+  captures what the student saw. A factory whose signature lacks the
+  lesson channel rejects the session (`student_failed: ... does not
+  accept the lesson`) instead of running an untaught retry that could
+  pass independently — genuine factory `TypeError`s still propagate
+  (signature-checked). The old `AttemptFactory` is labeled for what it
+  is (independent recovery, not transfer); new `LessonGatedFactory`
+  applies ONLY the delivered lesson's first action, so ACCEPTED proves
+  transfer. Stash check: both new tests fail pre-fix. Suite 1625 OK
+  (1623 + 2 new). No spec impact.
+
 - 2026-09-24 — **S75.3 Super-audit S3 — curation→skills handoff
   repaired + `from_dict` gate (C2/C3)** — candidates now validate as
   `Skill`: `_skill_name` joins with underscores (plus `skill_` prefix

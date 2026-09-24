@@ -18,6 +18,7 @@ Pins (fixtures-first discipline):
   trajectories carry honest metrics.
 """
 
+import inspect
 import json
 import tempfile
 import uuid
@@ -103,6 +104,7 @@ class ApprenticeshipRecord:
     student_first_report: Optional[Dict[str, Any]] = None
     lesson: Optional[Dict[str, Any]] = None
     student_retry_report: Optional[Dict[str, Any]] = None
+    lesson_delivered: bool = False
     verified: bool = False
     lessons_extracted: List[str] = field(default_factory=list)
 
@@ -118,9 +120,47 @@ class ApprenticeshipRecord:
             "student_first_report": self.student_first_report,
             "lesson": self.lesson,
             "student_retry_report": self.student_retry_report,
+            "lesson_delivered": self.lesson_delivered,
             "verified": self.verified,
             "lessons_extracted": list(self.lessons_extracted),
         }
+
+
+class LessonDeliveryError(Exception):
+    """A student factory cannot receive the lesson (contract breach)."""
+
+
+def _accepts_lesson(student_factory) -> bool:
+    """Whether the factory's signature carries the lesson channel."""
+    try:
+        params = inspect.signature(student_factory).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    return any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params) \
+        or "lesson" in {p.name for p in params}
+
+
+def _make_student(student_factory, lesson):
+    """Build one attempt's provider, delivering the lesson when given.
+
+    Factories receive the Lesson object itself (None on the unaided first
+    attempt). Returns (provider, delivered). Raises LessonDeliveryError
+    when the factory does not accept the lesson channel: the lab cannot
+    prove learning through a student it cannot teach, so the session must
+    reject instead of running an untaught retry. A TypeError from a
+    factory that DOES accept the channel is a genuine factory bug and
+    propagates.
+    """
+    try:
+        if lesson is None:
+            return student_factory(model=None, lesson=None), False
+        return student_factory(model=None, lesson=lesson), True
+    except TypeError as exc:
+        if _accepts_lesson(student_factory):
+            raise
+        raise LessonDeliveryError(
+            "student_factory does not accept the lesson "
+            f"(cannot verify learning): {exc}") from exc
 
 
 class ApprenticeshipLab:
@@ -151,7 +191,13 @@ class ApprenticeshipLab:
                     student_name: str = "student") -> ApprenticeshipRecord:
         """task: EvalTask (S57); student_factory: returns a fresh
         provider per attempt (S55 slice 5 pattern — a stateless
-        scripted student would exhaust its script across attempts)."""
+        scripted student would exhaust its script across attempts).
+
+        Factory contract: student_factory(model=None, lesson=None).
+        The first attempt is the unaided baseline (lesson is None); the
+        retry receives the teacher's Lesson object. Factories that do
+        not accept the lesson channel reject the session — an untaught
+        retry cannot prove learning."""
         import tempfile
 
         record = ApprenticeshipRecord(
@@ -163,8 +209,12 @@ class ApprenticeshipLab:
         # 1. student's FIRST attempt — on its own, unaided
         first_root = Path(tempfile.mkdtemp(prefix=f"appr-{task.name}-first-"))
         task.write_fixture(first_root)
-        first = self._run_attempt(student_factory(model=None),
-                                  task, first_root)
+        try:
+            first_provider, _ = _make_student(student_factory, None)
+        except LessonDeliveryError as exc:
+            record.reject_reason = f"student_failed: {exc}"
+            return record
+        first = self._run_attempt(first_provider, task, first_root)
         record.student_first_report = first.to_dict()
         if first.success:
             # student already passes: nothing to learn, record and accept
@@ -190,11 +240,19 @@ class ApprenticeshipLab:
             return record
 
         # 4. student retries on a FRESH fixture copy — same defect, same
-        # goal, now with the lesson applied by the STUDENT's provider
+        # goal, now with the lesson delivered to the STUDENT's provider.
+        # A factory that cannot receive the lesson rejects the session:
+        # an untaught retry passing proves nothing about teaching.
         retry_root = Path(tempfile.mkdtemp(prefix=f"appr-{task.name}-retry-"))
         task.write_fixture(retry_root)
-        retry = self._run_attempt(student_factory(model=None),
-                                  task, retry_root)
+        try:
+            retry_provider, delivered = _make_student(student_factory,
+                                                      lesson)
+        except LessonDeliveryError as exc:
+            record.reject_reason = f"student_failed: {exc}"
+            return record
+        record.lesson_delivered = delivered
+        retry = self._run_attempt(retry_provider, task, retry_root)
         record.student_retry_report = retry.to_dict()
 
         # 5. S41 gate on the STUDENT's post-lesson attempt
