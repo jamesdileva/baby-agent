@@ -278,7 +278,7 @@ class TrainingKitTests(unittest.TestCase):
             # Colab-found regressions, pinned: the dataset must be
             # conversational dicts (a bare list-of-lists 400s in
             # Dataset.from_list) and T4 has no bf16
-            self.assertIn("masked_rows.append(example)", script)
+            self.assertIn("masked.append(example)", script)
             # transformers v5 batched-return normalization (the
             # 0/116 mask-gate catch)
             self.assertIn("_to_flat_token_ids", script)
