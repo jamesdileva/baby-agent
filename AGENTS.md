@@ -80,6 +80,17 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-24 — **S75.5 Super-audit S5 — measurement trio fixed
+  (D1/D3/D4.2)** — `generate()` no longer shadows its `level` param
+  (`task_level` local; mixed curricula were 1 random level × N),
+  `MasteryTracker.working_level()` is a pure read with transitions in
+  `record()` only (repeated reads ratcheted the level; streaks bounded
+  to the rule's window), and `curate()` re-resolves verdicts after the
+  diversity pass (a rare REVIEW@0.46 record now correctly gates
+  ACCEPT@0.5167, with the recompute noted in reasons). Six regression
+  tests, 5 failing pre-fix (stash check; explicit-level pin guards the
+  preserved contract). Suite 1631 OK (1625 + 6 new). No spec impact.
+
 - 2026-09-24 — **S75.4 Super-audit S4 — apprenticeship lesson actually
   delivered (D7/G3)** — `run_session` now builds students via
   `_make_student` under the uniform `student_factory(model=None,

@@ -90,6 +90,16 @@ class TestGenerator(unittest.TestCase):
         for task in tasks:
             self.assertIn(task.level, (2, 3))
 
+    def test_unspecified_level_varies_across_tasks(self):
+        # S75.5: generate() shadowed its own `level` parameter, pinning
+        # every task after the first to the first task's random level.
+        tasks = SyntheticCurriculum(seed=0).generate(8)
+        self.assertGreater(len({t.level for t in tasks}), 1)
+
+    def test_explicit_level_pins_all_tasks(self):
+        tasks = SyntheticCurriculum(seed=0).generate(3, level=2)
+        self.assertEqual([2, 2, 2], [t.level for t in tasks])
+
     def test_category_filter(self):
         tasks = SyntheticCurriculum(seed=2,
                                     categories=("bug_fix",)).generate(3)
@@ -157,6 +167,33 @@ class TestMasteryTracker(unittest.TestCase):
         tracker.record("python", True)
         skill, level = tracker.recommend(("python", "testing"))
         self.assertEqual(skill, "testing")
+
+    def test_repeated_reads_do_not_drift_level(self):
+        # S75.5: working_level() wrote back on every call, ratcheting the
+        # stored level up again with no new outcomes. Reads are pure now.
+        tracker = MasteryTracker(level_up_streak=3)
+        for _ in range(3):
+            tracker.record("python", True)
+        self.assertEqual(tracker.working_level("python"), 2)
+        for _ in range(5):
+            self.assertEqual(tracker.working_level("python"), 2)
+
+    def test_recommend_does_not_mutate_level(self):
+        tracker = MasteryTracker(level_up_streak=3)
+        for _ in range(3):
+            tracker.record("python", True)
+        first = tracker.recommend(("python",))
+        second = tracker.recommend(("python",))
+        self.assertEqual(first, second)
+        self.assertEqual(tracker.working_level("python"), 2)
+
+    def test_streak_history_bounded(self):
+        # S75.5: record() kept every outcome forever; only the rule's
+        # window is retained now.
+        tracker = MasteryTracker(level_up_streak=3, level_down_failures=2)
+        for i in range(100):
+            tracker.record("python", bool(i % 2))
+        self.assertLessEqual(len(tracker._streaks["python"]), 5)
 
 
 class TestS57Bridge(unittest.TestCase):

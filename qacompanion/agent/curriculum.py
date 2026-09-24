@@ -340,9 +340,13 @@ class SyntheticCurriculum:
             category = self.categories[
                 (self._counter + variant) % len(self.categories)]
             lo, hi = self.level_range
-            level = level if level is not None else self._rng.randint(lo, hi)
+            # S75.5: never assign to the `level` parameter — it shadowed
+            # the caller's None after the first draw, pinning every later
+            # task to the first task's random level.
+            task_level = (level if level is not None
+                          else self._rng.randint(lo, hi))
             self._counter += 1
-            task = self._build(category, level, variant)
+            task = self._build(category, task_level, variant)
             goal_key = _normalize(task.goal)
             if goal_key in self._goals:
                 continue  # repeated goal: skip (roadmap dedupe rule)
@@ -408,21 +412,31 @@ class MasteryTracker:
         self._streaks: Dict[str, List[bool]] = {}
 
     def record(self, skill: str, success: bool) -> None:
+        # S75.5: the ONLY place levels change — one transition per new
+        # outcome. Streak history is bounded to the window the rule
+        # actually reads, so per-skill memory cannot grow without bound.
         streaks = self._streaks.setdefault(skill, [])
         streaks.append(bool(success))
+        window = self.level_up_streak + self.level_down_failures
+        del streaks[:-window]
+        self._levels[skill] = self._transition(
+            self._levels.get(skill, self.min_level), streaks)
 
-    def working_level(self, skill: str) -> int:
-        level = self._levels.get(skill, self.min_level)
-        streaks = self._streaks.get(skill, [])
+    def _transition(self, level: int, streaks: List[bool]) -> int:
         recent = streaks[-(self.level_up_streak + self.level_down_failures):]
         if len(recent) >= self.level_up_streak and all(recent[
                 -self.level_up_streak:]):
-            level = min(level + 1, self.max_level)
-        elif (len(recent) >= self.level_down_failures
+            return min(level + 1, self.max_level)
+        if (len(recent) >= self.level_down_failures
                 and not any(recent[-self.level_down_failures:])):
-            level = max(level - 1, self.min_level)
-        self._levels[skill] = level
+            return max(level - 1, self.min_level)
         return level
+
+    def working_level(self, skill: str) -> int:
+        # S75.5: pure read — repeated calls without new outcomes must
+        # never drift the level (the old version wrote back on every
+        # call, ratcheting up/down while reading).
+        return self._levels.get(skill, self.min_level)
 
     def recommend(self, skills: Tuple[str, ...] = SKILLS
                   ) -> Tuple[str, int]:

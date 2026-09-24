@@ -286,8 +286,34 @@ class CuratorTests(unittest.TestCase):
                  tags=["zcode", "other"], context={"source": "zcode"}),
         ])
         report = TrajectoryCurator(store).curate(out_dir=self.out_dir,
-                                                 dry_run=True)
+                                                  dry_run=True)
         self.assertEqual(3, report["unique_after_dedupe"])
+
+    def test_verdicts_recomputed_after_diversity(self):
+        # S75.5: diversity recomputed every overall AFTER verdicts were
+        # assigned — the rare record below scores ACCEPT post-diversity
+        # but was gated REVIEW pre-diversity. Stored verdict must follow
+        # the stored score.
+        exps = []
+        for i in range(4):
+            exps.append(_exp(
+                goal=f"repair widget number {i} in the dashboard panel",
+                outcome="success", confidence=0.6,
+                actions=["read", "edit"], tags=["opencode", "common"],
+                context={"source": "opencode"},
+                verification={"ok": True}))
+        exps.append(_exp(goal="fix it", confidence=0.9, actions=[],
+                         tags=["zcode", "rare"],
+                         context={"source": "zcode"}))
+        store = self._store(exps)
+        TrajectoryCurator(store).curate(out_dir=self.out_dir)
+        rows = [json.loads(line) for line in
+                (self.out_dir / "trajectory.jsonl").read_text(
+                    encoding="utf-8").splitlines() if line.strip()]
+        rare = next(r for r in rows if r["goal"] == "fix it")
+        self.assertEqual(VERDICT_ACCEPT, rare["verdict"])
+        self.assertTrue(any("post-diversity" in reason
+                            for reason in rare["reasons"]))
 
     def test_skill_candidate_shape_and_gate(self):
         # S75.3: the candidate must load as a Skill (underscore name,

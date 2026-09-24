@@ -410,8 +410,24 @@ class TrajectoryCurator:
 
     def curate(self, out_dir=None, dry_run: bool = False) -> Dict[str, Any]:
         experiences = self.store.load()
+        by_id = {exp.experience_id: exp for exp in experiences}
         trajectories = [self._trajectory(exp) for exp in experiences]
         self._apply_diversity(trajectories)
+        # S75.5: diversity recomputes every overall AFTER verdicts were
+        # assigned from pre-diversity scores — a stored verdict could
+        # disagree with its stored score on every record. Re-resolve the
+        # gate on the final scores so verdict and score never diverge.
+        for traj in trajectories:
+            verdict, reasons = verdict_for(
+                by_id[traj.experience_id], traj.classification,
+                traj.hard_flags, traj.overall, traj.dims)
+            if verdict != traj.verdict:
+                traj.reasons.append(
+                    f"verdict recomputed post-diversity: {traj.verdict} "
+                    f"-> {verdict} (overall now {traj.overall})")
+                traj.verdict = verdict
+                traj.reasons.extend(r for r in reasons
+                                    if r not in traj.reasons)
 
         merged: Dict[str, CuratedTrajectory] = {}
         duplicates_merged = 0
@@ -432,7 +448,6 @@ class TrajectoryCurator:
         review = [t for t in unique if t.verdict == VERDICT_REVIEW]
         rejected = [t for t in unique if t.verdict == VERDICT_REJECT]
 
-        by_id = {exp.experience_id: exp for exp in experiences}
         failure_cases, skill_candidates = self._extract_lessons(
             unique, by_id)
 
