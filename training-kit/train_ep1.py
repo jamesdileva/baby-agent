@@ -22,10 +22,13 @@ gradient checkpointing (free Colab T4 = 16 GB, plenty for a 3B QLoRA).
 import json
 import sys
 
+# optional generation name: `python train_ep1.py ep8` produces
+# ep8-adapter/ and ep8-merged/ (default: ep1)
+GEN = sys.argv[1] if len(sys.argv) > 1 else "ep1"
 BASE_MODEL = "Qwen/Qwen2.5-Coder-3B-Instruct"
 DATASET = "training.jsonl"
-OUTPUT_DIR = "ep1-adapter"
-MERGED_DIR = "ep1-merged"
+OUTPUT_DIR = f"{GEN}-adapter"
+MERGED_DIR = f"{GEN}-merged"
 
 
 def load_dataset(path=DATASET):
@@ -182,9 +185,11 @@ def main():
               "epochs. Record the attempt as failed (roadmap honesty "
               "rule).")
         sys.exit(1)
-    print("next: download ep1-merged/, then `ollama create "
-          "baby-agent:ep1` (see training-kit/README.md),")
-    print("then evaluate with run_evaluation + compare() — honestly.")
+    print(f"next: convert {MERGED_DIR} to GGUF with llama.cpp and "
+          f"`ollama create baby-agent:{GEN}` — exact commands in "
+          "training-kit/README.md (ollama 0.34.4+ requires the GGUF "
+          "path),")
+    print("then evaluate with qa verdict — honestly.")
 
 
 if __name__ == "__main__":

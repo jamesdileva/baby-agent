@@ -279,6 +279,10 @@ class TrainingKitTests(unittest.TestCase):
             # conversational dicts (a bare list-of-lists 400s in
             # Dataset.from_list) and T4 has no bf16
             self.assertIn("masked_rows.append(example)", script)
+            # S76: the generation name is a script argument — outputs
+            # land as epN-merged directly (no manual renames)
+            self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
+            self.assertIn('MERGED_DIR = f"{GEN}-merged"', script)
             self.assertIn("fp16=True", script)
             self.assertIn('"use_reentrant": False', script)
             self.assertIn("merge_and_unload", script)
