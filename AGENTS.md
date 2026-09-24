@@ -80,6 +80,17 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-24 — **S75.6 Super-audit S6 — store write loss closed (A3)**
+  — new shared `record_lock()` in `qacompanion/store.py` (portable
+  O_CREAT|O_EXCL sidecar lockfile, bounded retry, stale-lock reclaim so
+  a crash can't wedge the store) now guards both `CaseStore.record()`
+  and `ExperienceStore.record()` — the latter had the identical
+  unguarded race, dropping whole trajectories. Three regression tests
+  (40-thread contention on each store, stale-lock reclaim); all 3 fail
+  pre-fix via stash check. Suite 1634 OK (1631 + 3 new). Note: this
+  retires spec.md's documented single-writer limitation by fixing it —
+  no specified behavior changes (record/bump semantics identical).
+
 - 2026-09-24 — **S75.5 Super-audit S5 — measurement trio fixed
   (D1/D3/D4.2)** — `generate()` no longer shadows its `level` param
   (`task_level` local; mixed curricula were 1 random level × N),

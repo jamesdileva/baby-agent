@@ -3,6 +3,8 @@
 import json
 import os
 import tempfile
+import threading
+import time
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -168,6 +170,44 @@ class RecordTests(TempDirTest):
         with self.assertRaises(ValueError):
             store.CaseStore(path).record("sig-new", "e", "d")
         self.assertEqual(before, path.read_bytes())
+
+
+class RecordConcurrencyTests(TempDirTest):
+    """Super-audit S6 (F7): read-modify-write without a lock silently
+    lost most rows under concurrency. Writers must serialize."""
+
+    def test_concurrent_distinct_records_lose_nothing(self):
+        path = self.tmp / "cases.jsonl"
+        errors = []
+
+        def worker(i):
+            try:
+                store.CaseStore(path).record(f"sig-{i}", "e", "d", by="t")
+            except Exception as exc:  # noqa: BLE001 — collected, asserted
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker, args=(i,))
+                   for i in range(40)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual([], errors)
+        cases = store.CaseStore(path).load()
+        self.assertEqual(40, len(cases))
+        self.assertEqual(40, len({case["id"] for case in cases}))
+        self.assertFalse(Path(str(path) + ".lock").exists())
+
+    def test_stale_lock_reclaimed_not_wedging_store(self):
+        path = self.tmp / "cases.jsonl"
+        lock = Path(str(path) + ".lock")
+        lock.write_text("99999", encoding="utf-8")
+        old = time.time() - 120.0
+        os.utime(lock, (old, old))
+        case, created = store.CaseStore(path).record("sig-a", "e", "d")
+        self.assertTrue(created)
+        self.assertEqual(1, case["id"])
+        self.assertFalse(lock.exists())
 
 
 class EnvOverrideTests(TempDirTest):

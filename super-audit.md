@@ -17,7 +17,7 @@ but not developed, unless they directly cause an execution or data-integrity bug
 - [x] S3 — C2 + C3: curation→skills handoff + `from_dict` guards ✅
 - [x] S4 — D7(G3): apprenticeship lesson delivery ✅
 - [x] S5 — D1(level) + D3 + D4.2: measurement trio ✅
-- [ ] S6 — A3: store concurrency locks + contention tests
+- [x] S6 — A3: store concurrency locks + contention tests ✅
 - [ ] S7 — C1 + D5 (+D4.3): trust boundary + experience identity
 - [ ] S8 — A2 + F13 + F14: timeout enforcement + retry + audit bound
 - [ ] S9 — F8 + F10 + F15 + F12: boundary correctness batch

@@ -5,9 +5,11 @@ Storage format (frozen, docs/spec.md): one JSON object per line in
 on any malformed input; saves are atomic (temp copy + os.replace).
 """
 
+import contextlib
 import json
 import os
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,6 +30,61 @@ _FIELD_TYPES = {
 def default_path():
     """Env override (QA_CASES_FILE) > repo-root default."""
     return Path(os.environ.get(ENV_OVERRIDE) or DEFAULT_PATH)
+
+
+_RECORD_LOCK_SUFFIX = ".lock"
+_RECORD_LOCK_RETRIES = 200
+_RECORD_LOCK_RETRY_SECONDS = 0.05  # ~10 s of patience total
+_RECORD_LOCK_STALE_SECONDS = 30.0  # a crashed holder must not wedge the store
+
+
+class StoreLockedError(Exception):
+    """A store's record lock could not be acquired (holder still live)."""
+
+
+@contextlib.contextmanager
+def record_lock(path):
+    """Serialize read-modify-write record() calls across threads/processes.
+
+    Portable stdlib mutual exclusion: exclusive creation (O_CREAT|O_EXCL)
+    of a sidecar lockfile, with bounded retry and stale-lock expiry (a
+    crashed holder's lock older than _RECORD_LOCK_STALE_SECONDS is
+    reclaimed — otherwise one crash wedges the store forever). Atomic
+    save() is not enough: it is the read-modify-write that must be
+    atomic. The lock releases even when the body raises.
+    """
+    lock_path = Path(str(path) + _RECORD_LOCK_SUFFIX)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    deadline = (time.monotonic()
+                + _RECORD_LOCK_RETRIES * _RECORD_LOCK_RETRY_SECONDS)
+    fd = None
+    while fd is None:
+        try:
+            fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            try:
+                age = time.time() - lock_path.stat().st_mtime
+            except OSError:
+                age = 0.0  # lock vanished mid-check: retry immediately
+            if age >= _RECORD_LOCK_STALE_SECONDS:
+                try:
+                    lock_path.unlink()
+                except OSError:
+                    pass
+                continue
+            if time.monotonic() >= deadline:
+                raise StoreLockedError(
+                    f"timed out acquiring record lock: {lock_path}")
+            time.sleep(_RECORD_LOCK_RETRY_SECONDS)
+    try:
+        os.write(fd, str(os.getpid()).encode("ascii"))
+        yield
+    finally:
+        os.close(fd)
+        try:
+            lock_path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def parse_timestamp(value):
@@ -131,32 +188,36 @@ class CaseStore:
     def record(self, signature, error_excerpt, diagnosis, by=None, now=None):
         """Insert a case or bump the one whose signature matches exactly.
 
+        The read-modify-write holds the record lock: concurrent writers
+        serialize instead of silently losing each other's rows.
+
         Returns (case, created).
         """
-        cases = self.load()
-        stamp = utc_now_stamp(now)
-        for case in cases:
-            if case["signature"] == signature:
-                case["times_seen"] += 1
-                case["last_seen"] = stamp
-                case["error_excerpt"] = error_excerpt
-                case["diagnosis"] = diagnosis
-                if by:
-                    case["confirmed_by"] = by
-                created = False
-                break
-        else:
-            next_id = cases[-1]["id"] + 1 if cases else 1
-            case = {
-                "id": next_id,
-                "signature": signature,
-                "error_excerpt": error_excerpt,
-                "diagnosis": diagnosis,
-                "times_seen": 1,
-                "last_seen": stamp,
-                "confirmed_by": by or "unknown",
-            }
-            cases.append(case)
-            created = True
-        self.save(cases)
-        return case, created
+        with record_lock(self.path):
+            cases = self.load()
+            stamp = utc_now_stamp(now)
+            for case in cases:
+                if case["signature"] == signature:
+                    case["times_seen"] += 1
+                    case["last_seen"] = stamp
+                    case["error_excerpt"] = error_excerpt
+                    case["diagnosis"] = diagnosis
+                    if by:
+                        case["confirmed_by"] = by
+                    created = False
+                    break
+            else:
+                next_id = cases[-1]["id"] + 1 if cases else 1
+                case = {
+                    "id": next_id,
+                    "signature": signature,
+                    "error_excerpt": error_excerpt,
+                    "diagnosis": diagnosis,
+                    "times_seen": 1,
+                    "last_seen": stamp,
+                    "confirmed_by": by or "unknown",
+                }
+                cases.append(case)
+                created = True
+            self.save(cases)
+            return case, created

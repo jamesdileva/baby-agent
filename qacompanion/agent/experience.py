@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional
 
 from .registry import READ_ONLY, SAFE_WRITE, RegisteredTool, ToolDefinition, ToolOperationError, ToolRegistry
 from .workspace import Workspace
+from ..store import record_lock
 
 DEFAULT_EXPERIENCE_FILE = "experience.jsonl"
 OUTCOMES = ("success", "failed", "recovered", "human_corrected", "partial")
@@ -170,24 +171,30 @@ class ExperienceStore:
         os.replace(tmp, self.path)
 
     def record(self, experience: Experience) -> Experience:
-        """Reinforce an existing near-identical goal, else append."""
-        existing = self.load()
-        normalized = _normalize_goal(experience.goal)
-        for candidate in existing:
-            if _normalize_goal(candidate.goal) == normalized:
-                candidate.times_seen += 1
-                candidate.confidence = experience.confidence
-                candidate.outcome = experience.outcome
-                if experience.diagnosis:
-                    candidate.diagnosis = experience.diagnosis
-                if experience.resolution:
-                    candidate.resolution = experience.resolution
-                candidate.last_reinforced_at = _utc_stamp()
-                self.save(existing)
-                return candidate
-        existing.append(experience)
-        self.save(existing)
-        return experience
+        """Reinforce an existing near-identical goal, else append.
+
+        The read-modify-write holds the shared record lock (the same
+        race CaseStore had: concurrent writers silently dropped whole
+        trajectories).
+        """
+        with record_lock(self.path):
+            existing = self.load()
+            normalized = _normalize_goal(experience.goal)
+            for candidate in existing:
+                if _normalize_goal(candidate.goal) == normalized:
+                    candidate.times_seen += 1
+                    candidate.confidence = experience.confidence
+                    candidate.outcome = experience.outcome
+                    if experience.diagnosis:
+                        candidate.diagnosis = experience.diagnosis
+                    if experience.resolution:
+                        candidate.resolution = experience.resolution
+                    candidate.last_reinforced_at = _utc_stamp()
+                    self.save(existing)
+                    return candidate
+            existing.append(experience)
+            self.save(existing)
+            return experience
 
     def find_similar(self, query: str, k: int = 5) -> List[Experience]:
         terms = [t for t in re.split(r"\W+", query.lower()) if len(t) > 2]

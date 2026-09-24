@@ -108,6 +108,33 @@ class TestExperienceStore(ExperienceBase):
     def test_missing_store_is_empty(self):
         self.assertEqual(ExperienceStore(self.tmp / "nope.jsonl").load(), [])
 
+    def test_concurrent_distinct_goals_lose_nothing(self):
+        # Super-audit S6 (A3 sibling of F7): ExperienceStore.record had
+        # the identical unguarded read-modify-write — concurrent harness
+        # threads silently dropped whole trajectories.
+        import threading
+
+        errors = []
+
+        def worker(i):
+            try:
+                ExperienceStore(self.store_path).record(Experience(
+                    goal=f"concurrent task number {i} dashboard panel",
+                    outcome="success"))
+            except Exception as exc:  # noqa: BLE001 — collected, asserted
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker, args=(i,))
+                   for i in range(40)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual([], errors)
+        loaded = ExperienceStore(self.store_path).load()
+        self.assertEqual(40, len(loaded))
+        self.assertFalse(Path(str(self.store_path) + ".lock").exists())
+
 
 class TestRetrieval(ExperienceBase):
     def test_keyword_ranking(self):
