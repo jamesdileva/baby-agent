@@ -513,8 +513,9 @@ def build_parser():
     sessminer.add_argument(
         "--source",
         required=True,
-        choices=["opencode", "zcode"],
-        help="session database family to mine",
+        choices=["opencode", "zcode", "labdb"],
+        help="session database family to mine (labdb = antfarm colony "
+             "transcripts, docs/labDB-handoff.md)",
     )
     sessminer.add_argument(
         "--db",
@@ -1245,11 +1246,14 @@ def _cmd_escalate(args):
 def _cmd_mine_sessions(args):
     """S47.1/S62: read-only session mining into the experience store."""
     from .agent.experience import ExperienceStore
+    from .agent.labdb_mine import LabDbMiner
     from .agent.opencode_mine import MiningError, OpencodeMiner
     from .agent.zcode_mine import ZcodeMiner
     try:
         if args.source == "zcode":
             miner = ZcodeMiner(args.db)
+        elif args.source == "labdb":
+            miner = LabDbMiner(args.db)
         else:
             miner = OpencodeMiner(args.db)
         store = None if args.dry_run else ExperienceStore(args.store_path)

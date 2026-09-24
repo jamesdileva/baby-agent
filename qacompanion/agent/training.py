@@ -22,6 +22,7 @@ Pins (fixtures-first discipline):
 
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -66,6 +67,8 @@ class TrajectoryRecord:
     outcome: str = ""
     final_answer: Optional[str] = None
     verification_failures: List[Dict[str, Any]] = field(default_factory=list)
+    truncated: bool = False
+    capture_tier: str = "behavior-trace"
     inefficient: bool = False
     provenance: Dict[str, Any] = field(default_factory=dict)
     eligible: bool = False
@@ -87,6 +90,8 @@ class TrajectoryRecord:
             "resolution": self.resolution,
             "verification": self.verification,
             "verification_failures": self.verification_failures,
+            "truncated": self.truncated,
+            "capture_tier": self.capture_tier,
             "outcome": self.outcome,
             "final_answer": self.final_answer,
             "inefficient": self.inefficient,
@@ -137,6 +142,11 @@ def _record_from_trajectory(traj: Dict[str, Any]) -> TrajectoryRecord:
         verification_failures=_with_after_steps(
             traj.get("verification_failures") or [],
             traj.get("verification") or {}),
+        # D6: mark truncation honestly — a cut trajectory used to train
+        # as a complete one. Bounded captures are behavior TRACES, not
+        # replayable demonstrations; both facts are labeled.
+        truncated=(len(traj.get("steps") or []) > MAX_STEPS
+                   or len(traj.get("verification_failures") or []) > 3),
         outcome=traj.get("outcome") or "",
         final_answer=traj.get("final_answer"),
         inefficient=any(p.get("dimension") == "efficiency"
@@ -214,6 +224,16 @@ def format_tool_call(name: str, args: Dict[str, Any]) -> str:
 _RUNTIME_CATALOG: Optional[List[Any]] = None
 
 
+def reset_runtime_catalog() -> None:
+    """D6 (super-audit): the process-global catalog cache never
+    invalidated — catalog changes mid-process (or tests mutating
+    LEAN_MODEL_CATALOG) were invisible. Tests and catalog-changing
+    code call this; normal builds keep the cache (building a
+    throwaway registry per record would be waste)."""
+    global _RUNTIME_CATALOG
+    _RUNTIME_CATALOG = None
+
+
 def _runtime_catalog() -> List[Any]:
     """Resolve the benchmark's lean catalog names to ToolDefinitions
     from a throwaway registry (cached per process) — the training
@@ -247,7 +267,8 @@ def _chat_record(record: TrajectoryRecord) -> Dict[str, Any]:
     system = (build_system_prompt(tools=_runtime_catalog(),
                                   native_tools=False)
               + TOOL_PROTOCOL_PROMPT)
-    goal = record.goal.split(" (benchmark run")[0]
+    goal = re.sub(r"\s*\(benchmark run [0-9a-f]{8}\)$", "",
+                  record.goal)
     messages: List[Dict[str, str]] = [{"role": "system", "content": system},
                                       {"role": "user",
                                        "content": goal}]
@@ -292,7 +313,9 @@ def _chat_record(record: TrajectoryRecord) -> Dict[str, Any]:
             "metadata": {"session_id": record.session_id,
                          "source": record.source,
                          "model": record.context.get("model"),
-                         "steps": len(record.steps)}}
+                         "steps": len(record.steps),
+                         "capture_tier": record.capture_tier,
+                         "truncated": record.truncated}}
 
 
 def build_records(curated_dir=None) -> List[TrajectoryRecord]:
@@ -304,13 +327,18 @@ def build_records(curated_dir=None) -> List[TrajectoryRecord]:
         raise TrainingError(
             f"curated export not found: {path} — run 'qa curate' first")
     records: List[TrajectoryRecord] = []
+    invalid_count = 0
     for raw in path.read_text(encoding="utf-8-sig").splitlines():
         if not raw.strip():
             continue
         traj = json.loads(raw)
         if traj.get("classification") == "INVALID":
-            continue  # invalid data never becomes a training record
+            # D6 (super-audit): INVALID used to vanish silently — the
+            # "exclusions carry reasons" pin applies to it too
+            invalid_count += 1
+            continue
         records.append(_record_from_trajectory(traj))
+    build_records.last_invalid_count = invalid_count
     return records
 
 
@@ -325,6 +353,8 @@ def build_training(curated_dir=None, out_dir=None,
         "classes": _tally(r.trajectory_class for r in records),
         "eligible": len(eligible),
         "step_trainable": len(step_trainable),
+        "invalid_skipped": getattr(build_records, "last_invalid_count", 0),
+        "truncated": sum(1 for r in records if r.truncated),
         "excluded": _tally(r.trajectory_class for r in records
                            if not r.eligible),
         "exclusion_reasons": _tally_reasons(records),

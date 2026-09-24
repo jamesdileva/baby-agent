@@ -317,16 +317,24 @@ class SyntheticCurriculum:
         self._goals: set = set()
         self._counter = 0
 
-    def generate(self, count: int, level: Optional[int] = None
-                 ) -> List[CurriculumTask]:
+    def generate(self, count: int, level: Optional[int] = None,
+                 strict: bool = False) -> List[CurriculumTask]:
         """Generate up to count tasks; repeated normalized goals are
-        skipped (roadmap repeated-task reduction)."""
+        skipped (roadmap repeated-task reduction). D2 (super-audit): a
+        silent shortfall invalidates dataset-size comparisons —
+        accounting lands in `last_run_accounting` (requested / produced
+        / skipped_duplicates / exhausted) and strict=True raises
+        CurriculumError when fewer than count tasks can be produced."""
         if count < 1:
             raise CurriculumError("count must be >= 1")
         generated: List[CurriculumTask] = []
         attempts = 0
+        skipped_duplicates = 0
+        exhausted = False
         while len(generated) < count and attempts < count * 20:
             attempts += 1
+            if attempts >= count * 20 and len(generated) < count:
+                exhausted = True
             variant = self._rng.randrange(1000)
             category = self.categories[
                 (self._counter + variant) % len(self.categories)]
@@ -340,10 +348,22 @@ class SyntheticCurriculum:
             task = self._build(category, task_level, variant)
             goal_key = _normalize(task.goal)
             if goal_key in self._goals:
+                skipped_duplicates += 1
                 continue  # repeated goal: skip (roadmap dedupe rule)
             self._goals.add(goal_key)
             self._tasks.append(task)
             generated.append(task)
+        # D2 (super-audit): silent shortfalls invalidate comparisons
+        self.last_run_accounting = {
+            "requested": count, "produced": len(generated),
+            "skipped_duplicates": skipped_duplicates,
+            "exhausted": exhausted,
+        }
+        if strict and len(generated) < count:
+            raise CurriculumError(
+                f"requested {count} tasks, produced {len(generated)} "
+                f"(skipped {skipped_duplicates} duplicate goals, "
+                f"exhausted={exhausted})")
         return generated
 
     def _build(self, category: str, level: int,
@@ -376,7 +396,12 @@ class SyntheticCurriculum:
             seed=self.seed + self._counter)
 
     def coverage(self) -> Dict[str, int]:
-        """The coverage matrix: skill -> task count (dataset-bias check)."""
+        """Skill -> task count. D2 (super-audit): this is a LABEL
+        FREQUENCY histogram, not capability coverage — ten near-
+        identical bug_fix tasks read as "strong debugging coverage".
+        The real matrix (skill x difficulty x family x outcome rates)
+        belongs to the S57/S74 harness over generated tasks; read this
+        number as dataset bias, nothing more."""
         coverage: Dict[str, int] = {}
         for task in self._tasks:
             for skill in task.skills:
