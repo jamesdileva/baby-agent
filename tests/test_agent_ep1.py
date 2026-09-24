@@ -282,7 +282,9 @@ class TrainingKitTests(unittest.TestCase):
             # transformers v5 batched-return normalization (the
             # 0/116 mask-gate catch)
             self.assertIn('isinstance(full, dict)', script)
-            self.assertIn('isinstance(full[0], list)', script)
+            self.assertIn('hasattr(full, "tolist")', script)
+            self.assertIn('isinstance(full[0], (list, tuple))', script)
+            self.assertIn('KIT_VERSION', script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)

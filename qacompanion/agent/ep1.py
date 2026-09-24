@@ -638,6 +638,9 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
+KIT_VERSION = "s76.1"
+
+
 def load_dataset(path=DATASET):
     rows = [json.loads(line) for line in open(path, encoding="utf-8")
             if line.strip()]
@@ -653,6 +656,7 @@ def main():
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from trl import SFTConfig, SFTTrainer
 
+    print(f"kit version: {KIT_VERSION}")
     rows = load_dataset()
     print(f"training records: {len(rows)}")
 
@@ -678,13 +682,18 @@ def main():
         for index, message in enumerate(messages):
             full = tokenizer.apply_chat_template(
                 messages[:index + 1], tokenize=True)
-            # transformers v5 returns a BATCHED list ([[ids]]); flatten
-            # every shape to flat token ids (mask-gate catch, 2026-09-24:
-            # the nested shape made every render "1 token" and dropped
-            # all assistant spans)
+            # S76.1: normalize EVERY known return shape to flat ids —
+            # transformers v5 has been seen returning dict (input_ids
+            # key), batched nested lists, and tensors (the 0/116
+            # mask-gate catches persisted because the tensor shape
+            # passed the list checks: full[0] is a row-tensor, not a
+            # list, so nothing flattened and every render read as
+            # "1 token")
             while isinstance(full, dict):
                 full = full["input_ids"]
-            while full and isinstance(full[0], list):
+            if hasattr(full, "tolist"):
+                full = full.tolist()
+            while full and isinstance(full[0], (list, tuple)):
                 full = full[0]
             new_tokens = full[prev_len:]
             prev_len = len(full)
