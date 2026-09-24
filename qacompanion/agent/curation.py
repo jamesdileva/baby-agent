@@ -546,11 +546,16 @@ class TrajectoryCurator:
                     "name": _skill_name(exp.goal),
                     "goal": exp.goal,
                     "description": exp.goal,
-                    "required_tools": sorted(set(exp.actions)),
+                    "required_tools": sorted(
+                        {a for a in exp.actions if isinstance(a, str)}),
                     "preconditions": [],
-                    "procedure": [{"step": i, "tool": tool}
-                                  for i, tool in enumerate(exp.actions, 1)],
-                    "verification": {},
+                    # S75.3: procedure steps are RENDERED calls (tool + the
+                    # captured args), not bare tool names — and the whole
+                    # candidate validates as a Skill (underscore name,
+                    # list[str] procedure, string verification), so the
+                    # curation->skills handoff loads instead of breaking.
+                    "procedure": _skill_procedure(exp),
+                    "verification": "",
                     "failure_modes": [],
                     "examples": [],
                     "confidence": traj.overall,
@@ -642,8 +647,64 @@ def _candidate_signature(goal: str, failure: str) -> str:
 
 
 def _skill_name(goal: str) -> str:
+    # S75.3: underscore-joined so the candidate satisfies the Skill name
+    # rule ([a-z][a-z0-9_]*); hyphenated names failed skill_teach
+    # validation, breaking the curation->skills handoff by construction.
     words = re.findall(r"[a-z0-9]+", goal.lower())[:5]
-    return "-".join(words) or "unnamed-skill"
+    name = "_".join(words) or "unnamed_skill"
+    if not name[0].isascii() or not name[0].isalpha():
+        name = "skill_" + name
+    return name
+
+
+def _skill_procedure(experience) -> List[str]:
+    """Render one candidate's procedure as followable call strings.
+
+    Captured step args (session_learning's bounded tool_calls) are paired
+    by position with the action names; mined records without step capture
+    fall back to bare tool names. Values are already capture-bounded, so
+    the rendering stays compact.
+    """
+    captured = experience.context.get("tool_calls")
+    if not isinstance(captured, list):
+        captured = []
+    steps: List[str] = []
+    for index, action in enumerate(experience.actions):
+        if not isinstance(action, str):
+            continue
+        args: Dict[str, Any] = {}
+        if index < len(captured) and isinstance(captured[index], dict):
+            step = captured[index]
+            if step.get("tool") == action and isinstance(
+                    step.get("args"), dict):
+                args = step["args"]
+        steps.append(_render_step_call(action, args))
+    return steps
+
+
+def _render_step_call(tool: str, args: Dict[str, Any]) -> str:
+    """One procedure step: tool plus its demonstrated arguments.
+
+    Same value dialect as training.format_tool_call (quoted strings with
+    backslash/quote escaping, bare true/false/null/numbers) so a step
+    reads exactly like the calls the runtime parses.
+    """
+    parts = []
+    for key, value in (args or {}).items():
+        if isinstance(value, str):
+            rendered = '"' + (value[:200].replace("\\", "\\\\")
+                              .replace('"', '\\"')) + '"'
+        elif isinstance(value, bool):
+            rendered = "true" if value else "false"
+        elif value is None:
+            rendered = "null"
+        elif isinstance(value, (int, float)):
+            rendered = str(value)
+        else:
+            rendered = json.dumps(value, ensure_ascii=False,
+                                  default=str)[:200]
+        parts.append(f"{key}={rendered}")
+    return f"{tool}({', '.join(parts)})" if parts else tool
 
 
 def _write_jsonl_atomic(path: Path, records: List[Dict[str, Any]]) -> None:

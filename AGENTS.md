@@ -80,6 +80,21 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-24 — **S75.3 Super-audit S3 — curation→skills handoff
+  repaired + `from_dict` gate (C2/C3)** — candidates now validate as
+  `Skill`: `_skill_name` joins with underscores (plus `skill_` prefix
+  when the goal starts non-alpha), procedures render as followable call
+  strings with the captured step args (`read_file(path="w.py")`, mined
+  records fall back to bare names — G7's arg loss closed where capture
+  exists), `verification` emits `""` not `{}`. `Skill.from_dict`
+  rejects scalar-where-list (`"read_file"` no longer char-splits),
+  non-string steps (no `str()` coercion), and non-str
+  description/verification. Pre-fix probe proved each mode firsthand
+  (hyphen name rejected, dict procedure rejected, `['r','e','a','d',…]`
+  split, `42→'42'` coercion); updated the curation shape test that had
+  pinned the hyphenated bug. New `tests/test_agent_skill_handoff.py`
+  (9 tests). Suite 1623 OK (1614 + 9 new). No spec impact.
+
 - 2026-09-24 — **S75.2 Super-audit S2 — textual protocol hardened +
   renderer round-trip pinned (B1/B2)** — `_parse_textual_tool_calls`
   rebuilt on a quote/escape-aware scanner (`_scan_tool_call`): two calls

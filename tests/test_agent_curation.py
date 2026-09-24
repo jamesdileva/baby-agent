@@ -290,6 +290,11 @@ class CuratorTests(unittest.TestCase):
         self.assertEqual(3, report["unique_after_dedupe"])
 
     def test_skill_candidate_shape_and_gate(self):
+        # S75.3: the candidate must load as a Skill (underscore name,
+        # list[str] procedure, string verification) — the hyphenated
+        # name and dict procedure pinned here before broke the
+        # curation->skills handoff by construction.
+        from qacompanion.agent.skills import Skill
         store = self._store([
             _exp(outcome="success", confidence=0.9,
                  actions=["read", "edit", "run_tests"],
@@ -299,9 +304,12 @@ class CuratorTests(unittest.TestCase):
         self.assertEqual(1, report["lessons"]["skill_candidates"])
         skill = json.loads((self.out_dir / "skills.jsonl").read_text(
             encoding="utf-8"))
-        self.assertEqual("fix-the-login-timeout-bug", skill["name"])
+        self.assertEqual("fix_the_login_timeout_bug", skill["name"])
         self.assertIn("run_tests", skill["required_tools"])
         self.assertEqual(3, len(skill["procedure"]))
+        self.assertTrue(all(isinstance(step, str) for step in skill["procedure"]))
+        Skill.from_dict({k: v for k, v in skill.items()
+                         if k != "provenance"})
 
 
 class CliTests(unittest.TestCase):

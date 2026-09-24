@@ -92,13 +92,31 @@ class Skill:
         _require(isinstance(data, dict), "skill record must be an object")
         _require("name" in data and "goal" in data and "procedure" in data,
                  "skill record missing name/goal/procedure")
+        # S75.3: no silent coercion — list("read_file") splits a string
+        # into characters and str(step) hides non-string steps; both
+        # corrupted records that later validated. Reject at the gate.
+        _require(isinstance(data["procedure"], list),
+                 "skill procedure must be a list of steps")
+        for field_name in ("required_tools", "preconditions",
+                           "failure_modes", "tags"):
+            _require(isinstance(data.get(field_name, []), list)
+                     and all(isinstance(item, str)
+                             for item in data.get(field_name, [])),
+                     f"skill {field_name} must be a list of strings")
+        _require(isinstance(data.get("examples", []), list)
+                 and all(isinstance(item, dict)
+                         for item in data.get("examples", [])),
+                 "skill examples must be a list of objects")
+        for field_name in ("description", "verification"):
+            _require(isinstance(data.get(field_name, ""), str),
+                     f"skill {field_name} must be a string")
         return cls(
             name=data["name"],
             goal=data["goal"],
             description=data.get("description", ""),
             required_tools=list(data.get("required_tools", [])),
             preconditions=list(data.get("preconditions", [])),
-            procedure=[str(step) for step in data["procedure"]],
+            procedure=list(data["procedure"]),
             verification=data.get("verification", ""),
             failure_modes=list(data.get("failure_modes", [])),
             examples=list(data.get("examples", [])),

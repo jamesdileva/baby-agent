@@ -14,7 +14,7 @@ but not developed, unless they directly cause an execution or data-integrity bug
 
 - [x] S1 — A1 + F16 gate: five typing imports, annotation-resolution test, CI matrix
 - [x] S2 — B1 + B2: textual parser hardening + renderer round-trip ✅
-- [ ] S3 — C2 + C3: curation→skills handoff + `from_dict` guards
+- [x] S3 — C2 + C3: curation→skills handoff + `from_dict` guards ✅
 - [ ] S4 — D7(G3): apprenticeship lesson delivery
 - [ ] S5 — D1(level) + D3 + D4.2: measurement trio
 - [ ] S6 — A3: store concurrency locks + contention tests
