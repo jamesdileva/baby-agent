@@ -663,6 +663,8 @@ def main():
     # non-assistant span at -100 so the loss trains ONLY on the
     # model's own behavior: [TOOL: ...] calls and final answers.
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
 
     def masked_example(messages):
         """Render the conversation incrementally through the joint chat
@@ -676,6 +678,14 @@ def main():
         for index, message in enumerate(messages):
             full = tokenizer.apply_chat_template(
                 messages[:index + 1], tokenize=True)
+            # transformers v5 returns a BATCHED list ([[ids]]); flatten
+            # every shape to flat token ids (mask-gate catch, 2026-09-24:
+            # the nested shape made every render "1 token" and dropped
+            # all assistant spans)
+            while isinstance(full, dict):
+                full = full["input_ids"]
+            while full and isinstance(full[0], list):
+                full = full[0]
             new_tokens = full[prev_len:]
             prev_len = len(full)
             input_ids.extend(new_tokens)
