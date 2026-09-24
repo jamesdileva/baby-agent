@@ -2,7 +2,6 @@
 MemoryLayer, tools. All hermetic with temp files."""
 
 import json
-import os
 import shutil
 import tempfile
 import unittest
@@ -11,7 +10,6 @@ from pathlib import Path
 from qacompanion.agent import ToolCall, ToolRegistry, Workspace
 from qacompanion.agent.experience import (
     Experience,
-    ExperienceError,
     ExperienceStore,
     MemoryLayer,
     MemoryToolkit,

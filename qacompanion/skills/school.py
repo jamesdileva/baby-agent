@@ -19,9 +19,7 @@ Exit contract (proposed spec amendment):
 """
 
 import sys
-from pathlib import Path
 
-from .. import store
 from . import journal
 
 

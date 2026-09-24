@@ -324,28 +324,28 @@ class UnicodeTests(TempDirTest):
     def test_emoji_title_round_trips(self):
         path = self.tmp / "tasks.jsonl"
         store = task.TaskStore(path)
-        t = store.add("Fix the \U0001f4a9 bug")
+        store.add("Fix the \U0001f4a9 bug")
         loaded = task.TaskStore(path).load()
         self.assertEqual("Fix the \U0001f4a9 bug", loaded[0]["title"])
 
     def test_cjk_title_round_trips(self):
         path = self.tmp / "tasks.jsonl"
         store = task.TaskStore(path)
-        t = store.add("\u4fee\u590d\u5e03\u5c40\u9519\u8bef")
+        store.add("\u4fee\u590d\u5e03\u5c40\u9519\u8bef")
         loaded = task.TaskStore(path).load()
         self.assertEqual("\u4fee\u590d\u5e03\u5c40\u9519\u8bef", loaded[0]["title"])
 
     def test_rtl_title_round_trips(self):
         path = self.tmp / "tasks.jsonl"
         store = task.TaskStore(path)
-        t = store.add("\u062a\u0635\u062d\u064a\u062d \u0627\u0644\u062e\u0637\u0623")
+        store.add("\u062a\u0635\u062d\u064a\u062d \u0627\u0644\u062e\u0637\u0623")
         loaded = task.TaskStore(path).load()
         self.assertEqual("\u062a\u0635\u062d\u064a\u062d \u0627\u0644\u062e\u0637\u0623", loaded[0]["title"])
 
     def test_mixed_scripts_title(self):
         path = self.tmp / "tasks.jsonl"
         store = task.TaskStore(path)
-        t = store.add("Fix \u00e9motion \u4e16\u754c")
+        store.add("Fix \u00e9motion \u4e16\u754c")
         loaded = task.TaskStore(path).load()
         self.assertEqual("Fix \u00e9motion \u4e16\u754c", loaded[0]["title"])
 
@@ -354,14 +354,14 @@ class HugeTitleTests(TempDirTest):
     def test_10k_char_title_accepted(self):
         path = self.tmp / "tasks.jsonl"
         big = "x" * 10000
-        t = task.TaskStore(path).add(big)
+        task.TaskStore(path).add(big)
         loaded = task.TaskStore(path).load()
         self.assertEqual(big, loaded[0]["title"])
 
     def test_100k_char_title_accepted(self):
         path = self.tmp / "tasks.jsonl"
         big = "y" * 100000
-        t = task.TaskStore(path).add(big)
+        task.TaskStore(path).add(big)
         loaded = task.TaskStore(path).load()
         self.assertEqual(big, loaded[0]["title"])
 

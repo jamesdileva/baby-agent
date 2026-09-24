@@ -1,16 +1,13 @@
 """Tests for S21 archive-mine skill: learn from past eras."""
 
 import json
-import os
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from qacompanion.skills.archive_mine import (
     MineError,
-    _construct_signature,
     _dedup_cases,
     _extract_diagnosis,
     _extract_error_excerpt,

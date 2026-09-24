@@ -1,6 +1,5 @@
 """CLI dispatch tests for the record subcommand (exit-code policy)."""
 
-import json
 import os
 import tempfile
 import unittest

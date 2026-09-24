@@ -9,7 +9,6 @@ Empty skills dir = no rules; core behavior is identical.
 
 import json
 import re
-import sys
 import threading
 from pathlib import Path
 

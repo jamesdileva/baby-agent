@@ -1,12 +1,11 @@
 """Tests for S23 candidate detection."""
 
 import json
-import os
 import tempfile
 import unittest
 from pathlib import Path
 
-from qacompanion import detect, store
+from qacompanion import detect
 
 
 class TestDetectModule(unittest.TestCase):

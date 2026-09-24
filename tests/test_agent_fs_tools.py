@@ -16,7 +16,6 @@ from pathlib import Path
 from qacompanion.agent import ToolCall, ToolRegistry, Workspace
 from qacompanion.agent.fs_tools import (
     MAX_READ_BYTES,
-    ChangeLedger,
     FilesystemToolkit,
     agent_registry,
 )

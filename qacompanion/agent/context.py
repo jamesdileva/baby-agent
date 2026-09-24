@@ -17,12 +17,11 @@ Pins (fixtures-first discipline):
 """
 
 import json
-import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .contracts import ModelMessage
-from .experience import MemoryLayer, ExperienceStore
+from .experience import MemoryLayer
 
 
 class ContextError(ValueError):
@@ -199,7 +198,7 @@ class ContextBuilder:
 
     def build(self, session: Any, offered_tools: List[Any],
               native_tools: bool = False) -> List[ModelMessage]:
-        from .loop import build_system_prompt
+        pass
 
         # priorities: system > goal > memory block > latest tool result
         # (verbatim) > recent turns (reduced) > older turns (digest)

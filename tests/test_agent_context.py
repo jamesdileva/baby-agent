@@ -8,7 +8,6 @@ import unittest
 from pathlib import Path
 
 from qacompanion.agent import (
-    AgentConfig,
     AgentLoop,
     AgentSession,
     AgentState,
@@ -16,7 +15,6 @@ from qacompanion.agent import (
     ModelMessage,
     ModelResponse,
     ToolCall,
-    ToolResult,
     Workspace,
 )
 from qacompanion.agent.context import (

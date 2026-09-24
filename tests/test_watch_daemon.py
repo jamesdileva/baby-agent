@@ -2,14 +2,11 @@
 
 import json
 import os
-import signal
 import tempfile
 import threading
 import time
 import unittest
-from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch
 
 from qacompanion.watch import (
     LEDGER_VERSION,

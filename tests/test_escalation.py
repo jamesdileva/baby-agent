@@ -5,12 +5,10 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from qacompanion.__main__ import build_parser, main
 from qacompanion.escalation import (
     CONFIDENCE_MARKERS,
-    EscalationError,
     detect_confidence,
     format_escalation_output,
     format_escalation_question,
@@ -305,14 +303,14 @@ class TestCLIEscalate(unittest.TestCase):
     def test_escalate_basic(self):
         argv = ["escalate", "What causes error X?"]
         parser = build_parser()
-        args = parser.parse_args(argv)
+        parser.parse_args(argv)
         result = main(argv)
         self.assertEqual(result, 0)
 
     def test_escalate_with_context(self):
         argv = ["escalate", "What causes error X?", "--context", "case #1: sig=foo"]
         parser = build_parser()
-        args = parser.parse_args(argv)
+        parser.parse_args(argv)
         result = main(argv)
         self.assertEqual(result, 0)
 

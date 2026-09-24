@@ -16,7 +16,6 @@ Pins (fixtures-first discipline):
 import hashlib
 import json
 import os
-import re
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path

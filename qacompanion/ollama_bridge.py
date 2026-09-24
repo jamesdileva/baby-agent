@@ -311,7 +311,7 @@ def _build_prompt(query, context, use_tools=False):
         parts.append("No relevant context found in the case base or documentation.")
         parts.append("")
 
-    parts.append(f"## Question")
+    parts.append("## Question")
     parts.append(query)
 
     prompt = "\n".join(parts)

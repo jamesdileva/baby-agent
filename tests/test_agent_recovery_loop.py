@@ -4,7 +4,6 @@ All hermetic — scripted fake brains; the escalation swap proves the
 session completes on a SECOND provider.
 """
 
-import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,10 +19,8 @@ from qacompanion.agent import (
 )
 from qacompanion.agent.benchmark import coding_registry
 from qacompanion.agent.recovery import (
-    FailureTracker,
     RecoveryPolicy,
     RecoveryStateMachine,
-    Strategy,
 )
 
 
@@ -139,7 +136,7 @@ class TestToolFailureRecovery(RecoveryLoopBase):
 
 class TestVerificationRecovery(RecoveryLoopBase):
     def test_ask_user_terminates_after_repeats(self):
-        provider = FakeModelProvider([])
+        FakeModelProvider([])
         # stateless final-answer-only brain that never satisfies verifier
         class FinalOnly(FakeModelProvider):
             def generate(self, request):

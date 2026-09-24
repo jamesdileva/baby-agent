@@ -1,7 +1,6 @@
 """S64 slices 2+3 tests: ep0.5 demonstration injection (worked examples
 in context assembly) and dashboard brain selection."""
 
-import json
 import os
 import tempfile
 import unittest
@@ -153,7 +152,7 @@ class BenchmarkPassthroughTests(unittest.TestCase):
                     memory_layer=MemoryLayer(
                         experience_store=store,
                         cases_path=Path(tmp) / "no-cases.jsonl")))
-            report = run_benchmark(ProbeProvider([]),
+            run_benchmark(ProbeProvider([]),
                                    context_builder=builder)
             # the provider fakes a final answer; verification fails and
             # that is fine — we only assert the demo reached the model

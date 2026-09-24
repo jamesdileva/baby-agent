@@ -7,7 +7,6 @@ sys.executable on a port the test reserves (bind-0) then releases.
 import json
 import shutil
 import socket
-import subprocess
 import sys
 import tempfile
 import time
@@ -17,7 +16,6 @@ from pathlib import Path
 from qacompanion.agent import ToolCall, ToolRegistry, Workspace
 from qacompanion.agent.fs_tools import agent_registry
 from qacompanion.agent.processes import (
-    ProcessError,
     ProcessToolkit,
     port_available,
     port_serving,
@@ -114,7 +112,7 @@ class TestRoadmapChain(ProcessTestBase):
         status = self.payload("process_status", handle=handle)
         self.assertEqual(status["state"], "running")
         self.assertGreater(status["uptime_seconds"], 0)
-        joined = " ".join(status["recent_output"])
+        " ".join(status["recent_output"])
         self.assertTrue(
             self.wait_until(lambda: "SERVER-STARTED" in " ".join(
                 self.payload("process_status", handle=handle)

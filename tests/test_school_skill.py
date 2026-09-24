@@ -8,7 +8,6 @@ import io
 import os
 import tempfile
 import unittest
-from pathlib import Path
 
 from qacompanion import store
 from qacompanion.skills import school

@@ -18,7 +18,7 @@ Pins (fixtures-first discipline):
 
 import json
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 from .contracts import ModelMessage, ModelRequest, ToolCall, ToolResult
 from .registry import SAFE_WRITE, EXECUTION, DESTRUCTIVE, EXTERNAL, ToolRegistry

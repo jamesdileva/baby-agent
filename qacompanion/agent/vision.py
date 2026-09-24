@@ -28,7 +28,6 @@ import urllib.error
 import urllib.request
 import zlib
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 

@@ -14,7 +14,6 @@ from qacompanion.agent import ToolCall, ToolRegistry, Workspace
 from qacompanion.agent.fs_tools import agent_registry
 from qacompanion.agent.skills import (
     Skill,
-    SkillError,
     SkillLibrary,
     SkillToolkit,
 )

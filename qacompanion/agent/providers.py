@@ -24,7 +24,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
 from .. import ollama_bridge as bridge
-from .. import tools as tools_mod
 from .contracts import ModelMessage, ModelRequest, ModelResponse, ToolCall
 
 

@@ -14,7 +14,6 @@ Pins (fixtures-first discipline):
 """
 
 import re
-from pathlib import Path
 
 from . import store as store_mod
 

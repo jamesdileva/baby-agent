@@ -1,8 +1,5 @@
 """Tests for module-contract skills (S17): guarded Python skill interface."""
 
-import importlib
-import importlib.util
-import os
 import sys
 import tempfile
 import textwrap
@@ -11,9 +8,7 @@ from pathlib import Path
 
 from qacompanion.skills.module_contract import (
     ContractError,
-    ModuleSkill,
     SkillBase,
-    _load_one,
     _validate_meta,
     _validate_skill_class,
     discover_modules,

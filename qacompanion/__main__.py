@@ -1117,7 +1117,7 @@ def _cmd_mine(args):
         return 1
     for path, err in results["errors"]:
         print(f"warning: {path}: {err}", file=sys.stderr)
-    count = archive_mine.export_mined(results["cases"], args.out)
+    archive_mine.export_mined(results["cases"], args.out)
     print(archive_mine.format_results(results))
     return 0
 

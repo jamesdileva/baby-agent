@@ -222,7 +222,7 @@ class ScanUnitTests(unittest.TestCase):
 
     def test_unreadable_repo_counted_as_skipped(self):
         self.repo("ok-repo")
-        broken = self.repo("broken-repo")
+        self.repo("broken-repo")
 
         def selective_git(repo_dir, *args):
             if Path(repo_dir).name == "broken-repo":

@@ -9,12 +9,11 @@ import json
 import logging
 import os
 import signal
-import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .skills.digest import DigestError, DigestStore, digest_directory, parse_markdown
+from .skills.digest import DigestError, DigestStore, parse_markdown
 
 logger = logging.getLogger(__name__)
 

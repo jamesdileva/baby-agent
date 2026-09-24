@@ -12,7 +12,6 @@ import unittest
 from pathlib import Path
 
 from qacompanion.agent import (
-    FakeModelProvider,
     ModelResponse,
     ToolCall,
     ToolRegistry,

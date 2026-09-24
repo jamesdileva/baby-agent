@@ -362,7 +362,7 @@ class TestToolsRegistry(unittest.TestCase):
 
 class TestToolInstructions(unittest.TestCase):
     def test_prompt_includes_tools_when_enabled(self):
-        from qacompanion.ollama_bridge import _build_prompt, TOOL_INSTRUCTIONS
+        from qacompanion.ollama_bridge import _build_prompt
         context = {"cases": [], "digest": []}
         prompt = _build_prompt("test", context, use_tools=True)
         self.assertIn("Research Tools", prompt)

@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from .registry import EXTERNAL, RegisteredTool, ToolDefinition, ToolOperationError, ToolRegistry
 from .workspace import PathError, Workspace
-from .vision import decode_png, encode_png
+from .vision import encode_png
 
 
 class BrowserError(ToolOperationError):

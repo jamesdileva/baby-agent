@@ -10,7 +10,6 @@ import unittest
 from pathlib import Path
 
 from qacompanion.agent import (
-    AgentConfig,
     AgentLoop,
     AgentState,
     Event,

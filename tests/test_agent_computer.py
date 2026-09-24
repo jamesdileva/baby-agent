@@ -13,8 +13,6 @@ from pathlib import Path
 from qacompanion.agent import ToolCall, ToolRegistry, Workspace
 from qacompanion.agent.computer import (
     ALLOWED_ACTIONS,
-    ComputerError,
-    ComputerProvider,
     ComputerUseConfig,
     ComputerUseToolkit,
     FakeComputerProvider,

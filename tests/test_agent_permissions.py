@@ -20,7 +20,6 @@ from qacompanion.agent import (
     AgentState,
     FakeModelProvider,
     ModelResponse,
-    PermissionDecision,
     PermissionPolicy,
     PermissionRule,
     ToolCall,

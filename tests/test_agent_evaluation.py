@@ -1,7 +1,6 @@
 """S57 evaluation harness tests: fixtures, runner, aggregation,
 persistence, compare. All hermetic via FakeModelProvider."""
 
-import json
 import shutil
 import sys
 import tempfile
@@ -10,7 +9,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 from qacompanion.agent import FakeModelProvider, ModelResponse, ToolCall
-from qacompanion.agent.benchmark import BENCHMARK_GOAL
 from qacompanion.agent.evaluation import (
     EvalError,
     EvalReport,

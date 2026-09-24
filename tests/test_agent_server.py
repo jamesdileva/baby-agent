@@ -7,7 +7,6 @@ complete deterministically.
 import json
 import sys
 import tempfile
-import threading
 import unittest
 import urllib.request
 from pathlib import Path
@@ -160,7 +159,7 @@ class TestSSEStream(ServerBase):
                     data=json.dumps({"goal": "endless"}).encode(),
                     headers={"Content-Type": "application/json"}),
                 timeout=5).read().decode())["session_id"]
-            stopped = self.post.__func__  # plain request below
+            self.post.__func__ # plain request below
             request = urllib.request.Request(
                 f"{server.url}/api/session/{session_id}/stop", data=b"{}",
                 headers={"Content-Type": "application/json"})

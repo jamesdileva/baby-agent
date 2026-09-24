@@ -21,7 +21,6 @@ from pathlib import Path
 from . import accuracy
 from . import store as store_mod
 from .skills import digest as digest_mod
-from .skills import journal as journal_mod
 
 
 def _atomic_write(path, payload):

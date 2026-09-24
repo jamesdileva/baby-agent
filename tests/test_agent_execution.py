@@ -6,7 +6,6 @@ into the temp workspace instead of fragile shell quoting.
 """
 
 import json
-import os
 import shutil
 import sys
 import tempfile
@@ -20,7 +19,6 @@ from qacompanion.agent.execution import (
     CommandResult,
     ExecutionToolkit,
     detect_command,
-    execute_command,
 )
 from qacompanion.agent.fs_tools import agent_registry
 

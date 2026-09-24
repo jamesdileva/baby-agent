@@ -1,7 +1,6 @@
 """S60 synthetic curriculum tests: determinism, dedupe, coverage,
 mastery adaptation, S57 bridge. All hermetic."""
 
-import json
 import subprocess
 import sys
 import tempfile

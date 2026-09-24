@@ -24,7 +24,7 @@ import random
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .evaluation import EvalTask
 
@@ -151,7 +151,7 @@ def _feature_add_fixture(variant: int, level: int):
 
 
 def _testing_fixture(variant: int, level: int):
-    module, func = ("calc_ops", "multiply"), "multiply"
+    func = "multiply"
     module_code = "def multiply(a, b):\n    return a * b\n"
     test_code = ("# The multiply function is implemented and correct — "
                  "but has no tests.\n# Write a unittest test class that "

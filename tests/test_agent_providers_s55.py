@@ -8,7 +8,7 @@ import urllib.error
 from unittest.mock import patch
 
 from qacompanion import ollama_bridge as bridge
-from qacompanion.agent import ModelMessage, ModelRequest, ModelResponse, ToolCall, ToolResult
+from qacompanion.agent import ModelMessage, ModelRequest, ToolCall, ToolResult
 from qacompanion.agent.providers import GeminiModelProvider, ProviderError
 
 
@@ -74,7 +74,7 @@ class TestOllamaNativeToolCalling(unittest.TestCase):
             with patch.dict(os.environ, {"OLLAMA_THINK": "false"}):
                 with patch.object(bridge, "_think_flag",
                                   return_value=False):
-                    resp = provider.generate(ModelRequest(
+                    provider.generate(ModelRequest(
                         messages=[ModelMessage(role="user", content="hi")],
                         tools=[ToolDefinition(
                             name="t", description="d",

@@ -1,7 +1,6 @@
 """Tests for skill registry (S16): rule packs, validation, matching, teach."""
 
 import json
-import os
 import tempfile
 import unittest
 from pathlib import Path

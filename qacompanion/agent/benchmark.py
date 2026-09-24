@@ -16,13 +16,12 @@ Pins (fixtures-first discipline):
   plan's result counts.
 """
 
-import json
 import sys
 import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from .events import EventStream
 from .execution import ExecutionToolkit

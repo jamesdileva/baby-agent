@@ -253,7 +253,7 @@ class TestFailureModes(unittest.TestCase):
     def test_non_repo_directory(self):
         tmp = Path(tempfile.mkdtemp())
         try:
-            out = ToolRegistry()
+            ToolRegistry()
             reg = ToolRegistry()
             for tool in GitToolkit(Workspace(tmp)).tools():
                 reg.register(tool)

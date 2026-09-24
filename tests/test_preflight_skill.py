@@ -11,7 +11,6 @@ never a traceback. Exit contract exercised: 0 pass, 1 violation,
 
 import contextlib
 import io
-import os
 import subprocess
 import tempfile
 import unittest

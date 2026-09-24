@@ -1,6 +1,5 @@
 """Tests for S20 digest skill: document ingestion and retrieval."""
 
-import json
 import shutil
 import tempfile
 import unittest
@@ -10,7 +9,6 @@ from unittest.mock import patch
 from qacompanion.skills.digest import (
     DigestError,
     DigestStore,
-    _content_hash,
     _snippet,
     digest_directory,
     format_results,

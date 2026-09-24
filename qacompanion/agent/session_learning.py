@@ -27,7 +27,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .experience import Experience, ExperienceStore, _normalize_goal
-from .loop import AgentLoop  # noqa: F401  (typing only)
 from .qa_brain import failure_text
 from .session import AgentSession, AgentState
 

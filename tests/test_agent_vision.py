@@ -41,8 +41,8 @@ def _solid(width, height, rgb):
 
 def _with_pixels(rows, positions):
     """positions: {(x, y): (r, g, b)} — returns new row list."""
-    height = len(rows)
-    width = len(rows[0]) // 3
+    len(rows)
+    len(rows[0]) // 3
     mutable = [bytearray(row) for row in rows]
     for (x, y), (r, g, b) in positions.items():
         offset = x * 3

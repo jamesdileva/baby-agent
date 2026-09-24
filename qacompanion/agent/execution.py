@@ -21,12 +21,10 @@ import json
 import os
 import signal
 import subprocess
-import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from .registry import EXECUTION, RegisteredTool, ToolDefinition, ToolOperationError, ToolRegistry
 from .workspace import PathError, Workspace

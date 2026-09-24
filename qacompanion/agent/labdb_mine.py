@@ -24,17 +24,15 @@ extraction).
 """
 
 import json
-import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .experience import Experience
 from .opencode_mine import (
-    ERROR_SHAPE_RE, MAX_ACTIONS, MAX_FAILURE_PAIRS, MAX_GOAL_CHARS,
-    MINED_OUTCOME, SUBSTANTIAL_GOAL_LESS_PARTS, MiningError,
-    OpencodeMiner, _clean_goal, _is_boilerplate,
+    ERROR_SHAPE_RE, MAX_ACTIONS, MAX_FAILURE_PAIRS, MINED_OUTCOME,
+    SUBSTANTIAL_GOAL_LESS_PARTS, MiningError, OpencodeMiner,
+    _clean_goal, _is_boilerplate,
 )
-from .workspace import ProjectMetadata
 
 DEFAULT_LABDB_PATH = (Path.home() / "AppData" / "Roaming" / "@antfarm"
                       / "shell" / "antfarm-home" / "project" / "lab.db")
@@ -158,7 +156,7 @@ class LabDbMiner(OpencodeMiner):
         tool_count = len(actions)
         actions = actions[:MAX_ACTIONS]
 
-        goal_was_missing = goal is None
+        goal is None
         if goal is None:
             if part_count < SUBSTANTIAL_GOAL_LESS_PARTS:
                 return None
@@ -166,11 +164,6 @@ class LabDbMiner(OpencodeMiner):
 
         status = str(session_row.get("status") or "unknown")
         directory = session_row.get("directory") or "unknown"
-        project_type = None
-        languages: List[str] = []
-        # the colony ran in antfarm-home; no per-session project
-        # directory exists, so project metadata stays honest-empty
-
         context: Dict[str, Any] = {
             "source": self.SOURCE_NAME,
             "directory": f"antfarm/{directory}",

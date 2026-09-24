@@ -28,7 +28,7 @@ import os
 import threading
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from .registry import DESTRUCTIVE, RegisteredTool, ToolDefinition, ToolOperationError, ToolRegistry

@@ -10,8 +10,8 @@ import unittest
 from pathlib import Path
 
 from qacompanion.agent import ToolCall, ToolRegistry, Workspace
-from qacompanion.agent.contracts import ModelMessage, ModelRequest, \
-    ToolDefinition, ToolResult
+from qacompanion.agent.contracts import ModelMessage, ToolDefinition, \
+    ToolResult
 from qacompanion.agent.loop import AgentLoop, _extract_changed_path
 from qacompanion.agent.providers import FakeModelProvider, \
     ModelResponse, _flatten_messages

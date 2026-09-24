@@ -19,10 +19,9 @@ import os
 import sys
 import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
 
 from . import detect
-from .teach import teach_rule, render_teach, RegistryError, DEFAULT_PACK
+from .teach import teach_rule, RegistryError, DEFAULT_PACK
 
 
 REJECTED_SIDECAR = "rules_rejected.jsonl"
@@ -205,7 +204,7 @@ def run_session(proposed_path=None, rejected_path=None, pack_path=None,
                     "diagnosis_hint": diag_hint,
                 }
                 try:
-                    pack = teach_rule(rule_dict, pack_path)
+                    teach_rule(rule_dict, pack_path)
                     approved += 1
                     adjudicated_ids.add(candidate["id"])
                     print(f"  -> approved and installed rule #{candidate['id']}\n")
@@ -229,7 +228,7 @@ def run_session(proposed_path=None, rejected_path=None, pack_path=None,
                     "diagnosis_hint": diag_hint,
                 }
                 try:
-                    pack = teach_rule(rule_dict, pack_path)
+                    teach_rule(rule_dict, pack_path)
                     corrected += 1
                     adjudicated_ids.add(candidate["id"])
                     print(f"  -> corrected and installed rule #{candidate['id']}\n")
@@ -258,7 +257,7 @@ def run_session(proposed_path=None, rejected_path=None, pack_path=None,
 
         elif choice == "s":
             skipped += 1
-            print(f"  -> skipped (kept in queue)\n")
+            print("  -> skipped (kept in queue)\n")
 
         elif choice == "q":
             print("  -> quitting session\n")

@@ -8,12 +8,10 @@ import unittest
 from pathlib import Path
 
 from qacompanion.agent import (
-    AgentConfig,
     AgentState,
     FakeModelProvider,
     ModelResponse,
     ToolCall,
-    Workspace,
 )
 from qacompanion.agent.benchmark import run_benchmark
 from qacompanion.agent.experience import Experience, ExperienceStore
@@ -23,7 +21,6 @@ from qacompanion.agent.session_learning import (
     curate,
     record_session,
     session_to_experience,
-    write_resume_skill,
 )
 from qacompanion.agent.session import AgentSession
 
@@ -249,7 +246,7 @@ class TestBenchmarkRecords(unittest.TestCase):
     def test_recovered_run_classified_as_recovered(self):
         import sys
         store = ExperienceStore(Path(tempfile.mkdtemp()) / "e.jsonl")
-        PY = f'"{sys.executable}"'
+        f'"{sys.executable}"'
         provider = FakeModelProvider([
             ModelResponse(text="Done!", finish_reason="stop"),
             ToolCall(name="edit_file", arguments={

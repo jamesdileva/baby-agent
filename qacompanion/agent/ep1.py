@@ -399,7 +399,7 @@ def _string_reverse_script(strategy: str, variant: int, level: int,
     """S73: mirrors the S57 string-reverse eval task — the corpus never
     covered this shape."""
     module = "string_utils"
-    func = "reverse"
+    "reverse"
     path = f"{module}.py"
     test_path = f"test_{module}.py"
     module_code = 'def reverse(text):\n    return text\n'
@@ -434,7 +434,7 @@ def _nested_lookup_script(strategy: str, variant: int, level: int,
                           python: str):
     """S73: mirrors the S57 nested-JSON-lookup eval task."""
     module = "config_parser"
-    func = "lookup"
+    "lookup"
     path = f"{module}.py"
     test_path = f"test_{module}.py"
     module_code = ('def lookup(data, key):\n    return data.get(key)\n')

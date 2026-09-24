@@ -11,8 +11,8 @@ from pathlib import Path
 from qacompanion.agent import ModelResponse
 from qacompanion.agent.curation import TrajectoryCurator
 from qacompanion.agent.ep1 import (
-    DEMO_MODEL_TAG, STRATEGIES, ScriptedDemonstrator, build_corpus,
-    build_demo, export_training_kit, format_corpus_report)
+    DEMO_MODEL_TAG, STRATEGIES, build_corpus, build_demo,
+    export_training_kit, format_corpus_report)
 from qacompanion.agent.experience import ExperienceStore
 from qacompanion.agent.training import build_training
 from qacompanion.agent.curriculum import bug_fix_defect

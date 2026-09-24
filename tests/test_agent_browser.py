@@ -243,7 +243,7 @@ class TestBrowserTools(FakeBrowserBase):
         self.assertEqual(extracted["title"], "New Task")
 
     def test_screenshot_writes_workspace_png(self):
-        payload = self.payload("browser_open", url=APP_URL)
+        self.payload("browser_open", url=APP_URL)
         shot = self.payload("browser_screenshot", path="shots/app.png")
         self.assertEqual(shot["path"], "shots/app.png")
         saved = (self.tmp / "shots" / "app.png").read_bytes()

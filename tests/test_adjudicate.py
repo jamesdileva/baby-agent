@@ -1,13 +1,12 @@
 """Tests for S24 adjudicate module."""
 
 import json
-import os
 import tempfile
 import unittest
 from io import StringIO
 from pathlib import Path
 
-from qacompanion import adjudicate, detect, store
+from qacompanion import adjudicate, detect
 
 
 def _make_candidate(cid, ctype="recurring", cases=None, desc="test candidate"):
@@ -181,7 +180,7 @@ class TestRunSession(unittest.TestCase):
 
     def test_approve(self):
         with tempfile.TemporaryDirectory() as td:
-            cases_path = self._make_case_base(td)
+            self._make_case_base(td)
             proposed_path = Path(td) / "rules_proposed.jsonl"
             rejected_path = Path(td) / "rules_rejected.jsonl"
             pack_path = Path(td) / "taught.json"

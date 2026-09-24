@@ -11,7 +11,6 @@ Exit: gap report generated; requested lessons closable via new cases.
 
 import re
 from collections import Counter
-from pathlib import Path
 
 from .. import store
 

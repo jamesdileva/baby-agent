@@ -28,7 +28,6 @@ import socket
 import subprocess
 import threading
 import time
-import urllib.request
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -294,7 +293,7 @@ class ProcessToolkit:
             raise ProcessError(
                 "health_check is localhost-only — use open_url for remote"
             )
-        port = parsed.port or 80
+        parsed.port or 80
         started = time.monotonic()
         try:
             with urllib.request.urlopen(url, timeout=5.0) as resp:

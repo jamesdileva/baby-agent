@@ -4,11 +4,8 @@ import json
 import os
 import tempfile
 import unittest
-from pathlib import Path
 
 from qacompanion import training
-from qacompanion import store as store_mod
-from qacompanion.skills import digest as digest_mod
 
 
 class CasesToPairsTest(unittest.TestCase):

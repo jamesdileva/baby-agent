@@ -4,13 +4,11 @@ delays (F13). All hermetic — the wall-clock test uses an event-based
 hang, generous margins, and no live providers.
 """
 
-import concurrent.futures
 import io
 import threading
 import time
 import unittest
 import urllib.error
-from unittest import mock
 
 from qacompanion.agent import ToolCall, ToolRegistry
 from qacompanion.agent.permissions import PermissionPolicy

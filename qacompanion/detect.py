@@ -14,7 +14,6 @@ import os
 import tempfile
 from collections import defaultdict
 from datetime import datetime, timezone
-from pathlib import Path
 
 from . import store
 

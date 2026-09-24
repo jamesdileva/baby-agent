@@ -5,9 +5,7 @@ merge --into A --from B re-points B's times_seen onto A and removes B
 by near-duplicate signatures.
 """
 
-from datetime import timezone
 
-from .. import store
 
 
 class MergeError(Exception):

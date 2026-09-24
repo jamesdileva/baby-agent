@@ -20,18 +20,16 @@ Pins (fixtures-first discipline):
 
 import inspect
 import json
-import tempfile
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .benchmark import run_benchmark
 from .experience import ExperienceStore
 from .events import EventStream
-from .workspace import Workspace
 
 
 def _utc_stamp() -> str:

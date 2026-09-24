@@ -16,11 +16,9 @@ distinct counts — the measurable form of "avoid 1 teacher, 1 style,
 1 architecture repeated thousands of times".
 """
 
-import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 MODES = ("independent", "debate", "critique_chain", "specialist")

@@ -8,7 +8,6 @@ re-validated after each write to catch corruption.
 """
 
 import json
-import sys
 from pathlib import Path
 
 from .skills.registry import (
