@@ -280,44 +280,134 @@ def _parse_textual_tool_calls(text: str) -> List[ToolCall]:
 
     Agent-layer format (one call per line, double-quoted string arguments):
         [TOOL: name(key="value", key2="value2")]
+    Typed literals are also accepted for non-string arguments (the
+    training renderer emits them bare: ``count=2``, ``force=true``,
+    ``limit=null``):
+        [TOOL: skill_find(query="x", k=3)]
     Backward compatible with the S27 brain protocol: a single bare value
     ("[TOOL: case_search(\"x\")]") or one query=/pattern= pair maps to the
     tool's canonical keyword (journal_read -> pattern, else query).
-    S69 escaping dialect: \', \\" and \n inside values are
+    S69 escaping dialect: \\, \\" and \\n inside double-quoted values are
     unescaped after capture (the mirror of format_tool_call's
     rendering), so quoted strings and multi-line content are
-    expressible.
+    expressible. Unknown escapes (\\r, \\u, ...) are kept literally
+    (backslash preserved) instead of crashing the loop. Single-quoted
+    legacy values stay raw on purpose: unescaping them would corrupt
+    Windows paths such as 'C:\\new\\test'.
+    A line matching the call shape always yields a ToolCall — even with
+    empty arguments — so the strict validator returns a correctable
+    observation instead of the turn silently becoming a final answer.
     """
     calls: List[ToolCall] = []
-    for line in text.splitlines():
-        match = _TOOL_LINE_RE.search(line.strip())
-        if not match:
+    pos, end = 0, len(text)
+    while pos < end:
+        head = _TOOL_HEAD_RE.search(text, pos)
+        if head is None:
+            break
+        scanned = _scan_tool_call(text, head.start())
+        if scanned is None:
+            pos = head.end()  # malformed head: skip it, keep looking
             continue
-        name, argstr = match.group(1), match.group(2).strip()
-        args: Dict[str, Any] = {}
-        for pair in _ARG_PAIR_RE.finditer(argstr):
-            key = pair.group(1) or pair.group(3)
-            value = pair.group(2) if pair.group(1) else pair.group(4)
-            if pair.group(1):
-                # S69: one escaping dialect — unescape exactly what
-                # format_tool_call renders (backslash, quote, newline);
-                # single-quoted legacy values stay raw
-                value = _UNESCAPE_RE.sub(
-                    lambda m: _UNESCAPES[m.group(1)], value)
-            args[key] = value
-        if not args:
-            bare = _BARE_VALUE_RE.match(argstr)
-            if bare:
-                args["pattern" if name == "journal_read" else "query"] = bare.group(1)
-        calls.append(ToolCall(name=name, arguments=args))
+        name, argstr, pos = scanned
+        calls.append(ToolCall(name=name,
+                              arguments=_parse_tool_args(name,
+                                                         argstr.strip())))
     return calls
 
 
-_TOOL_LINE_RE = re.compile(r"\[\s*TOOL:\s*(\w+)\s*\((.*)\)\s*\]")
+def _parse_tool_args(name: str, argstr: str) -> Dict[str, Any]:
+    """Parse one call's argument string into typed arguments."""
+    args: Dict[str, Any] = {}
+    for pair in _ARG_PAIR_RE.finditer(argstr):
+        if pair.group(1) is not None:
+            args[pair.group(1)] = _unescape_value(pair.group(2))
+        elif pair.group(3) is not None:
+            # single-quoted legacy values stay raw (see docstring)
+            args[pair.group(3)] = pair.group(4)
+        else:
+            args[pair.group(5)] = _typed_literal(pair.group(6))
+    if not args:
+        bare = _BARE_VALUE_RE.match(argstr)
+        if bare:
+            args["pattern" if name == "journal_read" else "query"] = bare.group(1)
+    return args
+
+
+def _unescape_value(value: str) -> str:
+    """S69: one escaping dialect — unescape exactly what format_tool_call
+    renders (backslash, quote, newline, tab); anything else is kept
+    literally so model-emitted escapes can never crash the loop."""
+    return _UNESCAPE_RE.sub(
+        lambda m: _UNESCAPES.get(m.group(1), "\\" + m.group(1)), value)
+
+
+def _typed_literal(token: str) -> Any:
+    """One bare textual-protocol literal to its typed value."""
+    if token == "true":
+        return True
+    if token == "false":
+        return False
+    if token == "null":
+        return None
+    try:
+        return int(token)
+    except ValueError:
+        return float(token)
+
+
+def _scan_tool_call(text: str, start: int):
+    """Scan one ``[TOOL: name(...)]`` starting at ``start`` (the ``[``).
+
+    Quote- and escape-aware: ``)]`` or ``(`` inside a quoted value never
+    terminates the argument section. Returns (name, argstr, end_index)
+    or None when the head has no well-formed closing.
+    """
+    head = _TOOL_HEAD_RE.match(text, start)
+    if head is None:
+        return None
+    name = head.group(1)
+    i, n = head.end(), len(text)
+    args_start = i
+    depth = 1
+    quote = None
+    escaped = False
+    while i < n:
+        ch = text[i]
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == quote:
+                quote = None
+        elif ch in ("\"", "'"):
+            quote = ch
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                break
+        i += 1
+    if depth != 0 or i >= n:
+        return None
+    argstr = text[args_start:i]
+    j = i + 1
+    while j < n and text[j] in " \t":
+        j += 1
+    if j >= n or text[j] != "]":
+        return None
+    return name, argstr, j + 1
+
+
+_TOOL_HEAD_RE = re.compile(r"\[\s*TOOL:\s*(\w+)\s*\(")
 # S69: escape-aware double-quoted values — (?:[^"\\]|\\.)* consumes \"
-# and \\ sequences so escaped quotes no longer terminate the value
+# and \\ sequences so escaped quotes no longer terminate the value.
+# Typed literals (true/false/null/numbers) mirror training.format_tool_call,
+# which renders non-strings bare. Single-quoted values stay raw (legacy).
 _ARG_PAIR_RE = re.compile(
-    r"""(\w+)\s*=\s*"((?:[^"\\]|\\.)*)"|(\w+)\s*=\s*'([^']*)'""")
+    r"""(\w+)\s*=\s*"((?:[^"\\]|\\.)*)"|(\w+)\s*=\s*'([^']*)'|"""
+    r"""(\w+)\s*=\s*(true|false|null|-?\d+(?:\.\d+)?)""")
 _BARE_VALUE_RE = re.compile(r"""^["']([^"']*)["']$""")
 
 # S69 escaping dialect (shared with training.format_tool_call):

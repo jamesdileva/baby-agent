@@ -80,6 +80,21 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-24 — **S75.2 Super-audit S2 — textual protocol hardened +
+  renderer round-trip pinned (B1/B2)** — `_parse_textual_tool_calls`
+  rebuilt on a quote/escape-aware scanner (`_scan_tool_call`): two calls
+  on one line stay separate, `)]`/parens inside quoted values no longer
+  truncate, bare typed literals (`k=3`, `true`/`false`, `null`) parse to
+  typed values (the renderer already emitted them — every non-string arg
+  used to fail validation), unknown escapes keep their backslash instead
+  of raising `KeyError` out of the loop, and shape-matched lines always
+  yield a call so the validator returns a correctable observation.
+  Single-quoted values deliberately stay raw (unescaping would corrupt
+  `C:\new`-style paths). New `tests/test_agent_tool_protocol.py` (18
+  tests): 7 failures + 1 error pre-fix (stash check), 18/18 post-fix;
+  S69 string round-trip and prompt-text pins untouched. Suite 1614 OK
+  (1596 + 18 new). No spec impact.
+
 - 2026-09-24 — **S75.1 Super-audit S1 — five typing imports fixed +
   annotation gate + CI (F1/F16)** — `providers` gains `Optional`,
   `multi_agent`/`processes` gain `Tuple`, `websearch`/`skills` gain the

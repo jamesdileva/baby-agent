@@ -13,7 +13,7 @@ but not developed, unless they directly cause an execution or data-integrity bug
 ## Slice tracker (super-audit workthrough, §F order)
 
 - [x] S1 — A1 + F16 gate: five typing imports, annotation-resolution test, CI matrix
-- [ ] S2 — B1 + B2: textual parser hardening + renderer round-trip
+- [x] S2 — B1 + B2: textual parser hardening + renderer round-trip ✅
 - [ ] S3 — C2 + C3: curation→skills handoff + `from_dict` guards
 - [ ] S4 — D7(G3): apprenticeship lesson delivery
 - [ ] S5 — D1(level) + D3 + D4.2: measurement trio
