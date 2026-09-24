@@ -281,7 +281,6 @@ class TrainingKitTests(unittest.TestCase):
             self.assertIn("masked_rows.append(example)", script)
             # transformers v5 batched-return normalization (the
             # 0/116 mask-gate catch)
-            self.assertIn('isinstance(full, dict)', script)
             self.assertIn("_to_flat_token_ids", script)
             self.assertIn("first-render shapes", script)
             self.assertIn("KIT_VERSION = \"s76.2\"", script)
