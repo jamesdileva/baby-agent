@@ -283,7 +283,7 @@ class TrainingKitTests(unittest.TestCase):
             # 0/116 mask-gate catch)
             self.assertIn("_to_flat_token_ids", script)
             self.assertIn("first-render shapes", script)
-            self.assertIn("KIT_VERSION = \"s76.2\"", script)
+            self.assertIn("KIT_VERSION = \"s76.3\"", script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
