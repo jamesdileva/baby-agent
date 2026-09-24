@@ -58,10 +58,18 @@ def record_lock(path):
     deadline = (time.monotonic()
                 + _RECORD_LOCK_RETRIES * _RECORD_LOCK_RETRY_SECONDS)
     fd = None
+    last_error = None
     while fd is None:
         try:
             fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        except FileExistsError:
+        except (FileExistsError, PermissionError) as exc:
+            # PermissionError joins FileExistsError here on purpose:
+            # on Windows, exclusively creating a lockfile that another
+            # thread just unlinked (or that AV/indexing briefly holds)
+            # surfaces as a sharing violation, not FileExistsError.
+            # Either way the lock is momentarily held — retry within
+            # the bounded patience, then fail loudly with the cause.
+            last_error = exc
             try:
                 age = time.time() - lock_path.stat().st_mtime
             except OSError:
@@ -74,7 +82,8 @@ def record_lock(path):
                 continue
             if time.monotonic() >= deadline:
                 raise StoreLockedError(
-                    f"timed out acquiring record lock: {lock_path}")
+                    f"timed out acquiring record lock: {lock_path} "
+                    f"(last error: {last_error!r})") from last_error
             time.sleep(_RECORD_LOCK_RETRY_SECONDS)
     try:
         os.write(fd, str(os.getpid()).encode("ascii"))

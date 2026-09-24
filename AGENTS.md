@@ -80,6 +80,16 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-24 — **S75.6.1 Store lock Windows hardening (follow-up,
+  found by S7 verification)** — the full suite flaked intermittently
+  (`PermissionError` from `os.open(O_CREAT|O_EXCL)` in the Experience
+  contention test): on Windows, exclusively creating a lockfile that
+  another thread just unlinked surfaces as a sharing violation, not
+  `FileExistsError`. `record_lock()` now retries `PermissionError`
+  like a held lock (bounded patience, cause chained into
+  `StoreLockedError`). Stress probe went 7/15 flaky rounds to 0/15;
+  the S6 contention tests are the regression net. Suite 1637 OK.
+
 - 2026-09-24 — **S75.6 Super-audit S6 — store write loss closed (A3)**
   — new shared `record_lock()` in `qacompanion/store.py` (portable
   O_CREAT|O_EXCL sidecar lockfile, bounded retry, stale-lock reclaim so
