@@ -22,7 +22,7 @@ but not developed, unless they directly cause an execution or data-integrity bug
   (scoped: confirmation gate + evidence rule landed; composite identity
   + propose/certify split deferred to S7b — needs a DECISION + migration)
 - [x] S8 — A2 + F13 + F14: timeout enforcement + retry + audit bound ✅
-- [ ] S9 — F8 + F10 + F15 + F12: boundary correctness batch
+- [x] S9 — F8 + F10 + F15 + F12: boundary correctness batch ✅
 - [ ] S10 — B3 + B4: flatten fence + validator/loop accounting
 - [ ] S11 — D2 + D6: curriculum/training accounting batch
 - [ ] S12 — F17 + F18: test isolation + docs rewrite

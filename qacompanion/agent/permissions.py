@@ -77,6 +77,12 @@ class PermissionRule:
             raise ValueError("args_contains must be a dict of {arg: substring}")
 
     def matches(self, tool_name: str, arguments: Dict[str, Any]) -> bool:
+        """F15 (super-audit): args_contains matching is case-insensitive
+        SUBSTRING matching — `rm` matches `firmware.py`. Rules are
+        defense-in-depth convenience, NEVER a security boundary; the
+        boundary is the side-effect-class defaults and the confirmer.
+        Do not add new security-sensitive rules that depend on exact
+        argument shapes here."""
         if not fnmatch.fnmatchcase(tool_name, self.tool_glob):
             return False
         if self.args_contains:

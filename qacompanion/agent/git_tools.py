@@ -17,8 +17,10 @@ Pins (fixtures-first discipline):
 """
 
 import json
+import os
 import re
 import subprocess
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from .registry import READ_ONLY, SAFE_WRITE, RegisteredTool, ToolDefinition, ToolOperationError, ToolRegistry
@@ -61,6 +63,19 @@ def _require_repo(workspace: Workspace) -> None:
     if rc != 0:
         message = stderr.strip().splitlines()[0] if stderr.strip() else "not a git repository"
         raise GitError(message)
+    # F10 (super-audit): inside-work-tree is not enough — a workspace
+    # nested in a monorepo passes the check while git stages and
+    # commits across the WHOLE repo, past the workspace boundary. The
+    # repo toplevel must BE the workspace root.
+    rc, stdout, _ = _run_git(workspace, "rev-parse", "--show-toplevel")
+    if rc == 0 and stdout.strip():
+        toplevel = Path(stdout.strip()).resolve()
+        root = Path(workspace.root).resolve()
+        if os.path.normcase(str(toplevel)) != os.path.normcase(str(root)):
+            raise GitError(
+                f"workspace {root} is nested inside git repository "
+                f"{toplevel}: refusing — git operations would exceed "
+                "the workspace boundary")
 
 
 def _unquote_path(path: str) -> str:

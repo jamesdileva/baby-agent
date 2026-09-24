@@ -53,7 +53,19 @@ def _norm(path) -> str:
 
 def _is_under(path: Path, root: Path) -> bool:
     p, r = _norm(path), _norm(root)
-    return p == r or p.startswith(r + os.sep)
+    if p == r:
+        return True
+    # F8 (super-audit): a filesystem or drive root ("/", "C:\") ends
+    # with a separator, so "root + sep" doubled it and startswith never
+    # matched - every path under a root workspace failed closed. Strip
+    # the trailing separator; an empty remainder means the filesystem
+    # root, which contains everything by definition. (normcase has
+    # already mapped both separators to os.sep's platform shape, so a
+    # single check covers POSIX and Windows drive roots.)
+    stripped = r.rstrip("\\/")
+    if not stripped:
+        return p.startswith(os.sep)
+    return p.startswith(stripped + os.sep)
 
 
 def _find_git_root(root: Path) -> Optional[Path]:

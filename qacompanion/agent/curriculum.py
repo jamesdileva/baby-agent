@@ -45,15 +45,6 @@ def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text.lower()).strip()
 
 
-def _test_footer(module: str, cases: str) -> str:
-    return textwrap.dedent(f"""\
-        import unittest
-
-        from {module} import {cases}
-
-        """)  # caller appends test class + main
-
-
 # (module_name, function, correct_body, defective_body, test_case)
 # module-level so the S64 corpus builder can script demonstrators that
 # fix the DECLARED defect with exact old/new strings
