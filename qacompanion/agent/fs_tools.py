@@ -476,7 +476,12 @@ def agent_registry(
         registry.register(tool)
     for tool in BrowserToolkit(workspace, browser_provider).tools():
         registry.register(tool)
-    for tool in ComputerUseToolkit(workspace, computer_provider,
-                                   computer_config).tools():
-        registry.register(tool)
+    # F2 (super-audit): ComputerUseToolkit raises at construction on
+    # POSIX (Windows SendInput only) and its default allow-list is
+    # empty anyway — include it only where it can actually build, or
+    # when a provider is explicitly injected.
+    if computer_provider is not None or os.name == "nt":
+        for tool in ComputerUseToolkit(workspace, computer_provider,
+                                       computer_config).tools():
+            registry.register(tool)
     return registry

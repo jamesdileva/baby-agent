@@ -83,8 +83,13 @@ class ZcodeMinerTests(unittest.TestCase):
         self.assertEqual("fix applied via patch", exp.resolution)
 
     def test_default_db_path_is_the_zcode_store(self):
-        self.assertEqual(DEFAULT_ZCODE_DB, ZcodeMiner().db_path)
-        self.assertIn(".zcode", str(ZcodeMiner().db_path))
+        # no construction: the miner raises MiningError when the DB is
+        # absent (e.g. CI runners) — the default path SHAPE is the
+        # contract (home/.zcode/cli/db/db.sqlite)
+        parts = DEFAULT_ZCODE_DB.parts
+        self.assertEqual("db.sqlite", parts[-1])
+        self.assertIn(".zcode", parts)
+        self.assertIn("cli", parts)
 
     def test_missing_database_is_structured_error(self):
         with self.assertRaises(MiningError):

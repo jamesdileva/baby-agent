@@ -53,8 +53,8 @@ class GitToplevelBoundaryTests(unittest.TestCase):
         self.child.mkdir(parents=True)
         env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
                    GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
-        subprocess.run(["git", "init", "-q"], cwd=self.parent, check=True,
-                       env=env)
+        subprocess.run(["git", "init", "-q", "-b", "main"],
+                       cwd=self.parent, check=True, env=env)
         (self.parent / "f.txt").write_text("x", encoding="utf-8")
         subprocess.run(["git", "add", "f.txt"], cwd=self.parent, check=True,
                        env=env)

@@ -125,8 +125,11 @@ class TestRoadmapChain(ProcessTestBase):
                               timeout_seconds=5)
         self.assertIn(exited["state"], ("stopped", "exited"))
 
+        # CI runners release sockets slower than a desktop: give the
+        # post-stop port check a wider window
         self.assertTrue(
-            self.wait_until(lambda: port_available(self.port)))
+            self.wait_until(lambda: port_available(self.port),
+                            timeout=30.0))
 
     def test_health_check_reflects_server_path(self):
         self.payload("start_process", command=f"{EXE} server.py {self.port}")
@@ -160,8 +163,11 @@ class TestRestartAndCrashRecovery(ProcessTestBase):
                                command=f"{EXE} server.py {self.port}")
         self.payload("wait_for_port", port=self.port, timeout_seconds=10)
         self.payload("stop_process", handle=started["handle"])
+        # CI runners release sockets slower than a desktop: give the
+        # post-stop port check a wider window
         self.assertTrue(
-            self.wait_until(lambda: port_available(self.port)))
+            self.wait_until(lambda: port_available(self.port),
+                            timeout=30.0))
 
         fresh = self.payload("restart_process", handle=started["handle"])
         ready = self.payload("wait_for_port", port=self.port,

@@ -32,7 +32,7 @@ def _touch(path: Path, content="x"):
 
 class TestPathPolicyContainment(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
         self.policy = PathPolicy(self.tmp)
 
     def tearDown(self):
@@ -87,7 +87,7 @@ class TestPathPolicyContainment(unittest.TestCase):
 
 class TestPathPolicyExclusions(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
         self.policy = PathPolicy(self.tmp, excluded_paths=("node_modules", "secrets.env"))
 
     def tearDown(self):
@@ -114,7 +114,7 @@ class TestPathPolicyExclusions(unittest.TestCase):
 
 class TestPathPolicySymlink(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
         self.outside = Path(tempfile.mkdtemp())
         self.link = self.tmp / "sneaky"
         try:
@@ -143,7 +143,7 @@ class TestPathPolicySymlink(unittest.TestCase):
 @unittest.skipUnless(os.name == "nt", "Windows-specific path cases")
 class TestPathPolicyWindows(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -191,7 +191,7 @@ class TestPathPolicyWindows(unittest.TestCase):
 
 class TestPathPolicyAllowedPaths(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
         self.sibling = Path(tempfile.mkdtemp())
         self.policy = PathPolicy(self.tmp, allowed_paths=(str(self.sibling),))
 
@@ -223,7 +223,7 @@ class TestPathPolicyPosixProtected(unittest.TestCase):
 
 class TestWorkspace(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -283,7 +283,7 @@ class TestWorkspace(unittest.TestCase):
 
 class TestProjectMetadata(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -318,7 +318,7 @@ class TestProjectMetadata(unittest.TestCase):
         self.assertEqual(self._detect().package_managers, ("cargo",))
 
         shutil.rmtree(self.tmp)
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
         _touch(self.tmp / "go.mod")
         self.assertEqual(self._detect().project_type, "go")
 
@@ -341,7 +341,7 @@ class TestProjectMetadata(unittest.TestCase):
 
 class TestWorkspaceManager(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
         self.mgr = WorkspaceManager()
 
     def tearDown(self):

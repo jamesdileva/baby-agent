@@ -71,10 +71,16 @@ class TestRegistration(unittest.TestCase):
         tmp = Path(tempfile.mkdtemp())
         try:
             reg = agent_registry(Workspace(tmp))
-            self.assertEqual(len(reg.names()), 65)
-            for name in ("computer_click", "computer_type"):
-                # registered but default-ASK + DESTRUCTIVE level
-                self.assertIn(name, reg.names())
+            # F2: POSIX registries exclude the six Windows-only computer
+            # tools (the toolkit cannot construct there); the exact
+            # count is platform-dependent, the families are not
+            import os as _os
+            expected = 65 if _os.name == "nt" else 59
+            self.assertEqual(len(reg.names()), expected)
+            if _os.name == "nt":
+                for name in ("computer_click", "computer_type"):
+                    # registered but default-ASK + DESTRUCTIVE level
+                    self.assertIn(name, reg.names())
             self.assertIn("case_search", reg.names())
             self.assertIn("write_file", reg.names())
             self.assertIn("run_command", reg.names())

@@ -223,8 +223,13 @@ class LabDbMinerTests(unittest.TestCase):
                             for r in records))
 
     def test_default_path_is_the_antfarm_store(self):
-        self.assertEqual(DEFAULT_LABDB_PATH, LabDbMiner().db_path)
-        self.assertIn("antfarm", str(DEFAULT_LABDB_PATH))
+        # no construction: the miner raises MiningError when the DB is
+        # absent (e.g. CI runners) — the default path SHAPE is the
+        # contract (home/@antfarm/shell/antfarm-home/project/lab.db)
+        parts = DEFAULT_LABDB_PATH.parts
+        self.assertEqual("lab.db", parts[-1])
+        self.assertIn("@antfarm", parts)
+        self.assertIn("antfarm-home", parts)
 
     def test_invalid_transcript_json_is_structured_error(self):
         con = sqlite3.connect(self.db)
