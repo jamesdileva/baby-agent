@@ -168,6 +168,16 @@ class RegressionCliTests(unittest.TestCase):
         return stdout.getvalue()
 
     def test_golden_report_separates_regressions_prominently(self):
+        # the report's staleness check runs against wall-clock now; the
+        # fixture stamps (2026-08-25) aged past the 30-day boundary on
+        # 2026-09-24 and flipped the golden's stale section. Freeze the
+        # report's clock to the fixture era so the golden stays
+        # deterministic (the same lesson the S10 e2e test learned).
+        class _FrozenReportClock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return BASE if tz is None else BASE.astimezone(tz)
+
         self.record_fail("cmd-r :: err: boom", t(1))
         self.record_fail("cmd-r :: err: boom", t(2))
         self.passes("cmd-r", [t(3), t(4), t(5)])
@@ -199,7 +209,7 @@ class RegressionCliTests(unittest.TestCase):
         )
         with mock.patch.object(
             report_mod, "accuracy_line", return_value="accuracy: n/a - golden fixture"
-        ):
+        ), mock.patch.object(report_mod, "datetime", _FrozenReportClock):
             self.assertEqual(expected + "\n", self.report_output())
 
     def test_e2e_red_green_red_through_qa_run_surfaces_regression(self):

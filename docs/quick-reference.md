@@ -69,6 +69,9 @@ qa gemini-drip        # one real benchmark pass on the free-tier brain
 | `qa serve` | the dashboard at http://127.0.0.1:8765/ |
 | `qa ask "question"` | the QA brain over the case base |
 
+## How to run dash
+python -m qacompanion serve --port 8765
+
 ## Knobs and locations
 
 | what | where |
