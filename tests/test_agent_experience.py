@@ -232,18 +232,27 @@ class TestMemoryTools(ExperienceBase):
         )
         self.assertEqual(described["experience_record"]["side_effect_level"],
                          "SAFE_WRITE")
+        # S75.7: recording changes what future agents retrieve — the tool
+        # declares its own confirmation requirement.
+        self.assertTrue(
+            described["experience_record"]["requires_confirmation"])
+        self.assertFalse(
+            described["experience_search"]["requires_confirmation"])
         for name in ("experience_search", "memory_search"):
             self.assertEqual(described[name]["side_effect_level"], "READ_ONLY")
         self.assertTrue(all(not d["requires_workspace"]
                             for d in described.values()))
 
     def test_record_and_search_through_registry(self):
+        # S75.7: memory authoring is confirmation-gated — the test
+        # approves as the human would.
+        approve = lambda call, decision: True  # noqa: E731
         out = self.call("experience_record",
                         goal="fix flaky login test",
                         outcome="recovered",
                         diagnosis="test order dependency",
                         resolution="reset session between tests",
-                        tags=["flaky"])
+                        tags=["flaky"], confirmer=approve)
         self.assertTrue(out.ok, out.error)
         payload = json.loads(out.output)
         self.assertEqual(payload["times_seen"], 1)
@@ -252,24 +261,40 @@ class TestMemoryTools(ExperienceBase):
         self.assertEqual(search["count"], 1)
         self.assertEqual(search["experiences"][0]["outcome"], "recovered")
 
+    def test_record_denied_without_confirmer(self):
+        # S75.7 (G1): with no human to confirm, the pipeline must deny —
+        # a model cannot silently manufacture authoritative memory.
+        out = self.call("experience_record",
+                        goal="fixed everything forever",
+                        outcome="success", confidence=1.0)
+        self.assertFalse(out.ok)
+        self.assertIn("confirmation", out.error)
+        self.assertEqual(
+            self.payload("experience_search",
+                         query="fixed everything forever")["count"], 0)
+
     def test_invalid_outcome_structured_error(self):
-        out = self.call("experience_record", goal="g", outcome="vibes")
+        approve = lambda call, decision: True  # noqa: E731
+        out = self.call("experience_record", goal="g", outcome="vibes",
+                        confirmer=approve)
         self.assertFalse(out.ok)
         self.assertIn("invalid experience record", out.error)
 
     def test_memory_search_through_registry(self):
+        approve = lambda call, decision: True  # noqa: E731
         self.payload("experience_record", goal="port already in use fix",
-                     outcome="success", resolution="kill the stale server")
+                     outcome="success", resolution="kill the stale server",
+                     confirmer=approve)
         results = self.payload("memory_search", query="port already in use")
         self.assertTrue(results["results"])
         self.assertEqual(results["results"][0]["source"], "experience")
 
-    def call(self, name, **arguments):
+    def call(self, name, confirmer=None, **arguments):
         return self.reg.execute(ToolCall(name=name, arguments=arguments),
-                                workspace=self.ws)
+                                workspace=self.ws, confirmer=confirmer)
 
-    def payload(self, name, **arguments):
-        out = self.call(name, **arguments)
+    def payload(self, name, confirmer=None, **arguments):
+        out = self.call(name, confirmer=confirmer, **arguments)
         self.assertTrue(out.ok, f"{name} failed: {out.error}")
         return json.loads(out.output)
 

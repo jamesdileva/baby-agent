@@ -360,7 +360,9 @@ class MemoryToolkit:
                     name="experience_record",
                     description="Record a lesson/outcome so future similar "
                                 "tasks retrieve it (repeated goals "
-                                "reinforce, not duplicate).",
+                                "reinforce, not duplicate). Requires "
+                                "human confirmation: model claims are "
+                                "proposals, never self-certified memory.",
                     parameters_schema={
                         "type": "object",
                         "properties": {
@@ -380,6 +382,10 @@ class MemoryToolkit:
                 handler=self.experience_record,
                 category="memory",
                 side_effect_level=SAFE_WRITE,
+                # S75.7: learning-admin operation — the pipeline upgrades
+                # this to ASK whatever the policy says, so a model cannot
+                # silently manufacture authoritative memory.
+                requires_confirmation=True,
             ),
             RegisteredTool(
                 definition=ToolDefinition(

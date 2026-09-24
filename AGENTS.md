@@ -80,6 +80,23 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-24 — **S75.7 Super-audit S7 — learning trust gate, scoped
+  (C1/G1/G2/G5/D4.3)** — `experience_record` and `skill_teach` now
+  declare `requires_confirmation` (pipeline upgrades to ASK under any
+  policy; model self-minting is a proposal awaiting a human, denials
+  without a confirmer), and curation no longer scores bare `success`
+  as verified: new `_has_verification_evidence()` (top-level ok or any
+  passing attempt) drives the verification dim, and unevidenced SUCCESS
+  routes to REVIEW instead of riding vocabulary dims into ACCEPT.
+  Blast radius surveyed first (all harness/demo/training flows carry
+  real attempts with ok); the one test that pinned the bug
+  (`test_verified_success_accepted`) now carries evidence. Stash check:
+  5 S7 failures pre-fix (a 6th is the S5 flip test deprived of its own
+  fix in the shared-file stash — understood, not a mystery). Full
+  suite flaked once on the S6 lock (fixed as S75.6.1); final 1637 OK.
+  Deferred honestly: composite experience identity + propose/certify
+  API split need a DECISION + wider migration (S7b candidate).
+
 - 2026-09-24 — **S75.6.1 Store lock Windows hardening (follow-up,
   found by S7 verification)** — the full suite flaked intermittently
   (`PermissionError` from `os.open(O_CREAT|O_EXCL)` in the Experience

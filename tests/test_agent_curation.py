@@ -141,12 +141,28 @@ class ScoringTests(unittest.TestCase):
 
 class VerdictTests(unittest.TestCase):
     def test_verified_success_accepted(self):
+        # S75.7: "verified" now means a recorded gate pass — a bare
+        # outcome string no longer suffices (see the review-routing test).
         exp = _exp(outcome="success", confidence=0.9,
-                   actions=["read", "edit", "run_tests"])
+                   actions=["read", "edit", "run_tests"],
+                   verification={"ok": True})
         dims, overall, _ = score(exp, CLASS_SUCCESS, [])
         verdict, reasons = verdict_for(exp, CLASS_SUCCESS, [], overall, dims)
         self.assertEqual(VERDICT_ACCEPT, verdict)
         self.assertTrue(reasons)
+
+    def test_unevidenced_success_routed_to_review(self):
+        # S75.7 (G5): a self-minted success with no recorded proof is a
+        # proposal, not knowledge — it must not ACCEPT on vocabulary
+        # dims alone, and the verification dim stays honestly unknown.
+        exp = _exp(outcome="success", confidence=0.9,
+                   actions=["read", "edit", "run_tests"])
+        dims, overall, unknown = score(exp, CLASS_SUCCESS, [])
+        self.assertIsNone(dims["verification"])
+        self.assertIn("verification", unknown)
+        verdict, reasons = verdict_for(exp, CLASS_SUCCESS, [], overall, dims)
+        self.assertEqual(VERDICT_REVIEW, verdict)
+        self.assertIn("verification evidence", " ".join(reasons))
 
     def test_low_confidence_recovered_pair_routes_to_review(self):
         exp = _exp(outcome="partial", confidence=0.3,

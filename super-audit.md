@@ -18,7 +18,9 @@ but not developed, unless they directly cause an execution or data-integrity bug
 - [x] S4 — D7(G3): apprenticeship lesson delivery ✅
 - [x] S5 — D1(level) + D3 + D4.2: measurement trio ✅
 - [x] S6 — A3: store concurrency locks + contention tests ✅
-- [ ] S7 — C1 + D5 (+D4.3): trust boundary + experience identity
+- [x] S7 — C1 + D5 (+D4.3): trust boundary + experience identity ✅
+  (scoped: confirmation gate + evidence rule landed; composite identity
+  + propose/certify split deferred to S7b — needs a DECISION + migration)
 - [ ] S8 — A2 + F13 + F14: timeout enforcement + retry + audit bound
 - [ ] S9 — F8 + F10 + F15 + F12: boundary correctness batch
 - [ ] S10 — B3 + B4: flatten fence + validator/loop accounting

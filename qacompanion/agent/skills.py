@@ -12,7 +12,10 @@ here runs procedures programmatically — that is curation/S62-scale
 machinery.
 
 Pins (fixtures-first discipline):
-- skill_teach validates and writes atomically — teaching is SAFE_WRITE;
+- skill_teach validates and writes atomically — teaching is SAFE_WRITE
+  plus requires_confirmation (S75.7): the pipeline gates it to ASK
+  whatever the policy says, so model teaching is a proposal awaiting a
+  human, never a silent install;
 - retrieval is deterministic keyword scoring over name/goal/description/
   tags (the S47 pattern); no embeddings;
 - the first real consumer: skills/agent/resume_interrupted_task.json
@@ -234,7 +237,9 @@ class SkillToolkit:
                     name="skill_teach",
                     description="Teach a new skill so future similar tasks "
                                 "retrieve it: {name, goal, procedure: [...], "
-                                "verification, ...}.",
+                                "verification, ...}. Requires human "
+                                "confirmation: teaching changes what future "
+                                "agents believe.",
                     parameters_schema={
                         "type": "object",
                         "properties": {"skill": {"type": "object"}},
@@ -244,6 +249,10 @@ class SkillToolkit:
                 handler=self.skill_teach,
                 category="skills",
                 side_effect_level=SAFE_WRITE,
+                # S75.7: learning-admin operation — the pipeline upgrades
+                # this to ASK whatever the policy says, so a model cannot
+                # silently install persistent behavior.
+                requires_confirmation=True,
             ),
         ]
 

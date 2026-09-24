@@ -17,7 +17,9 @@ Pins (fixtures-first discipline):
 - every run summary reports rejected / flagged items with reasons;
 - credential-flagged text is REDACTED in exports — the flag names the
   pattern, never echoes the secret;
-- mined != verified: PARTIAL provenance is never upgraded to success.
+- mined != verified: PARTIAL provenance is never upgraded to success;
+- claimed != verified (S75.7): SUCCESS without a recorded gate pass
+  routes to REVIEW — a bare outcome string is a proposal, not proof.
 """
 
 import json
@@ -180,6 +182,18 @@ def soft_penalties(experience: Experience) -> List[Dict[str, str]]:
     return penalties
 
 
+def _has_verification_evidence(experience: Experience) -> bool:
+    """A recorded pass of a verification gate — the only thing that may
+    certify success. S75.7: a bare outcome string is a claim, not proof;
+    model-minted `success` (via experience_record) must never score as
+    verified. Evidence is a top-level ok or any passing attempt."""
+    verification = experience.verification or {}
+    if verification.get("ok"):
+        return True
+    return any(isinstance(attempt, dict) and attempt.get("ok")
+               for attempt in verification.get("attempts") or [])
+
+
 def score(experience: Experience, classification: str,
           penalties: List[Dict[str, str]]
           ) -> Tuple[Dict[str, Optional[float]], float, List[str]]:
@@ -187,12 +201,15 @@ def score(experience: Experience, classification: str,
     dims: Dict[str, Optional[float]] = {}
     pairs = _failure_pairs(experience)
 
-    if experience.outcome == "success":
-        dims["verification"] = 1.0  # recorded success implies a passed gate
-    elif experience.outcome == "failed":
+    if experience.outcome == "failed":
         dims["verification"] = 0.0
-    elif experience.verification:
-        dims["verification"] = 1.0  # verification evidence exists
+    elif _has_verification_evidence(experience):
+        dims["verification"] = 1.0  # a passed gate is recorded
+    elif experience.outcome == "success":
+        # S75.7: claimed success with no recorded proof — honestly
+        # unknown, never 1.0 (the old line scored every self-minted
+        # success as verified).
+        dims["verification"] = None
     else:
         dims["verification"] = None
 
@@ -286,6 +303,15 @@ def verdict_for(experience: Experience, classification: str,
             and dims.get("recovery") == 1.0 and substantive_goal):
         reasons.append("low-confidence high-value: recovered failure->fix "
                        "pair routed to human review")
+        return VERDICT_REVIEW, reasons
+    # S75.7: a claimed SUCCESS with no recorded verification pass is a
+    # proposal, not knowledge — route to human review instead of letting
+    # the score average (correctness comes from the outcome label) carry
+    # a self-minted success into ACCEPT and onward to training data.
+    if (classification == CLASS_SUCCESS
+            and not _has_verification_evidence(experience)):
+        reasons.append("claimed success without verification evidence "
+                       "routed to human review")
         return VERDICT_REVIEW, reasons
     if overall >= ACCEPT_THRESHOLD:
         reasons.append(f"overall score {overall} >= {ACCEPT_THRESHOLD}")

@@ -50,9 +50,9 @@ class SkillsBase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def call(self, name, **arguments):
+    def call(self, name, confirmer=None, **arguments):
         return self.reg.execute(ToolCall(name=name, arguments=arguments),
-                                workspace=None)
+                                workspace=None, confirmer=confirmer)
 
     def payload(self, name, **arguments):
         out = self.call(name, **arguments)
@@ -152,11 +152,18 @@ class TestSkillTools(SkillsBase):
                          "READ_ONLY")
         self.assertEqual(described["skill_teach"]["side_effect_level"],
                          "SAFE_WRITE")
+        # S75.7: teaching changes what future agents believe — the tool
+        # declares its own confirmation requirement.
+        self.assertTrue(described["skill_teach"]["requires_confirmation"])
+        self.assertFalse(described["skill_find"]["requires_confirmation"])
         self.assertTrue(all(not d["requires_workspace"]
                             for d in described.values()))
 
     def test_teach_then_find_through_registry(self):
-        out = self.call("skill_teach", skill=VALID)
+        # S75.7: teaching is confirmation-gated — the test approves as
+        # the human would, proving the gate is passable, not absent.
+        approve = lambda call, decision: True  # noqa: E731
+        out = self.call("skill_teach", skill=VALID, confirmer=approve)
         self.assertTrue(out.ok, out.error)
         payload = json.loads(out.output)
         self.assertTrue(payload["taught"])
@@ -169,9 +176,19 @@ class TestSkillTools(SkillsBase):
             skill["procedure"]))
 
     def test_invalid_teach_structured_error(self):
-        out = self.call("skill_teach", skill={"name": "x"})
+        approve = lambda call, decision: True  # noqa: E731
+        out = self.call("skill_teach", skill={"name": "x"},
+                        confirmer=approve)
         self.assertFalse(out.ok)
         self.assertIn("invalid skill record", out.error)
+
+    def test_teach_denied_without_confirmer(self):
+        # S75.7 (G2): with no human to confirm, the pipeline must deny —
+        # a model cannot silently install persistent behavior.
+        out = self.call("skill_teach", skill=VALID)
+        self.assertFalse(out.ok)
+        self.assertIn("confirmation", out.error)
+        self.assertIsNone(self.library.get("debug_build_failure"))
 
     def test_find_no_match_is_empty_not_error(self):
         payload = self.payload("skill_find", query="quantum chromodynamics")
