@@ -80,6 +80,66 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-24 — **S75.10 Super-audit S10 — flatten fence + validator/
+  loop accounting (B3/B4)** — `_flatten_messages` fences tool turns
+  as untrusted blocks and escapes role-like line prefixes in all
+  non-system content (a tool result containing "system: …" could read
+  as a new turn after flattening); `validate_tool_arguments` recurses
+  into declared object properties and array items with dotted/indexed
+  error paths (free-form objects unchanged — the first cut rejected
+  env/requires/skill dicts and 10 tests caught it immediately);
+  validator errors name the tool; the loop counts consecutive empty
+  responses and terminates honestly at 3 (was: identical messages
+  burned max_iterations silently); changed-file extraction falls back
+  to the write tool's own path argument when output is not JSON (B4:
+  plain-text writes were invisible to metrics). Stash check 5 fail
+  pre-fix. **The F1 annotation gate caught a missing ToolCall import
+  in the new loop code — S1 paying for itself within the same
+  sprint.** Suite 1664 OK.
+
+- 2026-09-24 — **S75.9 Super-audit S9 — boundary correctness batch
+  (F8/F10/F12/F15)** — `_is_under` strips the trailing separator so
+  root and drive-root workspaces contain their trees (F8: "C:\" and
+  "/" failed closed before — every path rejected, presenting as
+  "agent thrashes on fs tools"); `_require_repo` compares
+  `rev-parse --show-toplevel` to the workspace root and refuses
+  nested-monorepo workspaces whose git scope would exceed the
+  boundary (F10: stash check — nested workspace passed
+  is-inside-work-tree pre-fix); dead `_test_footer` (guaranteed
+  textwrap NameError) removed (F12); `PermissionRule.matches`
+  docstring labels substring matching as defense-in-depth, never a
+  security boundary (F15, per the audit's own remediation). Suite
+  1652 OK.
+
+- 2026-09-24 — **S75.8 Super-audit S8 — timeout enforcement +
+  bounded retry + bounded audit trail (A2/F13/F14)** —
+  `_execute_handler` manages the executor manually and shuts down
+  without waiting: pre-fix stash check showed a hung handler blocked
+  **30.0s past its timeout** via `shutdown(wait=True)` while the
+  result claimed `timed_out`; post-fix the caller returns in 0.3s
+  and the wall-clock regression test the audit said did not exist
+  now pins it. `PermissionPolicy.decisions` trim to a bounded
+  recent window (F14: unbounded growth in the engine singleton).
+  `_retry_delay` honors Retry-After (seconds form) and caps the
+  wait at 60s for both Gemini retry paths (F13: blind 60s block).
+  Suite 1644 OK.
+
+- 2026-09-24 — **Audit verification — muse-spark's S1-S7 confirmed
+  clean; the one red test was a calendar time-bomb** — The
+  consolidated super-audit (claude-audit + gpt-audit via muse-spark)
+  left S1-S7 landed and S8-S10 open; the full suite ran with ONE
+  failure: `test_golden_report_separates_regressions_prominently`.
+  Root cause was NOT breakage — the golden fixture (2026-08-25) aged
+  past the report's 30-day stale boundary on 2026-09-24 and the
+  wall-clock staleness check correctly started listing the cases; a
+  time-bomb test, fixed by freezing the report clock to the fixture
+  era (the same lesson as the S10 e2e stamp normalization). The
+  opencode audit session's last actions (read loop.py/providers.py/
+  test_agent_registry.py, grep `def generate`) confirmed S8 was
+  being scoped, not half-landed. Superseded root audit.md removed
+  (super-audit.md canonical); quick-reference gains the dashboard
+  run note. Suite 1637 OK.
+
 - 2026-09-24 — **S75.7 Super-audit S7 — learning trust gate, scoped
   (C1/G1/G2/G5/D4.3)** — `experience_record` and `skill_teach` now
   declare `requires_confirmation` (pipeline upgrades to ASK under any
