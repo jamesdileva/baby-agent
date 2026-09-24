@@ -31,7 +31,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s76.2"
+KIT_VERSION = "s76.3"
 
 
 def load_dataset(path=DATASET):
@@ -66,17 +66,17 @@ def main():
     first_render_shapes: list = []
 
     def _to_flat_token_ids(rendered):
-        """S76.2: normalize EVERY apply_chat_template return shape to a
-        flat python list of ints. v5 has been seen returning dicts,
-        batched nested lists, and — the shape that defeated two
-        flatten attempts — a LIST WRAPPING A TENSOR ([tensor([[...]])]):
-        the outer list has no .tolist() and its element is not a
-        list/tuple, so len() is always 1 and every render diffs to
-        empty. Unwrap one-element wrappers, convert tensor/numpy via
-        .tolist(), collapse nesting — bounded so a pathological shape
-        fails loudly instead of hanging."""
+        """S76.3: normalize EVERY apply_chat_template return shape to a
+        flat python list of ints. Observed v5 shapes: dict, batched
+        nested lists, tensors, list-wrapped tensors, and — the one that
+        defeated two flatten attempts — a BatchEncoding (UserDict, so
+        isinstance-dict is False; it SLICES like a batch, so every
+        render read as a batch of exactly 1). The input_ids key comes
+        FIRST because it is the BatchEncoding contract."""
         for _ in range(6):
-            if isinstance(rendered, dict):
+            if hasattr(rendered, "input_ids"):
+                rendered = rendered["input_ids"]
+            elif isinstance(rendered, dict):
                 rendered = rendered["input_ids"]
             elif hasattr(rendered, "tolist"):
                 rendered = rendered.tolist()
@@ -89,6 +89,32 @@ def main():
             else:
                 break
         return rendered
+
+    def _ids(text):
+        return _to_flat_token_ids(tokenizer(text,
+                                            add_special_tokens=False))
+
+    def _manual_masked_example(messages):
+        """Fallback (used only if the template path yields no assistant
+        tokens): construct the Qwen2.5 chat format explicitly —
+        <|im_start|>role {content} <|im_end|> — with no
+        apply_chat_template involved. Same segment layout the template
+        produces for this model family. (The \n after each segment is
+        written as an escape so the generated script tokenizes the
+        newline the template emits.)"""
+        input_ids: list = []
+        labels: list = []
+        for message in messages:
+            seg = _ids(f"<|im_start|>{message['role']}\n")
+            body = _ids(message["content"])
+            end = _ids("<|im_end|>\n")
+            input_ids.extend(seg + body + end)
+            if message["role"] == "assistant":
+                labels.extend(seg + body + end)
+            else:
+                labels.extend([-100] * (len(seg) + len(body) + len(end)))
+        assistant_tokens = sum(1 for l in labels if l != -100)
+        return {"input_ids": input_ids, "labels": labels},             assistant_tokens, len(labels)
 
     def masked_example(messages):
         """Render the conversation incrementally through the joint chat
@@ -116,17 +142,34 @@ def main():
         return ({"input_ids": input_ids, "labels": labels},
                 assistant_tokens, len(labels))
 
-    masked_rows = []
-    total_assistant = 0
-    total_tokens = 0
-    for r in rows:
-        example, a_tokens, all_tokens = masked_example(r["messages"])
-        masked_rows.append(example)
-        total_assistant += a_tokens
-        total_tokens += all_tokens
+    def build_all(mode):
+        masked = []
+        a_total = t_total = 0
+        for r in rows:
+            if mode == "template":
+                example, a, t = masked_example(r["messages"])
+            else:
+                example, a, t = _manual_masked_example(r["messages"])
+            masked.append(example)
+            a_total += a
+            t_total += t
+        return masked, a_total, t_total
+
+    masked_rows, total_assistant, total_tokens = build_all("template")
     ratio = total_assistant / max(total_tokens, 1)
-    print(f"assistant-token ratio: {ratio:.3f} "
-          f"({total_assistant:,}/{total_tokens:,})")
+    mode_used = "template"
+    if ratio < 0.10:
+        # the template path is broken under this transformers version —
+        # rebuild the whole dataset with the explicit manual format so
+        # one broken API cannot silently produce an untrained model
+        print("template path yielded no assistant tokens — falling back "
+              "to manual Qwen-format construction")
+        first_render_shapes.append("fallback-manual")
+        masked_rows, total_assistant, total_tokens = build_all("manual")
+        ratio = total_assistant / max(total_tokens, 1)
+        mode_used = "manual"
+    print(f"mask path: {mode_used} | assistant-token ratio: "
+          f"{ratio:.3f} ({total_assistant:,}/{total_tokens:,})")
     print(f"first-render shapes: {first_render_shapes[:3]}")
     if ratio < 0.10:
         # a broken mask would train on nothing — refuse like the
