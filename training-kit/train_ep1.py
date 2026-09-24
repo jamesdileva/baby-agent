@@ -40,14 +40,60 @@ def load_dataset(path=DATASET):
 def main():
     from datasets import Dataset
     from peft import LoraConfig, get_peft_model
+    from transformers import AutoModelForCausalLM, AutoTokenizer
     from trl import SFTConfig, SFTTrainer
 
     rows = load_dataset()
     print(f"training records: {len(rows)}")
-    # conversational format: ONE {"messages": [...]} dict per row —
-    # trl applies the tokenizer's chat template to that column
-    dataset = Dataset.from_list(
-        [{"messages": r["messages"]} for r in rows])
+
+    # S76 ASSISTANT-ONLY LOSS (gen-8's one variable): the gen-5 verdict
+    # showed most gradient mass teaching the model to predict
+    # ENVIRONMENT output (user/observation turns) — imitation then
+    # concentrated on the narrative. Build labels with every
+    # non-assistant span at -100 so the loss trains ONLY on the
+    # model's own behavior: [TOOL: ...] calls and final answers.
+    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
+
+    def masked_example(messages):
+        """Render the conversation incrementally through the joint chat
+        template (per-message rendering would corrupt the stream: Qwen
+        injects a default system block into every render that lacks
+        one) and attribute each new token to the message that
+        introduced it."""
+        input_ids: list = []
+        labels: list = []
+        prev_len = 0
+        for index, message in enumerate(messages):
+            full = tokenizer.apply_chat_template(
+                messages[:index + 1], tokenize=True)
+            new_tokens = full[prev_len:]
+            prev_len = len(full)
+            input_ids.extend(new_tokens)
+            if message["role"] == "assistant":
+                labels.extend(new_tokens)
+            else:
+                labels.extend([-100] * len(new_tokens))
+        assistant_tokens = sum(1 for l in labels if l != -100)
+        return ({"input_ids": input_ids, "labels": labels},
+                assistant_tokens, len(labels))
+
+    masked_rows = []
+    total_assistant = 0
+    total_tokens = 0
+    for r in rows:
+        example, a_tokens, all_tokens = masked_example(r["messages"])
+        masked_rows.append(example)
+        total_assistant += a_tokens
+        total_tokens += all_tokens
+    ratio = total_assistant / max(total_tokens, 1)
+    print(f"assistant-token ratio: {ratio:.3f} "
+          f"({total_assistant:,}/{total_tokens:,})")
+    if ratio < 0.10:
+        # a broken mask would train on nothing — refuse like the
+        # sanity generation gate does
+        sys.exit("MASK GATE FAILED: assistant-token ratio under 10% — "
+                 "the label masking is broken; do not train")
+    dataset = Dataset.from_list(masked_rows)
 
     config = SFTConfig(
         output_dir=OUTPUT_DIR,
@@ -62,6 +108,9 @@ def main():
         gradient_checkpointing_kwargs={"use_reentrant": False},
         logging_steps=1,
         report_to=[],
+        # S76: the dataset is pre-tokenized with labels — TRL must not
+        # re-apply its own (unmasked) preparation
+        dataset_kwargs={"skip_prepare_dataset": True},
     )
     lora = LoraConfig(
         r=16, lora_alpha=32, lora_dropout=0.05,
@@ -70,18 +119,19 @@ def main():
         task_type="CAUSAL_LM",
     )
 
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
     model = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL, torch_dtype="float16")
     model = get_peft_model(model, lora)
     model.print_trainable_parameters()
 
+    from transformers import DataCollatorForSeq2Seq
     trainer = SFTTrainer(
         model=model,
         args=config,
         train_dataset=dataset,
         processing_class=tokenizer,
+        data_collator=DataCollatorForSeq2Seq(
+            tokenizer, model=model, label_pad_token_id=-100),
     )
     trainer.train()
     trainer.save_model(OUTPUT_DIR)

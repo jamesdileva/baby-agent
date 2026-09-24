@@ -1,4 +1,8 @@
-FROM ./ep1-merged
+# ollama 0.34.4+: safetensors import is gone (MLX-only) - the
+# merged model must be converted to GGUF with llama.cpp
+# (convert_hf_to_gguf.py, see training-kit/README.md) and the
+# Modelfile points at the GGUF:
+FROM ./epN.gguf
 TEMPLATE """
 {{- if .Suffix }}<|fim_prefix|>{{ .Prompt }}<|fim_suffix|>{{ .Suffix }}<|fim_middle|>
 {{- else if .Messages }}

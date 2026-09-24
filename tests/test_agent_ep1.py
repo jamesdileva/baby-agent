@@ -278,7 +278,7 @@ class TrainingKitTests(unittest.TestCase):
             # Colab-found regressions, pinned: the dataset must be
             # conversational dicts (a bare list-of-lists 400s in
             # Dataset.from_list) and T4 has no bf16
-            self.assertIn('{"messages": r["messages"]}', script)
+            self.assertIn("masked_rows.append(example)", script)
             self.assertIn("fp16=True", script)
             self.assertIn('"use_reentrant": False', script)
             self.assertIn("merge_and_unload", script)
@@ -287,11 +287,23 @@ class TrainingKitTests(unittest.TestCase):
             # converter -> freq_base 0.0 -> one repeated token)
             self.assertIn('lm_head.weight', script)
             self.assertIn('rope_theta', script)
+            # S76: assistant-only loss (gen-8's one variable) with a
+            # mask-ratio gate, and the llama.cpp import path (ollama
+            # 0.34.4 dropped safetensors import + q4_K_M quantize)
+            self.assertIn('-100', script)
+            self.assertIn('skip_prepare_dataset', script)
+            self.assertIn('assistant-token ratio', script)
+            self.assertIn('MASK GATE FAILED', script)
+            self.assertIn('convert_hf_to_gguf.py', readme)
+            self.assertIn('FROM ./epN.gguf', readme)
             # the kit imports nothing from qacompanion — it runs outside
             # (prose mentions of the repo are fine; imports are not)
             self.assertNotIn("import qacompanion", script)
             self.assertNotIn("from qacompanion", script)
-            self.assertIn("compare()", readme)
+            # the README's eval step references the S74 rate-based
+            # verdict harness (compare() was its S57-era phrasing)
+            self.assertIn("per-task success rates", readme)
+            self.assertIn("repetitions=3", readme)
 
 
 class SupersedeTests(unittest.TestCase):
