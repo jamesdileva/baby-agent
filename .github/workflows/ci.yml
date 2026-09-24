@@ -1,0 +1,28 @@
+# Super-audit S1 (F16): the gate that prevents recurrence of F1/F2/F12.
+# Matrix over interpreter versions x OS so import-time, platform-seam, and
+# lint failures turn red immediately instead of hiding on one machine.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12", "3.13", "3.14"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: lint (undefined names — catches F1/F12 class defects)
+        run: |
+          pip install pyflakes
+          python -m pyflakes qacompanion tests
+      - name: test suite (stdlib only, hermetic)
+        run: python -m unittest

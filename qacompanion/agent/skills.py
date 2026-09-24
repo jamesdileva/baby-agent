@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .registry import READ_ONLY, SAFE_WRITE, RegisteredTool, ToolDefinition, ToolOperationError, ToolRegistry
+from .workspace import Workspace
 
 DEFAULT_SKILL_DIR = Path("skills") / "agent"
 

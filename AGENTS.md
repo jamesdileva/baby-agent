@@ -80,6 +80,19 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-24 — **S75.1 Super-audit S1 — five typing imports fixed +
+  annotation gate + CI (F1/F16)** — `providers` gains `Optional`,
+  `multi_agent`/`processes` gain `Tuple`, `websearch`/`skills` gain the
+  `Workspace` import (all five broke package import on Python <3.14 while
+  passing silently on 3.14's deferred annotations). New
+  `tests/test_agent_typing_imports.py` pins the failure mode with
+  `typing.get_type_hints` (eager on every version): a full sweep over all
+  38 agent modules (1029 targets, 0 unresolvable) plus the 8 exact F1
+  sites — verified it fails pre-fix (stash check) and passes post-fix.
+  `.github/workflows/ci.yml` adds the 3.12/3.13/3.14 × ubuntu/windows
+  matrix with pyflakes + full suite. Super-audit slice tracker opened
+  (S1 ✅). Suite 1596 OK (1594 + 2 new). No spec impact (imports only).
+
 - 2026-09-13 — **S73.1 Gen-7 verdict — recorded as failed; the n=1
   measurement problem named** — ep7 imported clean and the verdict
   (ep7-q4 vs ep6-q4, 3 tasks, budget 12, recorded): **0/3 both, ep7

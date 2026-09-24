@@ -32,7 +32,7 @@ import urllib.request
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .execution import EXECUTION, kill_process_tree
 from .registry import READ_ONLY, RegisteredTool, ToolDefinition, ToolOperationError, ToolRegistry

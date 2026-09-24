@@ -30,6 +30,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from .registry import EXTERNAL, RegisteredTool, ToolDefinition, ToolOperationError, ToolRegistry
+from .workspace import Workspace
 
 GEMINI_ENDPOINT = ("https://generativelanguage.googleapis.com/v1beta/models/"
                    "{model}:generateContent")

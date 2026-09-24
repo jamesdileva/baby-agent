@@ -21,7 +21,7 @@ import time
 import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .. import ollama_bridge as bridge
 from .. import tools as tools_mod
