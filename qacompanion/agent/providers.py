@@ -69,6 +69,30 @@ class FakeModelProvider(ModelProvider):
 _UNSET = object()  # sentinel: "argument omitted"
 
 
+def _retry_delay(exc, attempt: int) -> float:
+    """F13 (super-audit): the retry sleep was a blind 60s block. Honor
+    the server's Retry-After header when present (seconds form; HTTP-
+    date forms fall back to the heuristic), cap the wait, and scale
+    the heuristic with the attempt number. Cancel plumbing into
+    providers is deliberately out of scope here — the loop's cancel
+    latency stays bounded by one retry wait, now honest about it."""
+    try:
+        raw = (exc.headers or {}).get("Retry-After")
+    except AttributeError:
+        raw = None
+    if raw:
+        try:
+            delay = float(raw)
+            if delay >= 0:
+                return min(delay, _MAX_RETRY_WAIT)
+        except (TypeError, ValueError):
+            pass  # HTTP-date form: fall back to the heuristic
+    return min(5.0 * (attempt + 1), _MAX_RETRY_WAIT)
+
+
+_MAX_RETRY_WAIT = 60.0
+
+
 def _gemini_timeout() -> int:
     """S55: Gemini thinking + big tool catalogs exceed 60s reads."""
     import os as _os
@@ -122,7 +146,7 @@ class GeminiModelProvider(ModelProvider):
                     raise last_error from exc
                 # 429 = free-tier rate limit (5 RPM): a full minute wait
                 # guarantees a fresh window; 503 = high-demand spike
-                time.sleep(60.0 if exc.code == 429 else 5.0 * (attempt + 1))
+                time.sleep(_retry_delay(exc, attempt))
             except Exception as exc:
                 raise ProviderError(f"gemini request failed: {exc}") from exc
         if last_error is not None:
@@ -244,7 +268,7 @@ class GeminiModelProvider(ModelProvider):
                     raise last_error from exc
                 # 429 = free-tier rate limit (5 RPM): a full minute wait
                 # guarantees a fresh window; 503 = high-demand spike
-                time.sleep(60.0 if exc.code == 429 else 5.0 * (attempt + 1))
+                time.sleep(_retry_delay(exc, attempt))
             except Exception as exc:
                 raise ProviderError(f"gemini request failed: {exc}") from exc
         if last_error is not None:

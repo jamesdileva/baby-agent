@@ -359,20 +359,31 @@ class ToolRegistry:
         return self._execute_handler(tool, tool_call.arguments)
 
     def _execute_handler(self, tool: RegisteredTool, arguments: Dict[str, Any]) -> _Outcome:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(tool.handler, **arguments)
-            try:
-                output = future.result(timeout=tool.timeout_seconds)
-            except concurrent.futures.TimeoutError:
-                return _Outcome(
-                    ok=False,
-                    error=f"timed out after {tool.timeout_seconds}s",
-                    timed_out=True,
-                )
-            except ToolOperationError as exc:
-                return _Outcome(ok=False, error=str(exc))
-            except Exception as exc:
-                return _Outcome(ok=False, error=f"handler failed: {exc!r}")
+        # A2 (super-audit): the old `with ThreadPoolExecutor(...)` form
+        # called shutdown(wait=True) on exit, which BLOCKS until the
+        # handler finishes — wall time equaled handler time while the
+        # result claimed timed_out. Manage the executor manually and
+        # shut down without waiting: a timed-out handler's thread
+        # lingers until the handler itself ends (S35 subprocess tools
+        # tree-kill their own work), but the caller returns on time.
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = pool.submit(tool.handler, **arguments)
+        try:
+            output = future.result(timeout=tool.timeout_seconds)
+        except concurrent.futures.TimeoutError:
+            pool.shutdown(wait=False)
+            return _Outcome(
+                ok=False,
+                error=f"timed out after {tool.timeout_seconds}s",
+                timed_out=True,
+            )
+        except ToolOperationError as exc:
+            pool.shutdown(wait=False)
+            return _Outcome(ok=False, error=str(exc))
+        except Exception as exc:
+            pool.shutdown(wait=False)
+            return _Outcome(ok=False, error=f"handler failed: {exc!r}")
+        pool.shutdown(wait=False)
         if output is None:
             output = ""
         elif not isinstance(output, str):

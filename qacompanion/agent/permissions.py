@@ -127,12 +127,21 @@ class PermissionPolicy:
             self.level_defaults = dict(DEFAULT_LEVEL_DEFAULTS)
         self.decisions: List[PermissionDecision] = []
 
+    # F14 (super-audit): the audit trail grew unbounded across a long
+    # session (a fresh engine singleton per process accumulates every
+    # decision). Keep the most recent window; the audit trail stays
+    # useful without leaking memory.
+    MAX_DECISIONS = 1000
+    _TRIM_TO = 500
+
     # -- resolution -------------------------------------------------------
 
     def decide(self, tool_name: str, arguments: Dict[str, Any],
                tool: Any = None) -> PermissionDecision:
         decision = self._resolve(tool_name, arguments, tool)
         self.decisions.append(decision)
+        if len(self.decisions) > self.MAX_DECISIONS:
+            del self.decisions[:len(self.decisions) - self._TRIM_TO]
         return decision
 
     def check(self, tool_name: str, arguments: Dict[str, Any],
