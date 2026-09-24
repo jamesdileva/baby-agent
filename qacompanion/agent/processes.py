@@ -58,6 +58,14 @@ def port_available(port: int) -> bool:
     """BIND test: True when nothing is listening on 127.0.0.1:port."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
+        if os.name != "nt":
+            # POSIX TIME_WAIT: sockets from connections the killed
+            # server served linger ~60s and block a plain bind; the
+            # check's promise is "nothing LISTENING", and SO_REUSEADDR
+            # binds past TIME_WAIT while still refusing an active
+            # listener. (Windows SO_REUSEADDR would allow double-binds
+            # over live listeners — not set there.)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("127.0.0.1", port))
         return True
     except OSError:

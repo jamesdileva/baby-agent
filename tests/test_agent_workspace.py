@@ -192,7 +192,7 @@ class TestPathPolicyWindows(unittest.TestCase):
 class TestPathPolicyAllowedPaths(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp()).resolve()
-        self.sibling = Path(tempfile.mkdtemp())
+        self.sibling = Path(tempfile.mkdtemp()).resolve()
         self.policy = PathPolicy(self.tmp, allowed_paths=(str(self.sibling),))
 
     def tearDown(self):

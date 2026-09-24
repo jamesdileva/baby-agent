@@ -112,6 +112,10 @@ class TestRestSurface(ServerBase):
         self.assertEqual(ctx.exception.code, 404)
 
     def test_dashboard_assets_served(self):
+        dist = Path(__file__).resolve().parents[1] / "app" / "dist"
+        if not (dist / "index.html").exists():
+            self.skipTest("dashboard not built (npm build is the UI "
+                          "gate; CI does not build it)")
         # / serves the built shell; JS assets serve as real JS (the
         # walkthrough caught the index-for-everything bug)
         with urllib.request.urlopen(self.server.url + "/", timeout=5) as resp:
