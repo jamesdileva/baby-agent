@@ -677,6 +677,16 @@ the Electron shell (window chrome, tray, packaging/installers) — the
 browser is the desktop shell until then; the API contract is unchanged
 when it lands.
 
+**Dashboard polish backlog (human-tested 2026-09-24; deferred until
+baby-agent is functional end to end — do not polish before it
+works).** Two usability gaps from a live click-through: (1) session
+output/events are not visibly rendered for a started session (the
+feed exists but the user saw no output); (2) no workspace/folder
+selector — the user cannot pick a project to work inside from the UI
+(the API accepts `workspace`; the UI needs a folder picker input).
+S70's Operations panel (drip/verdict buttons) is the pattern to
+extend.
+
 **Stack.** Electron + React + TypeScript + Vite; Python runtime behind
 FastAPI or local IPC; SQLite storage (existing JSONL stores remain behind
 repositories during migration).

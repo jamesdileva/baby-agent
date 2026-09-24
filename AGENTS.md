@@ -80,6 +80,44 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-24 — **S75.11/S75.12 Super-audit S11 + lab.db miner — the
+  last audit slice and the colony's post-GC corpus** — **S11 (D2/D6,
+  curriculum/training):** `generate()` now lands
+  `last_run_accounting` (requested/produced/skipped_duplicates/
+  exhausted) and gains `strict=True` raising on silent shortfalls
+  (a caller requesting 100 that receives 87 was invalidating
+  dataset-size comparisons); `coverage()` docstring relabeled as
+  what it is — a label-frequency histogram, not capability coverage.
+  Training-gate edges: INVALID trajectories counted in the report
+  (they used to vanish against the "exclusions carry reasons" pin),
+  truncated trajectories marked `truncated: true` and surfaced in
+  counts (a cut trace trained as a complete one), the goal-suffix
+  strip narrowed to the exact trailing ` (benchmark run <hex>)`
+  pattern (the old split mangled legitimate goals),
+  `reset_runtime_catalog()` for the process-global cache, and chat
+  metadata labels `capture_tier: "behavior-trace"` — bounded
+  captures are behavior traces, not replayable demonstrations, and
+  both facts are now explicit. **S75.12 — lab.db miner
+  (docs/labDB-handoff.md):** the antfarm colony saves every cycle's
+  full transcript to lab.db and session GC deletes the opencode
+  original — 99 live transcripts (82 done / 17 timed_out) were
+  sitting in a table nothing read. `LabDbMiner` reads
+  session_transcripts directly (same part vocabulary as the base
+  miner), maps status honestly (done → confidence 0.45, timed_out →
+  0.3; curation stays the judge), and keys sessions by opencode id
+  so the store's reinforcement merges instead of double-counting.
+  `qa mine-sessions --source labdb`. **Live: opencode re-mine 1,540
+  seen / 344 mined / 0 errors; lab.db 99 seen / 19 mined (all 19
+  reinforced into existing goals — the confidence bump is the
+  merge; agent-b's 47 short timed_out pings correctly skipped as
+  trivial); store 737, curation ACCEPT=734 / REVIEW=2 / REJECT=1.**
+  Honest note: reinforcement copies confidence/outcome but not
+  context, so labdb provenance lives in the confidence evidence
+  rather than a separate source tag. Dashboard polish backlog
+  recorded (output visibility + folder picker) and explicitly
+  deferred until baby-agent is functional end to end. Suite 1675
+  OK. Specs: super-audit.md S11 / docs/labDB-handoff.md.
+
 - 2026-09-24 — **S75.10 Super-audit S10 — flatten fence + validator/
   loop accounting (B3/B4)** — `_flatten_messages` fences tool turns
   as untrusted blocks and escapes role-like line prefixes in all
