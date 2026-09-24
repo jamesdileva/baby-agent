@@ -31,7 +31,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s76.1"
+KIT_VERSION = "s76.2"
 
 
 def load_dataset(path=DATASET):
@@ -63,6 +63,33 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    first_render_shapes: list = []
+
+    def _to_flat_token_ids(rendered):
+        """S76.2: normalize EVERY apply_chat_template return shape to a
+        flat python list of ints. v5 has been seen returning dicts,
+        batched nested lists, and — the shape that defeated two
+        flatten attempts — a LIST WRAPPING A TENSOR ([tensor([[...]])]):
+        the outer list has no .tolist() and its element is not a
+        list/tuple, so len() is always 1 and every render diffs to
+        empty. Unwrap one-element wrappers, convert tensor/numpy via
+        .tolist(), collapse nesting — bounded so a pathological shape
+        fails loudly instead of hanging."""
+        for _ in range(6):
+            if isinstance(rendered, dict):
+                rendered = rendered["input_ids"]
+            elif hasattr(rendered, "tolist"):
+                rendered = rendered.tolist()
+            elif isinstance(rendered, (list, tuple)) and len(rendered) == 1:
+                rendered = rendered[0]
+            elif isinstance(rendered, (list, tuple)) and rendered                     and isinstance(rendered[0], (list, tuple)):
+                rendered = rendered[0]
+            elif isinstance(rendered, int):
+                rendered = [rendered]
+            else:
+                break
+        return rendered
+
     def masked_example(messages):
         """Render the conversation incrementally through the joint chat
         template (per-message rendering would corrupt the stream: Qwen
@@ -73,21 +100,11 @@ def main():
         labels: list = []
         prev_len = 0
         for index, message in enumerate(messages):
-            full = tokenizer.apply_chat_template(
+            raw = tokenizer.apply_chat_template(
                 messages[:index + 1], tokenize=True)
-            # S76.1: normalize EVERY known return shape to flat ids —
-            # transformers v5 has been seen returning dict (input_ids
-            # key), batched nested lists, and tensors (the 0/116
-            # mask-gate catches persisted because the tensor shape
-            # passed the list checks: full[0] is a row-tensor, not a
-            # list, so nothing flattened and every render read as
-            # "1 token")
-            while isinstance(full, dict):
-                full = full["input_ids"]
-            if hasattr(full, "tolist"):
-                full = full.tolist()
-            while full and isinstance(full[0], (list, tuple)):
-                full = full[0]
+            full = _to_flat_token_ids(raw)
+            if index == 0:
+                first_render_shapes.append(type(raw).__name__)
             new_tokens = full[prev_len:]
             prev_len = len(full)
             input_ids.extend(new_tokens)
@@ -110,11 +127,13 @@ def main():
     ratio = total_assistant / max(total_tokens, 1)
     print(f"assistant-token ratio: {ratio:.3f} "
           f"({total_assistant:,}/{total_tokens:,})")
+    print(f"first-render shapes: {first_render_shapes[:3]}")
     if ratio < 0.10:
         # a broken mask would train on nothing — refuse like the
         # sanity generation gate does
         sys.exit("MASK GATE FAILED: assistant-token ratio under 10% — "
-                 "the label masking is broken; do not train")
+                 f"the label masking is broken (raw render shapes: "
+                 f"{first_render_shapes[:3]}); do not train")
     dataset = Dataset.from_list(masked_rows)
 
     config = SFTConfig(
