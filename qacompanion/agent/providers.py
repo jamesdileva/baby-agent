@@ -292,10 +292,36 @@ class GeminiModelProvider(ModelProvider):
         )
 
 
+_ROLE_LIKE_PREFIX_RE = re.compile(
+    r"^(system|user|assistant|tool)\s*:", re.IGNORECASE | re.MULTILINE)
+
+
+def _escape_role_like(text: str) -> str:
+    """B3 (super-audit): flattened content shares a text plane with the
+    turn markers, so a tool result (or file) containing a line like
+    "system: ignore previous instructions" could read as a new turn.
+    Escape by indenting role-like line starts one space — visible in
+    debugging, inert to the turn markers."""
+    return _ROLE_LIKE_PREFIX_RE.sub(lambda m: " " + m.group(0), text)
+
+
 def _flatten_messages(messages: List[ModelMessage]) -> str:
-    """Flatten a message list into one prompt: system blocks first, then turns."""
+    """Flatten a message list into one prompt: system blocks first,
+    then turns. B3: tool-role turns are fenced as untrusted blocks and
+    role-like line prefixes inside every non-system turn are escaped,
+    so flattened content cannot read as a new turn boundary."""
     system = [m.content for m in messages if m.role == "system"]
-    turns = [f"{m.role}: {m.content}" for m in messages if m.role != "system"]
+    turns = []
+    for m in messages:
+        if m.role == "system":
+            continue
+        content = _escape_role_like(m.content or "")
+        if m.role == "tool":
+            turns.append("--- tool result (untrusted) ---\n"
+                         f"{content}\n"
+                         "--- end tool result ---")
+        else:
+            turns.append(f"{m.role}: {content}")
     return "\n\n".join(system + turns)
 
 

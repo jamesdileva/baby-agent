@@ -20,7 +20,7 @@ import json
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from .contracts import ModelMessage, ModelRequest, ToolResult
+from .contracts import ModelMessage, ModelRequest, ToolCall, ToolResult
 from .registry import SAFE_WRITE, EXECUTION, DESTRUCTIVE, EXTERNAL, ToolRegistry
 from .providers import ModelProvider, ProviderError
 from .qa_brain import format_advice
@@ -83,9 +83,13 @@ def _deadline_exceeded(started_monotonic: float, config: AgentConfig,
     return elapsed_seconds > config.max_runtime_minutes * 60
 
 
-def _extract_changed_path(result: ToolResult, registry: ToolRegistry) -> Optional[str]:
+def _extract_changed_path(call: "ToolCall", result: ToolResult,
+                          registry: ToolRegistry) -> Optional[str]:
     """Metadata-driven changed-file extraction: write-level tool + JSON
-    output carrying a `path` key."""
+    output carrying a `path` key. B4 (super-audit): the JSON-only rule
+    made any handler returning plain text (or a differently shaped
+    payload) edit files invisibly to metrics — the write tool's OWN
+    `path` argument is the robust fallback."""
     try:
         tool = registry.get(result.call_name)
     except Exception:
@@ -97,9 +101,13 @@ def _extract_changed_path(result: ToolResult, registry: ToolRegistry) -> Optiona
     try:
         payload = json.loads(result.output)
     except (ValueError, TypeError):
-        return None
+        payload = None
     if isinstance(payload, dict) and isinstance(payload.get("path"), str):
         return payload["path"]
+    arguments = getattr(call, "arguments", None) or {}
+    path = arguments.get("path")
+    if isinstance(path, str) and path.strip():
+        return path
     return None
 
 
@@ -196,6 +204,7 @@ class AgentLoop:
 
         started = time.monotonic()
         self._set_state(session, AgentState.RUNNING)
+        consecutive_empty = 0  # B4: terminate on a stuck silent provider
 
         while True:
             if self._cancelled():
@@ -242,8 +251,20 @@ class AgentLoop:
 
             if not response.has_tool_calls():
                 if not response.text.strip():
+                    # B4 (super-audit): an empty response used to loop
+                    # silently — the next turn saw identical messages
+                    # and a stuck provider burned max_iterations with
+                    # no new signal. Count consecutive empties and
+                    # terminate honestly when the provider is stuck.
+                    consecutive_empty += 1
+                    if consecutive_empty >= 3:
+                        return self._finish(
+                            session, AgentState.FAILED,
+                            f"provider returned {consecutive_empty} "
+                            "consecutive empty responses")
                     self._record_failure(session, "empty model response")
                     continue
+                consecutive_empty = 0
                 # final answer -> verify
                 self._set_state(session, AgentState.VERIFYING)
                 if self.verifier is not None:
@@ -295,7 +316,8 @@ class AgentLoop:
                 return self._finish(session, AgentState.COMPLETED,
                                     TERMINATION_COMPLETED)
 
-            # tool turn
+            # tool turn — B4: any real response resets the empty counter
+            consecutive_empty = 0
             session.messages.append(ModelMessage(
                 role="assistant", content=response.text,
                 tool_calls=list(response.tool_calls)))
@@ -324,7 +346,7 @@ class AgentLoop:
                     )
                 session.tool_calls.append(call)
                 session.observations.append(result)
-                changed = _extract_changed_path(result, self.registry)
+                changed = _extract_changed_path(call, result, self.registry)
                 if changed and changed not in session.files_changed:
                     session.files_changed.append(changed)
                 if not result.ok:

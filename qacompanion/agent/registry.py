@@ -125,14 +125,75 @@ class PermissionPolicy:
 ALLOW_ALL_POLICY = PermissionPolicy()
 
 
+def _validate_value(key: str, spec: Dict[str, Any], value: Any,
+                    errors: List[str]) -> None:
+    """B4 (super-audit): validate ONE value against its schema spec,
+    recursing into object properties and array items — nested malformed
+    arguments used to pass depth-0 validation and crash handlers after
+    a wasted turn. Schemas without a "type" are accepted (nothing to
+    check) as before, now documented."""
+    expected = spec.get("type")
+    if expected is None:
+        return
+    if expected == "integer":
+        if isinstance(value, bool) or not isinstance(value, int):
+            errors.append(f"argument {key} must be an integer")
+    elif expected == "number":
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            errors.append(f"argument {key} must be a number")
+    elif expected == "boolean":
+        if not isinstance(value, bool):
+            errors.append(f"argument {key} must be a boolean")
+    elif expected == "object":
+        if not isinstance(value, dict):
+            errors.append(f"argument {key} must be an object")
+            return
+        sub_properties = spec.get("properties", {})
+        if not sub_properties:
+            # free-form object (env dicts, requires maps, skill
+            # payloads): nothing declared to validate against — accept
+            # any dict, exactly as depth-0 validation did
+            return
+        sub_required = spec.get("required", [])
+        for req in sub_required:
+            if req not in value:
+                errors.append(f"argument {key}.{req} is required")
+        allowed_extra = bool(spec.get("additionalProperties", False))
+        for sub_key, sub_value in value.items():
+            sub_key_path = f"{key}.{sub_key}"
+            if sub_key not in sub_properties:
+                if not allowed_extra:
+                    errors.append(f"unknown argument: {sub_key_path}")
+                continue
+            _validate_value(sub_key_path, sub_properties[sub_key],
+                            sub_value, errors)
+    elif expected == "array":
+        if not isinstance(value, list):
+            errors.append(f"argument {key} must be an array")
+            return
+        items_spec = spec.get("items")
+        if isinstance(items_spec, dict):
+            for index, item in enumerate(value):
+                _validate_value(f"{key}[{index}]", items_spec, item, errors)
+    elif expected in PRIMITIVE_TYPES:
+        # "string" (object/array have their own recursive branches above)
+        if not isinstance(value, PRIMITIVE_TYPES[expected]):
+            errors.append(f"argument {key} must be a {expected}")
+    else:
+        errors.append(f"argument {key} has unsupported schema type: {expected!r}")
+
+
 def validate_tool_arguments(
     definition: ToolDefinition, arguments: Any
 ) -> List[str]:
     """Strict mini-validator. Returns one error string per problem.
 
     Supported schema subset: {"type": "object", "properties": {name:
-    {"type": primitive}}, "required": [names], "additionalProperties": bool}.
-    Booleans are never integers/numbers.
+    {"type": primitive | object | array}}, "required": [names],
+    "additionalProperties": bool, "items": spec}. B4: object and array
+    types validate their nested properties/items recursively; booleans
+    are never integers/numbers; a property schema without "type" is
+    accepted unchanged (nothing checkable).
     """
     errors: List[str] = []
     if not isinstance(arguments, dict):
@@ -149,21 +210,7 @@ def validate_tool_arguments(
             if not allowed_extra:
                 errors.append(f"unknown argument: {key}")
             continue
-        expected = properties[key].get("type")
-        if expected == "integer":
-            if isinstance(value, bool) or not isinstance(value, int):
-                errors.append(f"argument {key} must be an integer")
-        elif expected == "number":
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
-                errors.append(f"argument {key} must be a number")
-        elif expected == "boolean":
-            if not isinstance(value, bool):
-                errors.append(f"argument {key} must be a boolean")
-        elif expected in PRIMITIVE_TYPES:
-            if not isinstance(value, PRIMITIVE_TYPES[expected]):
-                errors.append(f"argument {key} must be a {expected}")
-        elif expected is not None:
-            errors.append(f"argument {key} has unsupported schema type: {expected!r}")
+        _validate_value(key, properties[key], value, errors)
     return errors
 
 
@@ -291,9 +338,12 @@ class ToolRegistry:
             tool.definition, tool_call.arguments
         )
         if validation_errors:
+            # B4: name the tool — multi-call turns need to know which
+            # call the validator is complaining about
             return _Outcome(
                 ok=False,
-                error="invalid arguments: " + "; ".join(validation_errors),
+                error=f"invalid arguments for {tool.definition.name!r}: "
+                      + "; ".join(validation_errors),
             )
 
         # prefer the engine's decide() (full PermissionDecision + audit);
