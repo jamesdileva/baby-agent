@@ -103,6 +103,30 @@ commit + push → worklog entry.**
   6 runs across two generations), strings succeeded once
   (variance), json never. Suite 1682 OK. Spec: docs/s77-spec.md.
 
+- 2026-09-25 — **S78 Gen-10 corpus — the SRFT correction + volume
+  teaching the json synthesis + the capability ladder** — Three
+  pieces. (1) **SRFT lane filter (the gen-9 correction):** prefixes
+  now keep only ok=True steps — the failed reads in mined prefixes
+  taught path-guessing (guessed_path 0.78 → 1.22 in gen-9); the
+  productive chain is the reads that SUCCEEDED. (2) **The capability
+  ladder grows:** calculator is solved (3/3), so default_tasks gains
+  **defect-fix-cascade** — TWO defects in one module, the tests fail
+  on both, fixing one only reveals the other; the diagnosis chain
+  must run twice with a rerun between. Verified by subprocess:
+  pre-fix fails both, both-fixes pass. (3) **Volume-teaching the
+  json synthesis (gen-10's training variable):** nested_lookup 4 →
+  **24 deterministic pool variants** (depths 1-2, varied
+  sections/keys/leaves, defaults every fourth) — with a real lesson
+  en route: the store's goal-dedupe initially DEFEATED the volume
+  (3 goal texts collapsed 24 variants), so goals now carry the
+  variant's module + descent path. **Live: corpus-v8 rebuild all
+  green; training export 154 = 151 verified-success + 3 SRFT
+  prefixes (ok=True-filtered); 10+ distinct nested-lookup goals (up
+  from 3).** Cascade + volume + filtered SRFT ride one Colab job:
+  ep10 → `qa verdict --models baby-agent:ep10,baby-agent:ep9` on the
+  4-task ladder (calculator 1.0 = regression guard, cascade = new
+  rung, json = the wall). Suite 1683 OK, CI green. Spec:
+  docs/s78-spec.md.
 - 2026-09-25 — **S77 Gen-9 corpus — SRFT prefix lane + nested-lookup
   expansion** — The gen-8 verdict left json as the standing wall, and
   the recorded evidence named both levers: the chained-`.get`
