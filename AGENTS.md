@@ -80,6 +80,31 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-24 — **S76.1 Gen-8 verdict — loss masking WORKS: 3/9 vs
+  0/9, first strings success, first multi-task-capable generation** —
+  ep8 trained on the S76 kit (assistant-only loss; three rounds of
+  Colab debugging: transformers v5 apply_chat_template shape roulette
+  — dict, nested lists, list-wrapped tensors, and finally a
+  BatchEncoding that SLICES like a batch of 1 — caught by the mask
+  gate + shape diagnostics + compile check each time, and the kit now
+  carries a manual Qwen-format fallback so a broken template API can
+  never silently produce an untrained model). Import migrated to the
+  llama.cpp GGUF path (ollama 0.34.4 dropped safetensors import).
+  **Verdict (rate-based, n=3 x 3 tasks, budget 12): ep8 3/9 (33.3%)
+  vs ep7-q4 0/9** — calculator 2/3, **strings 1/3 (first strings
+  success in program history)**, json 0/3. The attribution is the
+  cleanest yet: byte-identical corpus, same base, the objective was
+  the only variable. Protocol deltas vs ep7: discovery_first 0.11 →
+  0.56 (the model now lists before acting more often than not),
+  tool failures 24 → 10, chaining 1.0 held. Honest notes: ep8 ran at
+  q8_0 vs ep7's q4 (the ollama 0.34.4 world; minor confound, favoring
+  quality if anything); guessed_path 1.0 is exploration cost (failed
+  reads before correct ones — the checking behavior the corpus
+  teaches); json remains the wall (0/3 — the nested-lookup shape
+  still unmet); the disk cleanup removed ep1-ep6 model binaries (the
+  recorded verdicts are the history; ep7-q4 kept as the baseline).
+  Gen-9 lever queued: SRFT failed-trajectory signal, judged against
+  these rates. Suite 1675 OK. Spec: docs/s76-spec.md.
 - 2026-09-24 — **S75.11/S75.12 Super-audit S11 + lab.db miner — the
   last audit slice and the colony's post-GC corpus** — **S11 (D2/D6,
   curriculum/training):** `generate()` now lands
