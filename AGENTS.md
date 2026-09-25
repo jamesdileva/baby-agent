@@ -80,6 +80,16 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S83 — Colab bf16 second strike (dtype objects +
+  audit gate)** — Colab threw the same GradScaler bf16 error against
+  the current 326-line file, proving the S79 string fix insufficient.
+  7B path now passes real `torch.float16` objects (bnb compute string
+  is the prime suspect: unconverted → bf16 model default) plus a
+  fail-loud dtype audit gate (versions + bf16 param list) before
+  LoRA; proven 3B string form untouched. Torchao stays a README
+  uninstall line (script never imports it). Suite 1687 OK, pyflakes
+  clean. Spec: docs/s83-spec.md.
+
 - 2026-09-25 — **S82 — Agent-authored batch 2 (json volume + second
   cascade, rungs 1-2 only)** — the S80 lane working as intended:
   session_store two-level drill with a genuine wrong-turn read

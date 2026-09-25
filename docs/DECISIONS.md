@@ -1329,3 +1329,20 @@ session authoring in the GLM vein per the human's direction; validator
 + gate passed 7/7.
 
 Status: Adopted 2026-09-25. Spec: docs/s82-spec.md.
+
+### S83 Colab bf16 second strike: dtype objects + audit gate
+
+**Decision:** The S79 string fix was proven insufficient by the
+evidence (Colab traceback line numbers match the current 326-line
+file, so Colab runs current code and still gets bf16 grads). The 7B
+path now passes real `torch.float16` objects to both
+`BitsAndBytesConfig` and `from_pretrained` (the bnb compute-dtype
+string is the prime suspect: silently unconverted → compute falls
+back to the bf16 model default), and a fail-loud dtype audit gate
+(versions + model.dtype + every bf16 param) runs before LoRA so the
+next failure names its culprit. Proven 3B string form untouched.
+Provenance: repeat Colab NotImplementedError against current kit;
+zcode DB confirms the epN gguf→Modelfile→verdict→gitignore import
+ritual for the post-training side (no ep11.gguf exists yet).
+
+Status: Adopted 2026-09-25. Spec: docs/s83-spec.md.

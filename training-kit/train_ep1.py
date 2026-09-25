@@ -35,7 +35,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s81"
+KIT_VERSION = "s83"
 
 
 def load_dataset(path=DATASET):
@@ -48,6 +48,7 @@ def load_dataset(path=DATASET):
 
 
 def main():
+    import torch
     from datasets import Dataset
     from peft import LoraConfig, get_peft_model
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -218,17 +219,22 @@ def main():
         # S79: 7B fp16 (~14GB) does not fit the free T4's 16GB with
         # activations — 4-bit QLoRA is the standard free-T4 7B setup
         from transformers import BitsAndBytesConfig
+        # S83: real torch.dtype objects — the "float16" STRINGS were
+        # silently unconverted on the Colab stack, so bnb compute fell
+        # back to the model default (bf16) and bf16 grads reached the
+        # fp16 GradScaler (NotImplementedError THROUGH the S79 fix).
         bnb = BitsAndBytesConfig(
             load_in_4bit=True, bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype="float16",
+            bnb_4bit_compute_dtype=torch.float16,
             bnb_4bit_use_double_quant=True)
         # torch_dtype MUST be fp16: Qwen2.5-7B's config defaults to
         # bfloat16, and on Turing (T4) bf16 is unsupported — the AMP
         # GradScaler then chokes on bf16 grads
         # (NotImplementedError: _amp_foreach_non_finite_check_and_unscale_
-        # cuda not implemented for BFloat16 — Colab catch, S79)
+        # cuda not implemented for BFloat16 — Colab catch, S79; object
+        # form pinned S83)
         model = AutoModelForCausalLM.from_pretrained(
-            BASE_MODEL, quantization_config=bnb, torch_dtype="float16",
+            BASE_MODEL, quantization_config=bnb, torch_dtype=torch.float16,
             device_map="auto")
         # S81 lean prepare (T4 OOM fix): full
         # prepare_model_for_kbit_training upcasts norms to fp32 (+1GB
@@ -254,6 +260,33 @@ def main():
     else:
         model = AutoModelForCausalLM.from_pretrained(
             BASE_MODEL, torch_dtype="float16")
+    # S83 dtype audit gate (Colab bf16 catch): the GradScaler crash
+    # names no module, so assert the evidence HERE — versions, the
+    # effective model dtype, and every bf16 param — before LoRA and
+    # before the trainer. A single bf16 param on a T4 build refuses
+    # loudly instead of dying 8 frames deep in torch/amp.
+    try:
+        import transformers as _tf_mod
+        import peft as _peft_mod
+        print(f"versions: transformers={_tf_mod.__version__} "
+              f"peft={_peft_mod.__version__} torch={torch.__version__}")
+    except Exception as _ver_exc:
+        print(f"version probe failed: {_ver_exc}")
+    try:
+        import bitsandbytes as _bnb_mod
+        print(f"bitsandbytes={_bnb_mod.__version__}")
+    except Exception as _bnb_exc:
+        print(f"bitsandbytes probe failed: {_bnb_exc}")
+    _bf16 = sorted({f"{_n}:{_p.dtype}"
+                    for _n, _p in model.named_parameters()
+                    if "bfloat16" in str(_p.dtype)})
+    print(f"dtype audit: model.dtype={model.dtype} "
+          f"bf16_params={len(_bf16)}")
+    for _line in _bf16[:10]:
+        print(f"  bf16: {_line}")
+    if _bf16:
+        sys.exit("DTYPE GATE FAILED: bf16 params present on a T4 build "
+                 "— paste the versions + bf16 list above; do not train")
     model = get_peft_model(model, lora)
     model.print_trainable_parameters()
 

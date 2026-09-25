@@ -325,7 +325,7 @@ class TrainingKitTests(unittest.TestCase):
             # direct edits get clobbered by export_training_kit)
             self.assertIn('BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2', script)
             self.assertIn("first-render shapes", script)
-            self.assertIn("KIT_VERSION = \"s81\"", script)
+            self.assertIn("KIT_VERSION = \"s83\"", script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
@@ -344,6 +344,14 @@ class TrainingKitTests(unittest.TestCase):
             self.assertIn('use_cache = False', script)
             self.assertIn('empty_cache()', script)
             self.assertIn('expandable_segments', readme)
+            # S83 Colab bf16 catch, pinned: real torch.dtype objects
+            # (the "float16" strings were silently unconverted so bnb
+            # compute fell back to the bf16 model default) + a
+            # fail-loud dtype audit gate before LoRA/training
+            self.assertIn('bnb_4bit_compute_dtype=torch.float16', script)
+            self.assertIn('torch_dtype=torch.float16', script)
+            self.assertIn('bf16_params=', script)
+            self.assertIn('DTYPE GATE FAILED', script)
             self.assertIn("merge_and_unload", script)
             # verdict-day fixes, pinned: disk-level untie + legacy
             # rope_theta (transformers v5 config format broke ollama's
