@@ -9,7 +9,11 @@ qacompanion stays stdlib-only — this kit runs on EXTERNAL free compute
     `!pip install -U transformers peft datasets trl accelerate`
     `!pip uninstall -y torchao`   # Colab ships an old torchao; recent
     # peft RAISES on it instead of ignoring it (optional dependency)
-    `%run train_ep1.py`
+    `%run train_ep1.py ep10`   (arg 1 names the generation — outputs
+    land in ep10-adapter/ and ep10-merged/; default: ep1)
+    `%run train_ep1.py ep11 Qwen/Qwen2.5-Coder-7B-Instruct`   (S79:
+    arg 2 selects the base — 7B trains in 4-bit QLoRA on the T4; add
+    `!pip install bitsandbytes` for the 4-bit path)
 - **Kaggle** (free 30 GPU-hours/week): same two files, P100/T4 kernel.
 
 ## After training (script outputs `ep1-merged/`)

@@ -24,8 +24,12 @@ import sys
 
 # optional generation name: `python train_ep1.py ep8` produces
 # ep8-adapter/ and ep8-merged/ (default: ep1)
+# optional base model: `python train_ep1.py ep11
+# Qwen/Qwen2.5-Coder-7B-Instruct` (S79; default: the 3B)
 GEN = sys.argv[1] if len(sys.argv) > 1 else "ep1"
-BASE_MODEL = "Qwen/Qwen2.5-Coder-3B-Instruct"
+BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2
+              else "Qwen/Qwen2.5-Coder-3B-Instruct")
+SEVEN_B = "7B" in BASE_MODEL
 DATASET = "training.jsonl"
 OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
@@ -186,9 +190,10 @@ def main():
         num_train_epochs=3,
         learning_rate=2e-4,
         fp16=True,                      # T4 (Turing) has no bf16
-        gradient_checkpointing=True,
+        gradient_checkpointing=not SEVEN_B,
         # LoRA + checkpointing: frozen embeddings break the default
-        # (reentrant) checkpoint implementation
+        # (reentrant) checkpoint implementation. The 4-bit path
+        # checkpoint via prepare_model_for_kbit_training instead.
         gradient_checkpointing_kwargs={"use_reentrant": False},
         logging_steps=1,
         report_to=[],
@@ -203,8 +208,23 @@ def main():
         task_type="CAUSAL_LM",
     )
 
-    model = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL, torch_dtype="float16")
+    if SEVEN_B:
+        # S79: 7B fp16 (~14GB) does not fit the free T4's 16GB with
+        # activations — 4-bit QLoRA is the standard free-T4 7B setup
+        from transformers import BitsAndBytesConfig
+        bnb = BitsAndBytesConfig(
+            load_in_4bit=True, bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype="float16",
+            bnb_4bit_use_double_quant=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            BASE_MODEL, quantization_config=bnb, device_map="auto")
+        from peft import prepare_model_for_kbit_training
+        model = prepare_model_for_kbit_training(
+            model, use_gradient_checkpointing=True,
+            gradient_checkpointing_kwargs={"use_reentrant": False})
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            BASE_MODEL, torch_dtype="float16")
     model = get_peft_model(model, lora)
     model.print_trainable_parameters()
 
@@ -216,6 +236,7 @@ def main():
         processing_class=tokenizer,
         data_collator=DataCollatorForSeq2Seq(
             tokenizer, model=model, label_pad_token_id=-100),
+        optim=("paged_adamw_32bit" if SEVEN_B else "adamw_torch"),
     )
     trainer.train()
     trainer.save_model(OUTPUT_DIR)

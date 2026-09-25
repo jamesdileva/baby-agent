@@ -11,8 +11,14 @@ from pathlib import Path
 from qacompanion.agent import ModelResponse
 from qacompanion.agent.curation import TrajectoryCurator
 from qacompanion.agent.ep1 import (
-    DEMO_MODEL_TAG, STRATEGIES, build_corpus, build_demo,
-    export_training_kit, format_corpus_report)
+    DEMO_MODEL_TAG, STRATEGIES, build_agent_corpus,
+    build_corpus, build_demo, export_training_kit, format_corpus_report,
+    validate_demonstration, agent_authored_demos)
+from qacompanion.agent.contracts import ToolCall as _TC, ModelResponse as _MR
+
+
+def _list():
+    return _TC(name="list_directory", arguments={"path": "."})
 from qacompanion.agent.experience import ExperienceStore
 from qacompanion.agent.training import build_training
 from qacompanion.agent.curriculum import bug_fix_defect
@@ -314,12 +320,21 @@ class TrainingKitTests(unittest.TestCase):
             # transformers v5 batched-return normalization (the
             # 0/116 mask-gate catch)
             self.assertIn("_to_flat_token_ids", script)
+            # S79: base model as argv[2] (7B QLoRA on T4); README
+            # documents both arguments (and is template-generated, so
+            # direct edits get clobbered by export_training_kit)
+            self.assertIn('BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2', script)
             self.assertIn("first-render shapes", script)
             self.assertIn("KIT_VERSION = \"s76.3\"", script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
             self.assertIn('MERGED_DIR = f"{GEN}-merged"', script)
+            # S79: base model as argv[2] + the QLoRA 7B path
+            self.assertIn("BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2", script)
+            self.assertIn('load_in_4bit=True', script)
+            self.assertIn('prepare_model_for_kbit_training', script)
+            self.assertIn('paged_adamw_32bit', script)
             self.assertIn("fp16=True", script)
             self.assertIn('"use_reentrant": False', script)
             self.assertIn("merge_and_unload", script)
@@ -497,8 +512,7 @@ class VerdictTests(unittest.TestCase):
     """S68: run_verdict with injected fakes — structure + metrics."""
 
     def test_verdict_structure_and_metrics(self):
-        from qacompanion.agent import (FakeModelProvider, ModelResponse,
-                                       ToolCall)
+        from qacompanion.agent import FakeModelProvider, ModelResponse
         from qacompanion.agent.ep1 import run_verdict
 
         class _Stateless(FakeModelProvider):
@@ -512,7 +526,7 @@ class VerdictTests(unittest.TestCase):
                     return ModelResponse(text="fixed",
                                          finish_reason="stop")
                 return ModelResponse(text="", tool_calls=[
-                    ToolCall(name="edit_file", arguments={
+                    _TC(name="edit_file", arguments={
                         "path": "calculator.py",
                         "old_string": "    return a - b",
                         "new_string": "    return a + b",
@@ -596,6 +610,61 @@ class ReportFormatTests(unittest.TestCase):
                             "termination": "goal completed"}]}
         self.assertIn("all demonstrations verified",
                       format_corpus_report(stats))
+
+
+class AgentAuthoredTests(unittest.TestCase):
+    """S80: the agent-authored lane - author, validate, verify."""
+
+    def test_batches_pass_the_quality_validator(self):
+        demos = agent_authored_demos(sys.executable)
+        self.assertEqual(4, len(demos))
+        for demo in demos:
+            with self.subTest(goal=demo["goal"][:40]):
+                ok, reasons = validate_demonstration(
+                    demo["script"], demo["files"], demo["goal"])
+                self.assertTrue(ok, reasons)
+
+    def test_validator_rejects_missing_discovery(self):
+        bad_script = [
+            _TC(name="read_file", arguments={"path": "m.py"}),
+            _MR(text="fixed m.py", finish_reason="stop"),
+        ]
+        files = {"m.py": "x = 1"}
+        ok, reasons = validate_demonstration(bad_script, files,
+                                             "repair the widget module")
+        self.assertFalse(ok)
+        self.assertTrue(any("discovery-first" in r for r in reasons))
+
+    def test_validator_rejects_ambiguous_anchor(self):
+        fixture = ("def a():" + chr(10) + "    return 1" + chr(10) +
+                   chr(10) + "def b():" + chr(10) + "    return 1")
+        files = {"m.py": fixture}
+        script = [
+            _list(),
+            _TC(name="read_file", arguments={"path": "m.py"}),
+            _TC(name="edit_file", arguments={
+                "path": "m.py", "old_string": "    return 1",
+                "new_string": "    return 2"}),
+            _MR(text="fixed b", finish_reason="stop"),
+        ]
+        ok, reasons = validate_demonstration(script, files,
+                                             "repair widget b module")
+        self.assertFalse(ok)
+        self.assertTrue(any("2 times" in r for r in reasons))
+
+    def test_agent_lane_runs_verifies_and_tags(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ExperienceStore(Path(tmp) / "e.jsonl")
+            stats = build_agent_corpus(store, python=sys.executable)
+            self.assertEqual(4, stats["runs"])
+            self.assertEqual(4, stats["passed"], stats)
+            self.assertEqual(0, stats["rejected"])
+            records = store.load()
+            tagged = [r for r in records
+                      if "agent-authored" in r.tags]
+            self.assertEqual(4, len(tagged))
+            self.assertEqual(4, len({r.goal.split(" (benchmark")[0]
+                                     for r in tagged}))
 
 
 if __name__ == "__main__":

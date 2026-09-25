@@ -27,6 +27,7 @@ Pins (fixtures-first discipline):
 - deterministic: same categories x levels = same corpus content.
 """
 
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from .benchmark import run_benchmark
@@ -566,6 +567,234 @@ def mark_superseded_demos(store: ExperienceStore) -> Dict[str, Any]:
     return {"scanned": len(records), "superseded": superseded}
 
 
+AGENT_AUTHORED_TAG = "agent-authored"
+
+
+def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
+    """S80: the first agent-authored batches — json synthesis drills
+    (teaching the fixture-inference step: the diagnosis narrative
+    walks the TEST FIXTURE, not just the expression) and cascade
+    persistence demos (the double chain: hit the second failure,
+    re-diagnose from scratch, name BOTH fixes). Authored by the
+    session that ran ten generations; verified by the gate; validated
+    by the quality bar."""
+    demos: List[Dict[str, Any]] = []
+
+    # --- json synthesis drills (the 3B wall, taught directly) ---
+    drills = [
+        ("config_parser", ("settings",), "timeout", "30",
+         "The config_parser lookup misses keys nested under settings. "
+         "Find the bug from the failing test, fix it, and run the "
+         "tests to verify they pass."),
+        ("db_config", ("database", "pool"), "size", "8",
+         "The database config lookup in this project returns nothing "
+         "for pool size. Diagnose from the failing test and repair it."),
+        ("auth_prefs", ("auth",), "session_minutes", "45",
+         "A config lookup here misses keys nested under the auth "
+         "section. Track down the defect and prove the fix."),
+    ]
+    for module, sections, key, leaf, goal in drills:
+        path = f"{module}.py"
+        test_path = f"test_{module}.py"
+        module_code = "def lookup(data, key):\n    return data.get(key)\n"
+        data_literal = '{{"{}": {}}}'.format(key, leaf)
+        for section in reversed(sections):
+            data_literal = '{{"{}": {}}}'.format(section, data_literal)
+        test_code = (
+            "import unittest\n\nfrom {} import lookup\n\n\n"
+            "class TestLookup(unittest.TestCase):\n"
+            "    def test_nested(self):\n"
+            "        data = {}\n"
+            '        self.assertEqual(lookup(data, "{}"), {})\n\n\n'
+            'if __name__ == "__main__":\n    unittest.main()\n'.format(
+                module, data_literal, key, leaf))
+        broken = "    return data.get(key)\n"
+        descent = "data" + "".join(
+            '.get("{}", {{}})'.format(section) for section in sections)
+        fixed = '    return {}.get(key)\n'.format(descent)
+        # the fixture-inference narrative: the reasoning the 3B models
+        # could not produce — WHERE the nesting comes from
+        diagnosis = (
+            "The failing test builds its own fixture: data = "
+            f"{data_literal} — so the value for "
+            f"'{key}' does not sit at the top level, it lives under "
+            f"the {' -> '.join(sections)} section. The test is telling "
+            f"me the shape of the data. Reading {path} confirmed the "
+            f"lookup only checked the top level. The fix is to chain "
+            f"the gets: {fixed.strip()} — each level with an empty-dict "
+            f"default so a missing section cannot crash. Tests pass.")
+        core = [_tests(python), _read(test_path), _read(path),
+                _edit(path, broken, fixed), _tests(python)]
+        script = [_list()] + core + [_final(diagnosis)]
+        files = {path: module_code, test_path: test_code}
+        demos.append({"script": script, "files": files, "goal": goal})
+
+    # --- cascade persistence (rung 2: the chain runs twice) ---
+    calc_module = ("def add(a, b):\n    return a - b\n\n\n"
+                   "def multiply(a, b):\n    return a + b\n")
+    calc_tests = (
+        "import unittest\n\nfrom calc_ops import add, multiply\n\n\n"
+        "class TestCalcOps(unittest.TestCase):\n"
+        "    def test_add(self):\n"
+        "        self.assertEqual(add(2, 3), 5)\n\n"
+        "    def test_multiply(self):\n"
+        "        self.assertEqual(multiply(3, 4), 12)\n\n\n"
+        'if __name__ == "__main__":\n    unittest.main()\n')
+    cascade_goal = ("The tests in this project are failing. There may "
+                    "be more than one bug — keep diagnosing and fixing "
+                    "until the whole suite passes.")
+    cascade_diagnosis = (
+        "First failure: test_add expected add(2, 3) to be 5 but add "
+        "was subtracting — I fixed add to return a + b and reran. "
+        "Second failure: the suite STILL failed, so there was more "
+        "than one bug — test_multiply expected multiply(3, 4) to be 12 "
+        "but multiply was adding. I re-read calc_ops.py, fixed "
+        "multiply to return a * b, and reran: the whole suite passes. "
+        "Two bugs, both fixed: add now sums and multiply now "
+        "multiplies.")
+    cascade_script = [
+        _list(),
+        _tests(python),
+        _read("test_calc_ops.py"),
+        _read("calc_ops.py"),
+        _edit("calc_ops.py",
+              "def add(a, b):\n    return a - b",
+              "def add(a, b):\n    return a + b"),
+        _tests(python),   # second failure: multiply still broken
+        _read("calc_ops.py"),   # re-diagnose from scratch
+        _edit("calc_ops.py",
+              "def multiply(a, b):\n    return a + b",
+              "def multiply(a, b):\n    return a * b"),
+        _tests(python),
+        _final(cascade_diagnosis),
+    ]
+    demos.append({"script": cascade_script,
+                  "files": {"calc_ops.py": calc_module,
+                            "test_calc_ops.py": calc_tests},
+                  "goal": cascade_goal})
+    return demos
+
+
+def validate_demonstration(script: List[Any], files: Dict[str, str],
+                           goal: str) -> "tuple[bool, List[str]]":
+    """S80 demo quality validator — the anti-flakiness bar every
+    demonstration must clear BEFORE it can enter the corpus
+    (deterministic; the verification gate stays the separate real-world
+    check). The validator makes authoring untrusted-by-design: any
+    author (this session, muse-spark, a future epN) can write demos,
+    and the bar enforces quality."""
+    reasons: List[str] = []
+    tool_calls = [t for t in script if isinstance(t, ToolCall)]
+    finals = [t for t in script if isinstance(t, ModelResponse)]
+
+    # 1. discovery-first: inspect before touching files
+    if not tool_calls or tool_calls[0].name not in ("list_directory",
+                                                    "run_tests"):
+        reasons.append("first tool must be list_directory or run_tests "
+                       "(discovery-first)")
+
+    # 2. the diagnosis chain: the module under repair must be read
+    if not any(t.name == "read_file" for t in tool_calls):
+        reasons.append("no read_file: the diagnosis chain is absent")
+
+    # 3. ends with exactly one honest final
+    if len(finals) != 1 or not (finals[0].text or "").strip():
+        reasons.append("demonstration must end with one non-empty final")
+
+    # 4. evidence-referencing narrative: the final names the file it
+    # edited or the test it read (no free-floating diagnosis)
+    if finals and (finals[0].text or "").strip():
+        touched = {t.arguments.get("path") for t in tool_calls
+                   if t.name in ("read_file", "edit_file", "write_file")
+                   and isinstance(t.arguments.get("path"), str)}
+        if touched and not any(name in finals[0].text
+                               for name in touched):
+            reasons.append("final answer references none of the files "
+                           f"actually read/edited ({sorted(touched)})")
+
+    # 5. unique anchors (the S78 cascade lesson): every edit's
+    # old_string must appear exactly once in its target fixture
+    for t in tool_calls:
+        if t.name != "edit_file":
+            continue
+        target = t.arguments.get("path")
+        content = files.get(target)
+        if content is None:
+            reasons.append(f"edit targets unwritten file: {target}")
+            continue
+        old = t.arguments.get("old_string") or ""
+        if content.count(old) != 1:
+            reasons.append(f"edit anchor for {target} matches "
+                           f"{content.count(old)} times (must be 1)")
+
+    # 6. goal identity (the S78 goal-dedupe lesson): no placeholder or
+    # generic-only goals
+    words = [w for w in re.split(r"\W+", goal.lower()) if w]
+    filler = {"the", "tests", "test", "in", "this", "project", "are",
+              "failing", "find", "bug", "fix", "it", "and", "run", "to",
+              "verify", "they", "pass", "a"}
+    if len([w for w in words if w not in filler]) < 3:
+        reasons.append("goal lacks identity (too few substantive words)")
+
+    return (not reasons, reasons)
+
+
+def build_agent_corpus(experience_store: ExperienceStore,
+                       python: str,
+                       demos: Optional[List[Dict[str, Any]]] = None
+                       ) -> Dict[str, Any]:
+    """S80: the agent-authored lane — demonstrations authored by the
+    agent (or any verified provider) run through the REAL benchmark
+    with the quality validator AND the verification gate. The author
+    is untrusted-by-design: the validator + gate are what make
+    external authoring (this session, muse-spark, a future epN) safe.
+    Returns honest stats; failures are recorded, never hidden."""
+    import sys
+
+    python = python or sys.executable
+    if demos is None:
+        demos = agent_authored_demos(python)
+    stats: Dict[str, Any] = {"runs": 0, "passed": 0, "failed": 0,
+                             "rejected": 0, "durations_s": 0.0,
+                             "tasks": []}
+    for demo in demos:
+        script, files, goal = demo["script"], demo["files"], demo["goal"]
+        ok, reasons = validate_demonstration(script, files, goal)
+        if not ok:
+            stats["rejected"] += 1
+            stats["tasks"].append({"goal": goal, "success": False,
+                                   "iterations": 0,
+                                   "termination":
+                                   "validator: " + "; ".join(reasons)})
+            continue
+        provider = ScriptedDemonstrator(script)
+
+        def fixture_writer(ws, _files=files):
+            for name, content in _files.items():
+                (ws.root / name).write_text(content, encoding="utf-8")
+
+        report = run_benchmark(provider, fixture_writer=fixture_writer,
+                               goal=goal,
+                               experience_store=experience_store)
+        stats["runs"] += 1
+        stats["durations_s"] += report.duration_seconds
+        if report.success:
+            stats["passed"] += 1
+            records = experience_store.load()
+            if records:
+                last = records[-1]
+                if AGENT_AUTHORED_TAG not in last.tags:
+                    last.tags.append(AGENT_AUTHORED_TAG)
+                experience_store.save(records)
+        else:
+            stats["failed"] += 1
+        stats["tasks"].append({
+            "goal": goal, "success": report.success,
+            "iterations": report.iterations,
+            "termination": report.termination_reason})
+    return stats
+
+
 def build_corpus(experience_store: ExperienceStore,
                  python: str,
                  categories: Optional[Dict[str, int]] = None,
@@ -686,8 +915,12 @@ import sys
 
 # optional generation name: `python train_ep1.py ep8` produces
 # ep8-adapter/ and ep8-merged/ (default: ep1)
+# optional base model: `python train_ep1.py ep11
+# Qwen/Qwen2.5-Coder-7B-Instruct` (S79; default: the 3B)
 GEN = sys.argv[1] if len(sys.argv) > 1 else "ep1"
-BASE_MODEL = "Qwen/Qwen2.5-Coder-3B-Instruct"
+BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2
+              else "Qwen/Qwen2.5-Coder-3B-Instruct")
+SEVEN_B = "7B" in BASE_MODEL
 DATASET = "training.jsonl"
 OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
@@ -849,9 +1082,10 @@ def main():
         num_train_epochs=3,
         learning_rate=2e-4,
         fp16=True,                      # T4 (Turing) has no bf16
-        gradient_checkpointing=True,
+        gradient_checkpointing=not SEVEN_B,
         # LoRA + checkpointing: frozen embeddings break the default
-        # (reentrant) checkpoint implementation
+        # (reentrant) checkpoint implementation. The 4-bit path
+        # checkpoint via prepare_model_for_kbit_training instead.
         gradient_checkpointing_kwargs={"use_reentrant": False},
         logging_steps=1,
         report_to=[],
@@ -866,8 +1100,23 @@ def main():
         task_type="CAUSAL_LM",
     )
 
-    model = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL, torch_dtype="float16")
+    if SEVEN_B:
+        # S79: 7B fp16 (~14GB) does not fit the free T4's 16GB with
+        # activations — 4-bit QLoRA is the standard free-T4 7B setup
+        from transformers import BitsAndBytesConfig
+        bnb = BitsAndBytesConfig(
+            load_in_4bit=True, bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype="float16",
+            bnb_4bit_use_double_quant=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            BASE_MODEL, quantization_config=bnb, device_map="auto")
+        from peft import prepare_model_for_kbit_training
+        model = prepare_model_for_kbit_training(
+            model, use_gradient_checkpointing=True,
+            gradient_checkpointing_kwargs={"use_reentrant": False})
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            BASE_MODEL, torch_dtype="float16")
     model = get_peft_model(model, lora)
     model.print_trainable_parameters()
 
@@ -879,6 +1128,7 @@ def main():
         processing_class=tokenizer,
         data_collator=DataCollatorForSeq2Seq(
             tokenizer, model=model, label_pad_token_id=-100),
+        optim=("paged_adamw_32bit" if SEVEN_B else "adamw_torch"),
     )
     trainer.train()
     trainer.save_model(OUTPUT_DIR)
@@ -951,7 +1201,11 @@ qacompanion stays stdlib-only — this kit runs on EXTERNAL free compute
     `!pip install -U transformers peft datasets trl accelerate`
     `!pip uninstall -y torchao`   # Colab ships an old torchao; recent
     # peft RAISES on it instead of ignoring it (optional dependency)
-    `%run train_ep1.py`
+    `%run train_ep1.py ep10`   (arg 1 names the generation — outputs
+    land in ep10-adapter/ and ep10-merged/; default: ep1)
+    `%run train_ep1.py ep11 Qwen/Qwen2.5-Coder-7B-Instruct`   (S79:
+    arg 2 selects the base — 7B trains in 4-bit QLoRA on the T4; add
+    `!pip install bitsandbytes` for the 4-bit path)
 - **Kaggle** (free 30 GPU-hours/week): same two files, P100/T4 kernel.
 
 ## After training (script outputs `ep1-merged/`)
