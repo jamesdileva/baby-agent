@@ -465,6 +465,7 @@ def _nested_lookup_script(strategy: str, variant: int, level: int,
     """S73/S77: the nested-JSON-lookup eval-task shape, generalized."""
     module, sections, key, leaf, default = _NESTED_LOOKUP_VARIANTS[
         variant % len(_NESTED_LOOKUP_VARIANTS)]
+    func = "lookup"
     path = f"{module}.py"
     test_path = f"test_{module}.py"
     module_code = "def lookup(data, key):\n    return data.get(key)\n"
@@ -502,14 +503,20 @@ def _nested_lookup_script(strategy: str, variant: int, level: int,
     if strategy == "diagnostic_recovery":
         script = [_read(f"src/{path}"), _list()] + core + [_final(diagnosis)]
     files = {path: module_code, test_path: test_code}
+    # S78: the goal carries the variant's module + descent path — the
+    # store's goal-dedupe would otherwise collapse 24 distinct
+    # demonstrations into 3 goal texts, defeating the volume teaching
+    sections_text = "/".join(sections)
     goals = (
-        "The tests in this project are failing. Find the bug, fix it, "
-        "and run the tests to verify they pass.",
-        "The config lookup in this project is not finding nested keys. "
-        "Diagnose the failure and repair the lookup.",
-        "The lookup function here misses keys nested inside a "
-        "configuration section. Find the defect from the failing test "
-        "and fix it.",
+        f"The tests in this project are failing: {func} misses keys "
+        f"nested under the {sections[0]} section of {module}. Fix the "
+        f"lookup and run the tests to verify they pass.",
+        f"The config lookup in {module} is not finding keys nested "
+        f"under {sections_text}. Diagnose the failure from the tests "
+        f"and repair the lookup.",
+        f"{module}.{func} misses keys nested under {sections_text}. "
+        f"Find the defect from the failing test, fix the lookup, and "
+        f"verify the suite passes.",
     )
     goal = goals[(variant + level) % len(goals)]
     return script, files, goal, strategy
