@@ -1112,8 +1112,14 @@ def main():
             load_in_4bit=True, bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype="float16",
             bnb_4bit_use_double_quant=True)
+        # torch_dtype MUST be fp16: Qwen2.5-7B's config defaults to
+        # bfloat16, and on Turing (T4) bf16 is unsupported — the AMP
+        # GradScaler then chokes on bf16 grads
+        # (NotImplementedError: _amp_foreach_non_finite_check_and_unscale_
+        # cuda not implemented for BFloat16 — Colab catch, S79)
         model = AutoModelForCausalLM.from_pretrained(
-            BASE_MODEL, quantization_config=bnb, device_map="auto")
+            BASE_MODEL, quantization_config=bnb, torch_dtype="float16",
+            device_map="auto")
         from peft import prepare_model_for_kbit_training
         model = prepare_model_for_kbit_training(
             model, use_gradient_checkpointing=True,
