@@ -80,6 +80,31 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S77 Gen-9 corpus — SRFT prefix lane + nested-lookup
+  expansion** — The gen-8 verdict left json as the standing wall, and
+  the recorded evidence named both levers: the chained-`.get`
+  synthesis needed more examples (run 3 executed the whole chain and
+  applied an edit that still failed — the two-hop expression is thin
+  at 8 demos), and the failed trajectories' productive discovery
+  phases were being discarded by the success-only gate. **S77 SRFT
+  lane** (JetBrains recipe adapted, dataset-separation intact):
+  `_srft_lane` mines the curated export's FAILED trajectories for
+  verified-productive prefixes — deterministic rule: steps up to the
+  last read_file before the first edit/write, no hard flags, no final
+  answer trained (the record ends on an observation; the failure tail
+  is simply absent), dedupe by normalized goal keeping the longest
+  prefix, `srft-prefix` metadata, report counts both lane records and
+  candidates. **Nested-lookup expansion 1 → 4 variants** (alternate
+  section name, two-level descent, missing-section default) with a
+  fixture-builder bug fixed en route: the leaf lives UNDER the key
+  inside the innermost section ({"settings": {"timeout": 30}}, not
+  {"settings": 30} — caught because the demo's own verification gate
+  refused the flat fixture). corpus-v7. **Live: 136/136 runs
+  verified** (nested_lookup 32), **training export 147 = 144
+  verified-success + 3 SRFT prefixes (calculator/strings/json — one
+  per wall task, ending on an observation each)**. Suite 1682 OK.
+  Spec: docs/s77-spec.md.
+
 - 2026-09-24 — **S76.1 Gen-8 verdict — loss masking WORKS: 3/9 vs
   0/9, first strings success, first multi-task-capable generation** —
   ep8 trained on the S76 kit (assistant-only loss; three rounds of
