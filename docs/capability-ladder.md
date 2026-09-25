@@ -10,8 +10,8 @@ band). Rates are per-task success rates (n=3, S74 harness).
 
 | rung | capability | eval task | introduced | status |
 |---|---|---|---|---|
-| 1 | single-defect single-file | calculator / strings / json | S57 | calculator solved-band 0.33-1.0; strings solidifying 0-0.67; json = wall (0) |
-| 2 | persistence: two defects | defect-fix-cascade | S78 | 0 — demos exist (agent-authored), model not there |
+| 1 | single-defect single-file | calculator / strings / json | S57 | calculator solved-band 0.33-1.0; strings 3/3 (ep11, perfect); json wall BROKEN by ep11 3/3 |
+| 2 | persistence: two defects | defect-fix-cascade | S78 | 1/3 (ep11, first success — meets graduation threshold, stability pending) |
 | 3 | cross-file dependency tracing | defect-fix-indirect | specified, not built | gated on rung 2 |
 | 4 | test authorship with mutation proof | test-authoring | specified, not built | gated on rung 3 |
 | 5 | runtime-behavior debugging | observe-reproduce | specified, not built | gated on rung 4 |
@@ -26,9 +26,11 @@ band). Rates are per-task success rates (n=3, S74 harness).
 | 10 | ep10 (volume + filter) | 1/3 | 2/3 | 0/3 |
 | 9 | ep9 (SRFT + coverage) | 3/3 | 0/3 | 0/3 |
 | 10 | ep10 (volume + filter) | 1/3 | 2/3 | 0/3 |
+| 11 | ep11-q4 (7B + batch 2) | 3/3 | 3/3 | 3/3 |
 
-Bands: calculator 0.33-1.0 (solved-band), strings 0-0.67
-(solidifying), json 0 (wall). ep9's own-day 3/3 did not reproduce —
+Bands: calculator 0.33-1.0 (solved-band), strings 0-1.0
+(solved by ep11 3/3), json broke 0 → 1.0 (ep11).
+ep9's own-day 3/3 did not reproduce —
 the band is the honest measure, not a single verdict.
 
 ## Demonstration requirements per rung

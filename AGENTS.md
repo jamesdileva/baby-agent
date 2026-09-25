@@ -80,6 +80,27 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S90.1 Gen-11 verdict — the json wall FALLS (3/3),
+  10/12 vs 5/12; first cascade success** — ep11-q4 imported clean
+  (GGUF-LoRA merge path: base + adapter GGUFs + llama-export-lora;
+  q4_K_M quantized LOCALLY with prebuilt llama-quantize after the
+  Colab q4 was lost with its runtime — the deleted-file incident is
+  why local recovery exists; sanity probe "Paris" clean) and the
+  verdict (rate-based, n=3 x 4 tasks, budget 12): **ep11-q4 10/12
+  (83.3%) vs ep10 5/12 (41.7%)** — calculator 3/3 vs 3/3,
+  **strings 3/3 (perfect) vs 2/3**, **json 3/3 vs 0/3 — the first
+  json success in program history, on all three runs (7 iters, 6
+  calls, 0 failures each)**, **cascade 1/3 vs 0/3 — first rung-2
+  success**. Metrics: discovery 0.83 vs 0.67, guessed_path 0.0 vs
+  0.5, tool failures 7 vs 11. Honest notes: (1) TWO variables moved
+  (7B base + S82 batch vs 3B + pre-S82 corpus) — the base-size
+  effect is NOT isolated, attribution shared; (2) ep10 calc 3/3
+  today vs 1/3 verdict-day is in-band variance (band 0.33-1.0);
+  (3) cascade 1/3 meets the rung-2 graduation threshold but rung-3
+  demos stay gated until 3 consecutive in-band verdicts (anti-flaky
+  gate holds). Per the user's rule q4 success retires the 15GB f16
+  import. Suite untouched by verdict (docs-only slice).
+
 - 2026-09-25 — **S90 — 7B import via GGUF-LoRA merge (no 15GB
   dequant)** — training RAN; the converter refuses bnb-quantized
   merged dirs (q8_0 innocent). Full fp16 dequant fits neither T4
