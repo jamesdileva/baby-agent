@@ -39,6 +39,14 @@ FIXES = (
      "    return text[::-1]\n\n\ndef shout"),
     ("config_parser.py", "    return data.get(key)",
      '    return data.get("settings", {}).get(key)'),
+    # S78 cascade: two defects, both covered by the scripted fixer —
+    # function-qualified anchors, because the plain `return a + b`
+    # anchor matches TWICE once the add fix lands (unique-match edits
+    # would correctly refuse the second one)
+    ("calc_ops.py", "def add(a, b):\n    return a - b",
+     "def add(a, b):\n    return a + b"),
+    ("calc_ops.py", "def multiply(a, b):\n    return a + b",
+     "def multiply(a, b):\n    return a * b"),
 )
 
 
@@ -87,11 +95,12 @@ class EvalBase(unittest.TestCase):
 
 
 class TestFixtures(EvalBase):
-    def test_three_deterministic_tasks(self):
+    def test_deterministic_tasks(self):
         tasks = default_tasks()
+        # S78: the ladder grew — cascade (two defects) joins the suite
         self.assertEqual([t.name for t in tasks],
                          ["defect-fix-calculator", "defect-fix-strings",
-                          "defect-fix-json"])
+                          "defect-fix-json", "defect-fix-cascade"])
         for task in tasks:
             self.assertNotIn(".py", task.goal)  # goals name no files
             root = self.tmp / task.name
@@ -113,7 +122,7 @@ class TestRunner(EvalBase):
             models={"test-model": _ScriptedFactory(succeed=True)},
             store=self.store, run_id="run-all-pass")
         agg = report.aggregates()["test-model"]
-        self.assertEqual(agg["tasks"], 3)
+        self.assertEqual(agg["tasks"], 4)
         self.assertEqual(agg["success_rate"], 1.0)
         self.assertEqual(agg["total_interventions"], 0)
 
