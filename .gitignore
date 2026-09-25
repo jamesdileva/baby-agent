@@ -29,3 +29,8 @@ ep7-merged/
 ep8.gguf
 ep9.gguf
 ep10.gguf
+ep11.gguf
+ep11-q4.gguf
+
+# Colab notebooks live locally only, never committed
+*.ipynb
