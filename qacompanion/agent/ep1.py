@@ -1063,7 +1063,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s87"
+KIT_VERSION = "s88"
 
 
 def load_dataset(path=DATASET):
@@ -1236,6 +1236,15 @@ def main():
         # right for the 3B fp16 path). optim is a TrainingArguments/
         # SFTConfig field — NOT an SFTTrainer kwarg (Colab catch).
         optim=("paged_adamw_32bit" if SEVEN_B else "adamw_torch"),
+        # S88: NO grad clipping on the 7B path. torch 2.11's
+        # GradScaler.unscale_() RAISES on fp16 grads ("Attempting to
+        # unscale FP16 gradients" — the allow_fp16=False clip path),
+        # and the trainer clips via accelerate's clip_grad_norm_ ->
+        # unscale_ before every step. scaler.step() (allow_fp16=True)
+        # unscales fp16 fine, so skipping the clip is correct AND
+        # sufficient; clipping is a stability nicety, not required at
+        # lr 2e-4 LoRA. 3B keeps 1.0 (proven path untouched).
+        max_grad_norm=(0 if SEVEN_B else 1.0),
     )
     lora = LoraConfig(
         r=16, lora_alpha=32, lora_dropout=0.05,
@@ -1472,10 +1481,12 @@ def main():
     # Colab collapses the middle traceback frames — so on
     # NotImplementedError, name every bf16 tensor IN SITU (params,
     # grads, autocast default, config) and re-raise. Zero cost when
-    # green; the whole diagnosis when red.
+    # green; the whole diagnosis when red. (S88: also catches
+    # ValueError — torch 2.11's unscale_ rejects fp16 grads on the
+    # clip path, same fail-loud treatment.)
     try:
         trainer.train()
-    except NotImplementedError:
+    except (NotImplementedError, ValueError):
         print("FAILURE CENSUS (trainer died in torch/amp — naming "
               "every bf16 tensor):")
         try:

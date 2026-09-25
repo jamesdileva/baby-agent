@@ -325,7 +325,7 @@ class TrainingKitTests(unittest.TestCase):
             # direct edits get clobbered by export_training_kit)
             self.assertIn('BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2', script)
             self.assertIn("first-render shapes", script)
-            self.assertIn("KIT_VERSION = \"s87\"", script)
+            self.assertIn("KIT_VERSION = \"s88\"", script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
@@ -379,6 +379,12 @@ class TrainingKitTests(unittest.TestCase):
             # SFTTrainer construction, with an attesting print
             self.assertIn('adapter cast:', script)
             self.assertIn('lora params -> torch.float16', script)
+            # S88: torch 2.11 unscale_() raises on fp16 grads, killing
+            # the clip path — no clipping on 7B (3B keeps 1.0);
+            # census also catches ValueError now
+            self.assertIn('max_grad_norm=(0 if SEVEN_B else 1.0)', script)
+            self.assertIn('except (NotImplementedError, ValueError):',
+                          script)
             self.assertIn("merge_and_unload", script)
             # verdict-day fixes, pinned: disk-level untie + legacy
             # rope_theta (transformers v5 config format broke ollama's

@@ -80,6 +80,14 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S88 — Clip path is the killer (no clipping on
+  7B)** — the S87 cast held (392 fp16, mixed fp16) and the new error
+  named the mechanism: torch 2.11 `unscale_()` rejects fp16 grads,
+  and the trainer clips through it. 7B sets `max_grad_norm=0`
+  (scaler.step unscales fp16 fine); 3B keeps 1.0; census catches
+  ValueError too. Suite 1687 OK, pyflakes clean. Spec:
+  docs/s88-spec.md.
+
 - 2026-09-25 — **S87 — Census convicts, adapter cast to fp16** —
   the S86 census named all 392 LoRA adapters going fp32→bf16 inside
   SFTTrainer construction/prepare (fp32 at probe, bf16 at first

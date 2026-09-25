@@ -1401,3 +1401,18 @@ half_precision_backend). Census stays as the verifier. Provenance:
 full S86 Colab census (392 named bf16 params + grads).
 
 Status: Adopted 2026-09-25. Spec: docs/s87-spec.md.
+
+### S88 no grad clipping on 7B (torch 2.11 unscale_ rejects fp16)
+
+**Decision:** The S87 run's NEW error names the mechanism:
+`GradScaler.unscale_()` (the clip path, `allow_fp16=False`) raises
+on fp16 grads — only `scaler.step()` accepts them — so any fp16 run
+with clipping dies on torch 2.11 before the optimizer steps (the
+bf16 world never sees this: no scaler). The 7B path sets
+`max_grad_norm=0`, skipping the clip; the scaler step unscales fp16
+correctly. Clipping loss documented as an accepted nicety at lr 2e-4
+LoRA; 3B keeps 1.0. Census catches ValueError too. Provenance: S87
+Colab paste (cast held 392, mixed_precision fp16, ValueError at
+grad_scaler.py:275 via _clip_grad_norm).
+
+Status: Adopted 2026-09-25. Spec: docs/s88-spec.md.
