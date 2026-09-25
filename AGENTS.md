@@ -80,6 +80,17 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S91 — ep12 corpus (cascade batch 3 + clip
+  restoration)** — pre-verdict 0/3 is a NEW mode (dialect confusion:
+  native-JSON-as-text finals, 0 parsed calls — not a refutation of
+  the 1/3; band 0–0.33, rung-3 gated). Batch 3: math/text/list_ops
+  double-chains on fresh modules (never calc_ops, which shares the
+  eval module). Kit s91 restores clip 1.0 (fp32 passes unscale_;
+  revert documented). Live: lane 10/10, curate 1172/2/1, export
+  194 = 190 + 4 SRFT. Colab order: fresh training.jsonl + s91 kit
+  → ep12 → verdict vs ep11. Suite 1687 OK, pyflakes clean. Spec:
+  docs/s91-spec.md.
+
 - 2026-09-25 — **S90.1 Gen-11 verdict — the json wall FALLS (3/3),
   10/12 vs 5/12; first cascade success** — ep11-q4 imported clean
   (GGUF-LoRA merge path: base + adapter GGUFs + llama-export-lora;

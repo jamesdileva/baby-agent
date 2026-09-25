@@ -37,7 +37,8 @@ the band is the honest measure, not a single verdict.
 
 - Rung 2: double-chain demos — chain → second failure → re-diagnose
   from scratch (never reuse the first diagnosis) → fix → final names
-  BOTH fixes. Exist: agent-authored (S80: calc_ops; S82: string_ops).
+  BOTH fixes. Exist: agent-authored (S80: calc_ops; S82: string_ops;
+  S91: math_ops, text_ops, list_ops — fresh modules, never calc_ops).
 - Rung 3: import-following demos — failing test → module B →
   code_imports/code_references → module A → fix A. To author.
 - Rung 4: write-test → mutation-check demos (the test must FAIL on

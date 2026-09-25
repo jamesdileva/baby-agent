@@ -1446,3 +1446,19 @@ retraining needed (adapter dir is the artifact). Provenance: live
 Colab converter traceback on ep11-merged.
 
 Status: Adopted 2026-09-25. Spec: docs/s90-spec.md.
+
+### S91 ep12 corpus (cascade batch 3 + clip restoration)
+
+**Decision:** (1) Cascade pre-verdict 0/3 is a NEW mode (dialect
+confusion, zero parsed calls — right tool/args, wrong envelope),
+not a refutation of the 1/3; band now 0–0.33, rung-3 stays gated.
+(2) Batch 3: three double-chains on fresh modules (math/text/list
+ops), never calc_ops (which shares the eval module). (3) Human
+direction bundles clip restoration (fp32 adapters pass unscale_;
+a green clipped run confirms S88/S89 by evidence; revert to 0 if
+it ever kills a run) — attribution purity traded for quality with
+both changes evidence-backed and the verdict judging the bundle.
+Dashboard stays deferred. Provenance: this session + human plan
+approval 2026-09-25.
+
+Status: Adopted 2026-09-25. Spec: docs/s91-spec.md.

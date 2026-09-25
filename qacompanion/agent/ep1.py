@@ -581,7 +581,10 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
     S82 batch 2 (same rungs, no rung 3+ per the anti-flaky gate):
     two more json drills — one two-level descent with a genuine
     wrong-turn read, one clean single-level — plus a second cascade
-    on string_ops so the persistence lesson is not a single module."""
+    on string_ops so the persistence lesson is not a single module.
+    S91 batch 3 (rung-2 strengthening): three more double-chains on
+    FRESH modules (math_ops, text_ops, list_ops — never calc_ops,
+    which shares the eval task's module)."""
     demos: List[Dict[str, Any]] = []
 
     # --- json synthesis drills (the 3B wall, taught directly) ---
@@ -809,6 +812,114 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
                   "files": {"string_ops.py": str_module,
                             "test_string_ops.py": str_tests},
                   "goal": str_goal})
+
+    # --- S91 batch 3: rung-2 strengthening on FRESH modules (never
+    # calc_ops — the S80 cascade shares the eval task's module, so it
+    # may teach the instance more than the capability). Three new
+    # double-chains, same discipline: chain → second failure →
+    # re-diagnose from scratch → final names BOTH fixes.
+    cascades = [
+        ("math_ops",
+         "def subtract(a, b):\n    return a + b\n\n\n"
+         "def divide(a, b):\n    return a * b\n",
+         "import unittest\n\n"
+         "from math_ops import subtract, divide\n\n\n"
+         "class TestMathOps(unittest.TestCase):\n"
+         "    def test_subtract(self):\n"
+         "        self.assertEqual(subtract(5, 3), 2)\n\n"
+         "    def test_divide(self):\n"
+         "        self.assertEqual(divide(8, 2), 4)\n\n\n"
+         'if __name__ == "__main__":\n    unittest.main()\n',
+         "def subtract(a, b):\n    return a + b",
+         "def subtract(a, b):\n    return a - b",
+         "def divide(a, b):\n    return a * b",
+         "def divide(a, b):\n    return a / b",
+         "The math_ops tests are failing on subtract and divide. "
+         "There may be more than one bug — keep diagnosing and "
+         "fixing until the whole suite passes.",
+         "First failure: test_subtract expected subtract(5, 3) to be "
+         "2 but subtract was adding — I fixed subtract to return "
+         "a - b and reran. Second failure: the suite STILL failed, "
+         "so there was more than one bug — test_divide expected "
+         "divide(8, 2) to be 4 but divide was multiplying. I "
+         "re-read math_ops.py, fixed divide to return a / b, and "
+         "reran: the whole suite passes. Two bugs, both fixed: "
+         "subtract now subtracts and divide now divides."),
+        ("text_ops",
+         "def concat(a, b):\n    return a\n\n\n"
+         "def exclaim(text):\n    return text\n",
+         "import unittest\n\n"
+         "from text_ops import concat, exclaim\n\n\n"
+         "class TestTextOps(unittest.TestCase):\n"
+         "    def test_concat(self):\n"
+         '        self.assertEqual(concat("foo", "bar"), "foobar")\n\n'
+         "    def test_exclaim(self):\n"
+         '        self.assertEqual(exclaim("hey"), "hey!")\n\n\n'
+         'if __name__ == "__main__":\n    unittest.main()\n',
+         "def concat(a, b):\n    return a",
+         "def concat(a, b):\n    return a + b",
+         "def exclaim(text):\n    return text",
+         'def exclaim(text):\n    return text + "!"',
+         "The text_ops tests are failing on concat and exclaim. "
+         "There may be more than one bug — keep diagnosing and "
+         "fixing until the whole suite passes.",
+         "First failure: test_concat expected concat('foo', 'bar') "
+         "to be 'foobar' but concat dropped the second half — I "
+         "fixed concat to return a + b and reran. Second failure: "
+         "the suite STILL failed, so there was more than one bug — "
+         "test_exclaim expected exclaim('hey') to be 'hey!' but "
+         "exclaim returned the text unchanged. I re-read "
+         "text_ops.py, fixed exclaim to append '!', and reran: the "
+         "whole suite passes. Two bugs, both fixed: concat now "
+         "concatenates and exclaim now exclaims."),
+        ("list_ops",
+         "def first(items):\n    return items[-1]\n\n\n"
+         "def total(items):\n    return len(items)\n",
+         "import unittest\n\n"
+         "from list_ops import first, total\n\n\n"
+         "class TestListOps(unittest.TestCase):\n"
+         "    def test_first(self):\n"
+         "        self.assertEqual(first([1, 2, 3]), 1)\n\n"
+         "    def test_total(self):\n"
+         "        self.assertEqual(total([1, 2, 3]), 6)\n\n\n"
+         'if __name__ == "__main__":\n    unittest.main()\n',
+         "def first(items):\n    return items[-1]",
+         "def first(items):\n    return items[0]",
+         "def total(items):\n    return len(items)",
+         "def total(items):\n    return sum(items)",
+         "The list_ops tests are failing on first and total. "
+         "There may be more than one bug — keep diagnosing and "
+         "fixing until the whole suite passes.",
+         "First failure: test_first expected first([1, 2, 3]) to be "
+         "1 but first returned the last item — I fixed first to "
+         "return items[0] and reran. Second failure: the suite "
+         "STILL failed, so there was more than one bug — "
+         "test_total expected total([1, 2, 3]) to be 6 but total "
+         "was counting items instead of summing. I re-read "
+         "list_ops.py, fixed total to return sum(items), and reran: "
+         "the whole suite passes. Two bugs, both fixed: first now "
+         "takes the first and total now totals."),
+    ]
+    for (module, module_code, test_code, old1, new1, old2, new2,
+            goal, diagnosis) in cascades:
+        test_path = f"test_{module}.py"
+        path = f"{module}.py"
+        script = [
+            _list(),
+            _tests(python),
+            _read(test_path),
+            _read(path),
+            _edit(path, old1, new1),
+            _tests(python),   # second failure still present
+            _read(path),   # re-diagnose from scratch
+            _edit(path, old2, new2),
+            _tests(python),
+            _final(diagnosis),
+        ]
+        demos.append({"script": script,
+                      "files": {path: module_code,
+                                test_path: test_code},
+                      "goal": goal})
     return demos
 
 
@@ -1063,7 +1174,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s90"
+KIT_VERSION = "s91"
 
 
 def load_dataset(path=DATASET):
@@ -1236,16 +1347,13 @@ def main():
         # right for the 3B fp16 path). optim is a TrainingArguments/
         # SFTConfig field — NOT an SFTTrainer kwarg (Colab catch).
         optim=("paged_adamw_32bit" if SEVEN_B else "adamw_torch"),
-        # S88: NO grad clipping on the 7B path. torch 2.11's
-        # GradScaler.unscale_() RAISES on fp16 grads ("Attempting to
-        # unscale FP16 gradients" — the allow_fp16=False clip path),
-        # and the trainer clips via accelerate's clip_grad_norm_ ->
-        # unscale_ before every step. (S89: with fp32 adapters the
-        # clip path would pass, but 0 stays — one change per slice,
-        # and _get_grad_norm's inf-clip is pointless work anyway.
-        # Restoring 1.0 is a candidate follow-up once ep11 trains.)
-        # 3B keeps 1.0 (proven path untouched).
-        max_grad_norm=(0 if SEVEN_B else 1.0),
+        # S91: clip RESTORED on the 7B path. S88 disabled it because
+        # torch 2.11's unscale_() rejects fp16 grads — but S89 moved
+        # adapters to fp32, whose grads pass unscale_ fine, so the
+        # original reason is gone and the standard guardrail returns.
+        # If a Colab run ever dies in the clip path again, revert to
+        # 0 (one-line change, documented here). 3B keeps 1.0 as ever.
+        max_grad_norm=1.0,
     )
     lora = LoraConfig(
         r=16, lora_alpha=32, lora_dropout=0.05,

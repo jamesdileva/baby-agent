@@ -325,7 +325,7 @@ class TrainingKitTests(unittest.TestCase):
             # direct edits get clobbered by export_training_kit)
             self.assertIn('BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2', script)
             self.assertIn("first-render shapes", script)
-            self.assertIn("KIT_VERSION = \"s90\"", script)
+            self.assertIn("KIT_VERSION = \"s91\"", script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
@@ -383,8 +383,10 @@ class TrainingKitTests(unittest.TestCase):
             self.assertIn('lora params -> torch.float32', script)
             # S88: torch 2.11 unscale_() raises on fp16 grads, killing
             # the clip path — no clipping on 7B (3B keeps 1.0);
-            # census also catches ValueError now
-            self.assertIn('max_grad_norm=(0 if SEVEN_B else 1.0)', script)
+            # census also catches ValueError now. S91: clip RESTORED
+            # (fp32 adapters pass unscale_ fine — revert to 0 if a
+            # run ever dies in the clip path again)
+            self.assertIn('max_grad_norm=1.0', script)
             self.assertIn('except (NotImplementedError, ValueError):',
                           script)
             # S90: 7B merged output keeps bnb quantization (converter
@@ -675,7 +677,7 @@ class AgentAuthoredTests(unittest.TestCase):
 
     def test_batches_pass_the_quality_validator(self):
         demos = agent_authored_demos(sys.executable)
-        self.assertEqual(7, len(demos))
+        self.assertEqual(10, len(demos))
         for demo in demos:
             with self.subTest(goal=demo["goal"][:40]):
                 ok, reasons = validate_demonstration(
@@ -714,15 +716,15 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             stats = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(7, stats["runs"])
-            self.assertEqual(7, stats["passed"], stats)
+            self.assertEqual(10, stats["runs"])
+            self.assertEqual(10, stats["passed"], stats)
             self.assertEqual(0, stats["rejected"])
             records = store.load()
             tagged = [r for r in records
                       if "agent-authored" in r.tags]
-            self.assertEqual(7, len(tagged))
-            self.assertEqual(7, len({r.goal.split(" (benchmark")[0]
-                                     for r in tagged}))
+            self.assertEqual(10, len(tagged))
+            self.assertEqual(10, len({r.goal.split(" (benchmark")[0]
+                                      for r in tagged}))
 
 
 if __name__ == "__main__":

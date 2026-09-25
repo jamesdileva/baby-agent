@@ -35,7 +35,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s90"
+KIT_VERSION = "s91"
 
 
 def load_dataset(path=DATASET):
@@ -207,16 +207,13 @@ def main():
         # right for the 3B fp16 path). optim is a TrainingArguments/
         # SFTConfig field — NOT an SFTTrainer kwarg (Colab catch).
         optim=("paged_adamw_32bit" if SEVEN_B else "adamw_torch"),
-        # S88: NO grad clipping on the 7B path. torch 2.11's
-        # GradScaler.unscale_() RAISES on fp16 grads ("Attempting to
-        # unscale FP16 gradients" — the allow_fp16=False clip path),
-        # and the trainer clips via accelerate's clip_grad_norm_ ->
-        # unscale_ before every step. (S89: with fp32 adapters the
-        # clip path would pass, but 0 stays — one change per slice,
-        # and _get_grad_norm's inf-clip is pointless work anyway.
-        # Restoring 1.0 is a candidate follow-up once ep11 trains.)
-        # 3B keeps 1.0 (proven path untouched).
-        max_grad_norm=(0 if SEVEN_B else 1.0),
+        # S91: clip RESTORED on the 7B path. S88 disabled it because
+        # torch 2.11's unscale_() rejects fp16 grads — but S89 moved
+        # adapters to fp32, whose grads pass unscale_ fine, so the
+        # original reason is gone and the standard guardrail returns.
+        # If a Colab run ever dies in the clip path again, revert to
+        # 0 (one-line change, documented here). 3B keeps 1.0 as ever.
+        max_grad_norm=1.0,
     )
     lora = LoraConfig(
         r=16, lora_alpha=32, lora_dropout=0.05,
