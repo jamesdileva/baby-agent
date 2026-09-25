@@ -35,7 +35,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s88"
+KIT_VERSION = "s89"
 
 
 def load_dataset(path=DATASET):
@@ -211,10 +211,11 @@ def main():
         # GradScaler.unscale_() RAISES on fp16 grads ("Attempting to
         # unscale FP16 gradients" — the allow_fp16=False clip path),
         # and the trainer clips via accelerate's clip_grad_norm_ ->
-        # unscale_ before every step. scaler.step() (allow_fp16=True)
-        # unscales fp16 fine, so skipping the clip is correct AND
-        # sufficient; clipping is a stability nicety, not required at
-        # lr 2e-4 LoRA. 3B keeps 1.0 (proven path untouched).
+        # unscale_ before every step. (S89: with fp32 adapters the
+        # clip path would pass, but 0 stays — one change per slice,
+        # and _get_grad_norm's inf-clip is pointless work anyway.
+        # Restoring 1.0 is a candidate follow-up once ep11 trains.)
+        # 3B keeps 1.0 (proven path untouched).
         max_grad_norm=(0 if SEVEN_B else 1.0),
     )
     lora = LoraConfig(
@@ -418,18 +419,23 @@ def main():
         data_collator=DataCollatorForSeq2Seq(
             tokenizer, model=model, label_pad_token_id=-100),
     )
-    # S87 surgical fix: the S86 census proved ALL 392 LoRA adapters go
-    # fp32 -> bf16 inside SFTTrainer construction/prepare (fp32 at the
-    # probe, bf16 at the first clip; the pasted train() frames show no
-    # prep of their own). Cast them to fp16 AFTER construction — the
-    # proven 3B recipe runs fp16 adapters — and print the count so the
-    # run attests the fix held through training.
+    # S89 adapter dtype (THE fix, from the S88 census): torch 2.11's
+    # GradScaler.unscale_() — the clip AND norm-logging path — rejects
+    # fp16 grads (ValueError) and lacks a bf16 kernel on sm75
+    # (NotImplementedError); fp32 grads pass fine. So the adapters
+    # must be FP32, not fp16: the S86 census caught construction
+    # casting them fp32->bf16, the S87 cast fp16-fixed the bf16 crash
+    # only to meet the fp16 crash. Cast every lora_ param to fp32
+    # AFTER SFTTrainer construction (post-construction casts stick —
+    # the S87 fp16 census held) with an attesting print. This is the
+    # standard mixed-precision recipe: fp32 master weights, fp16
+    # compute. 161MB for 40M params — negligible on the T4.
     _cast_n = 0
     for _n, _p in model.named_parameters():
-        if "lora_" in _n and str(_p.dtype) != "torch.float16":
-            _p.data = _p.data.to(torch.float16)
+        if "lora_" in _n and str(_p.dtype) != "torch.float32":
+            _p.data = _p.data.to(torch.float32)
             _cast_n += 1
-    print(f"adapter cast: {_cast_n} lora params -> torch.float16")
+    print(f"adapter cast: {_cast_n} lora params -> torch.float32")
     # S86 precision flags (always printed, near-free): what the
     # trainer THINKS it runs — the S85 probe proved the model side
     # clean, so a bf16-leaning trainer/accelerator config is the last

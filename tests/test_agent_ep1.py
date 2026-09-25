@@ -325,7 +325,7 @@ class TrainingKitTests(unittest.TestCase):
             # direct edits get clobbered by export_training_kit)
             self.assertIn('BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2', script)
             self.assertIn("first-render shapes", script)
-            self.assertIn("KIT_VERSION = \"s88\"", script)
+            self.assertIn("KIT_VERSION = \"s89\"", script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
@@ -375,10 +375,12 @@ class TrainingKitTests(unittest.TestCase):
             self.assertIn('bf16 grad:', script)
             self.assertIn('mixed_precision', script)
             # S87: the census convicted adapter casting (fp32 at probe,
-            # bf16 at first clip) — cast lora params to fp16 AFTER
-            # SFTTrainer construction, with an attesting print
+            # bf16 at first clip) — cast lora params AFTER SFTTrainer
+            # construction, with an attesting print. S89: the target
+            # is fp32, not fp16 — unscale_() rejects fp16 grads and
+            # lacks a bf16 kernel, while fp32 passes both paths
             self.assertIn('adapter cast:', script)
-            self.assertIn('lora params -> torch.float16', script)
+            self.assertIn('lora params -> torch.float32', script)
             # S88: torch 2.11 unscale_() raises on fp16 grads, killing
             # the clip path — no clipping on 7B (3B keeps 1.0);
             # census also catches ValueError now

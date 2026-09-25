@@ -80,6 +80,15 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S89 — Adapters to fp32 (the clip path's only
+  accepted dtype)** — the S88 census completed the truth table:
+  cast held, grads fp16, crash moved to `_get_grad_norm`'s
+  unconditional inf-clip (`max_grad_norm=0` skips one of two clip
+  calls). `unscale_()` accepts exactly fp32 — adapters go fp32
+  (standard master-weight recipe, 161MB). Clip stays 0 (one change
+  per slice; 1.0 restore is a follow-up). Suite 1687 OK, pyflakes
+  clean. Spec: docs/s89-spec.md.
+
 - 2026-09-25 — **S88 — Clip path is the killer (no clipping on
   7B)** — the S87 cast held (392 fp16, mixed fp16) and the new error
   named the mechanism: torch 2.11 `unscale_()` rejects fp16 grads,

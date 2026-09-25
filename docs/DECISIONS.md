@@ -1416,3 +1416,17 @@ Colab paste (cast held 392, mixed_precision fp16, ValueError at
 grad_scaler.py:275 via _clip_grad_norm).
 
 Status: Adopted 2026-09-25. Spec: docs/s88-spec.md.
+
+### S89 adapters to fp32 — the only dtype the clip path accepts
+
+**Decision:** The S88 census completes the truth table: cast held
+(476 fp16, 0 bf16), grads fp16, crash moved to `_get_grad_norm`'s
+unconditional inf-clip → same `unscale_` ValueError (`max_grad_norm=0`
+skips only the first of two clip calls). torch 2.11's `unscale_()`
+accepts exactly fp32 here — so adapters go to fp32 (standard
+master-weight recipe, 161MB), not fp16. `max_grad_norm=0` stays (one
+change per slice; restoring 1.0 is a follow-up once ep11 trains).
+Provenance: S88 Colab census (fp16 grad histogram + moved crash
+site at trainer.py:1865/2679).
+
+Status: Adopted 2026-09-25. Spec: docs/s89-spec.md.
