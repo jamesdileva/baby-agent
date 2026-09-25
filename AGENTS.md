@@ -80,6 +80,15 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S87 — Census convicts, adapter cast to fp16** —
+  the S86 census named all 392 LoRA adapters going fp32→bf16 inside
+  SFTTrainer construction/prepare (fp32 at probe, bf16 at first
+  clip). 7B path now casts every lora_ param to fp16 after
+  construction (proven 3B recipe) with an attesting print; census
+  stays as verifier; precision-flags probe getattr-guarded (5.17
+  dropped `half_precision_backend`). Suite 1687 OK, pyflakes clean.
+  Spec: docs/s87-spec.md.
+
 - 2026-09-25 — **S86 — Failure-path census (name the bf16 tensor
   in situ)** — the S85 probe (fp16 autocast default, 392 fp32 grads)
   plus the unchanged crash proves the tensor appears between probe

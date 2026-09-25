@@ -1063,7 +1063,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s86"
+KIT_VERSION = "s87"
 
 
 def load_dataset(path=DATASET):
@@ -1438,6 +1438,18 @@ def main():
         data_collator=DataCollatorForSeq2Seq(
             tokenizer, model=model, label_pad_token_id=-100),
     )
+    # S87 surgical fix: the S86 census proved ALL 392 LoRA adapters go
+    # fp32 -> bf16 inside SFTTrainer construction/prepare (fp32 at the
+    # probe, bf16 at the first clip; the pasted train() frames show no
+    # prep of their own). Cast them to fp16 AFTER construction — the
+    # proven 3B recipe runs fp16 adapters — and print the count so the
+    # run attests the fix held through training.
+    _cast_n = 0
+    for _n, _p in model.named_parameters():
+        if "lora_" in _n and str(_p.dtype) != "torch.float16":
+            _p.data = _p.data.to(torch.float16)
+            _cast_n += 1
+    print(f"adapter cast: {_cast_n} lora params -> torch.float16")
     # S86 precision flags (always printed, near-free): what the
     # trainer THINKS it runs — the S85 probe proved the model side
     # clean, so a bf16-leaning trainer/accelerator config is the last
@@ -1445,7 +1457,10 @@ def main():
     try:
         _acc = trainer.accelerator
         print(f"precision flags: fp16={config.fp16} bf16={config.bf16} "
-              f"half_precision_backend={config.half_precision_backend} "
+              f"half_precision_backend="
+              # S87: SFTConfig on transformers 5.17 has NO
+              # half_precision_backend (caught live) — getattr, not boom
+              f"{getattr(config, 'half_precision_backend', 'n/a')} "
               f"accelerator.mixed_precision="
               f"{getattr(_acc, 'mixed_precision', 'n/a')} "
               f"scaler_enabled="

@@ -1388,3 +1388,16 @@ every run. Zero cost when green. Provenance: S85 Colab paste
 (autocast fp16, all-fp32 grad histogram, same 8-frame death).
 
 Status: Adopted 2026-09-25. Spec: docs/s86-spec.md.
+
+### S87 post-construction adapter cast to fp16
+
+**Decision:** The S86 census convicted the site: all 392 LoRA
+adapters go fp32→bf16 inside SFTTrainer construction/prepare
+(fp32 at probe, bf16 at first clip; train() frames show no prep).
+The 7B path now casts every lora_ param to fp16 after construction
+with an attesting print — matching the proven 3B recipe — and the
+precision-flags probe is getattr-guarded (5.17 dropped
+half_precision_backend). Census stays as the verifier. Provenance:
+full S86 Colab census (392 named bf16 params + grads).
+
+Status: Adopted 2026-09-25. Spec: docs/s87-spec.md.
