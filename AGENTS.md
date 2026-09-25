@@ -80,6 +80,15 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S85 — Runtime bf16 hunt (autocast probe + grad
+  census)** — the S84 audit came back fully clean (params, config,
+  effective compute, 392 adapters — 0 bf16) yet training still died,
+  so the source is runtime, not weights. 7B path now probes the
+  process cuda autocast default (pins fp16 if bf16) plus one
+  micro-batch forward+backward under explicit fp16 autocast
+  censusing grad dtypes by name, gated fail-loud either way. 3B
+  untouched. Suite 1687 OK, pyflakes clean. Spec: docs/s85-spec.md.
+
 - 2026-09-25 — **S84 — bf16 with a clean audit (v5 kwarg +
   setup-time sources)** — the S83 audit output diagnosed it: 0 bf16
   params pre-LoRA yet bf16 grads at the first backward (setup-time

@@ -1361,3 +1361,17 @@ Provenance: full S83 Colab paste (mask 0.223, 339/339 weights,
 40.3M trainable, then the 8-frame GradScaler death).
 
 Status: Adopted 2026-09-25. Spec: docs/s84-spec.md.
+
+### S85 runtime bf16 hunt: autocast probe + grad census gate
+
+**Decision:** The S84 audit came back FULLY clean (params, config,
+effective compute, adapters) and training still died with bf16
+grads — so the source is runtime, not weights, and weight-side fixes
+are exhausted. The 7B path now probes the process cuda autocast
+default (pins fp16 if bf16) and runs one micro-batch forward+backward
+under explicit fp16 autocast censusing grad dtypes by name, gated
+fail-loud. Either outcome is diagnostic by construction. 3B proven
+path untouched. Provenance: full S84 Colab paste (392 LoRA params,
+0 bf16 anywhere, same 8-frame death).
+
+Status: Adopted 2026-09-25. Spec: docs/s85-spec.md.

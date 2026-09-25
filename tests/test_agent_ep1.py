@@ -325,7 +325,7 @@ class TrainingKitTests(unittest.TestCase):
             # direct edits get clobbered by export_training_kit)
             self.assertIn('BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2', script)
             self.assertIn("first-render shapes", script)
-            self.assertIn("KIT_VERSION = \"s84\"", script)
+            self.assertIn("KIT_VERSION = \"s85\"", script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
@@ -360,6 +360,13 @@ class TrainingKitTests(unittest.TestCase):
             self.assertIn('config.torch_dtype = torch.float16', script)
             self.assertIn('effective bnb_4bit_compute_dtype=', script)
             self.assertIn('bf16_lora=', script)
+            # S85: runtime bf16 hunt (clean audit + crash ⇒ setup-time
+            # source) — autocast-default probe with fp16 pin + a
+            # micro-batch grad census gate, 7B-only
+            self.assertIn('autocast probe', script)
+            self.assertIn('get_autocast_dtype', script)
+            self.assertIn('GRAD GATE FAILED', script)
+            self.assertIn('grad dtype histogram=', script)
             self.assertIn("merge_and_unload", script)
             # verdict-day fixes, pinned: disk-level untie + legacy
             # rope_theta (transformers v5 config format broke ollama's

@@ -35,7 +35,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s84"
+KIT_VERSION = "s85"
 
 
 def load_dataset(path=DATASET):
@@ -332,6 +332,72 @@ def main():
         sys.exit("DTYPE GATE FAILED: bf16 LoRA adapters on a T4 build "
                  "— paste the versions + bf16 lora list above; do not "
                  "train")
+    if SEVEN_B:
+        # S85 setup-time bf16 hunt: the S84 audit proved params,
+        # adapters AND bnb compute clean, yet bf16 grads STILL reached
+        # the scaler — so the source is runtime, not weights (the
+        # process autocast default is the prime suspect on torch 2.11).
+        # One micro-batch forward+backward under explicit fp16 autocast
+        # censuses grad dtypes BY NAME, then zeroes everything. Either
+        # outcome diagnoses: bf16 here = a rogue explicit-bf16 op;
+        # clean here + trainer crash = the trainer's autocast default
+        # is bf16 (pinned below for the run).
+        try:
+            _ac_dtype = torch.get_autocast_dtype("cuda")
+        except Exception as _ac_exc:
+            _ac_dtype = f"probe failed: {_ac_exc}"
+        print(f"autocast probe: default cuda autocast dtype={_ac_dtype}")
+        if "bfloat16" in str(_ac_dtype).lower():
+            for _setter in ("set_autocast_dtype",
+                            "set_autocast_gpu_dtype"):
+                _fn = getattr(torch, _setter, None)
+                if _fn is None:
+                    continue
+                try:
+                    try:
+                        _fn("cuda", torch.float16)
+                    except TypeError:
+                        _fn(torch.float16)
+                    print(f"autocast probe: pinned fp16 via "
+                          f"torch.{_setter}")
+                    break
+                except Exception as _pin_exc:
+                    print(f"autocast probe: torch.{_setter} failed: "
+                          f"{_pin_exc}")
+        try:
+            _pdev = getattr(model, "device", None)
+            if _pdev is None:
+                _pdev = next(model.parameters()).device
+            _ptok = tokenizer("Probe the dtype census.",
+                              return_tensors="pt").to(_pdev)
+            with torch.amp.autocast("cuda", dtype=torch.float16):
+                _out = model(input_ids=_ptok["input_ids"],
+                             labels=_ptok["input_ids"])
+            _out.loss.backward()
+            _ghist = {}
+            _bf16_grads = []
+            for _n, _p in model.named_parameters():
+                if _p.grad is None:
+                    continue
+                _gdt = str(_p.grad.dtype)
+                _ghist[_gdt] = _ghist.get(_gdt, 0) + 1
+                if "bfloat16" in _gdt:
+                    _bf16_grads.append(f"{_n}:{_p.grad.dtype}")
+            print(f"autocast probe: grad dtype histogram={_ghist}")
+            for _line in _bf16_grads[:10]:
+                print(f"  bf16 grad: {_line}")
+            if _bf16_grads:
+                sys.exit("GRAD GATE FAILED: bf16 grads from a clean "
+                         "audit — paste the autocast + histogram lines "
+                         "above; do not train")
+            model.zero_grad()
+            del _out, _ptok
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except SystemExit:
+            raise
+        except Exception as _probe_exc:
+            print(f"autocast probe: census skipped: {_probe_exc}")
     model.print_trainable_parameters()
 
     from transformers import DataCollatorForSeq2Seq
