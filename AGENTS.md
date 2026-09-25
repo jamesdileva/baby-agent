@@ -80,6 +80,29 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S77.1 Gen-9 verdict — calculator consolidated to
+  1.0 (first perfect task rate); the json wall holds; strings was
+  variance** — ep9 imported clean (GGUF path) and the verdict
+  (rate-based, n=3 x 3, budget 12): **calculator 3/3 SUCCESS — the
+  first perfect task rate in program history** (5-8 calls, 0
+  failures, 5-6 iterations, three for three); strings 0/3 and json
+  0/3, overall 3/9 == ep8's 3/9. The rate-based decomposition does
+  its job: gen-8's single strings success did not reproduce (1/9 was
+  sampling variance, exactly what the gen-7 lesson predicted), while
+  calculator moved 2/3 → 3/3 with zero-failure runs. Honest notes:
+  (1) **the SRFT prefix rule may teach path-guessing** — prefixes
+  from failed runs include their failed reads (guessed_path 0.78 →
+  1.22), a real cost of mining failed trajectories unselectively;
+  a future lane should filter ok=True reads only; (2) json's
+  synthesis step (compose the chained .get from the test fixture)
+  remains beyond reach at this scale despite 4x coverage + SRFT —
+  the demos teach reading the fixture, the models still cannot
+  reliably compose the novel expression; (3) tool failures 31 vs 12
+  track the same exploration increase. The generation-over-
+  generation ledger: calculator is SOLVED at this scale (5 of last
+  6 runs across two generations), strings succeeded once
+  (variance), json never. Suite 1682 OK. Spec: docs/s77-spec.md.
+
 - 2026-09-25 — **S77 Gen-9 corpus — SRFT prefix lane + nested-lookup
   expansion** — The gen-8 verdict left json as the standing wall, and
   the recorded evidence named both levers: the chained-`.get`
