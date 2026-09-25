@@ -577,7 +577,11 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
     persistence demos (the double chain: hit the second failure,
     re-diagnose from scratch, name BOTH fixes). Authored by the
     session that ran ten generations; verified by the gate; validated
-    by the quality bar."""
+    by the quality bar.
+    S82 batch 2 (same rungs, no rung 3+ per the anti-flaky gate):
+    two more json drills — one two-level descent with a genuine
+    wrong-turn read, one clean single-level — plus a second cascade
+    on string_ops so the persistence lesson is not a single module."""
     demos: List[Dict[str, Any]] = []
 
     # --- json synthesis drills (the 3B wall, taught directly) ---
@@ -669,9 +673,142 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
         _final(cascade_diagnosis),
     ]
     demos.append({"script": cascade_script,
-                  "files": {"calc_ops.py": calc_module,
-                            "test_calc_ops.py": calc_tests},
-                  "goal": cascade_goal})
+                   "files": {"calc_ops.py": calc_module,
+                             "test_calc_ops.py": calc_tests},
+                   "goal": cascade_goal})
+
+    # --- S82 batch 2: same rungs, more volume ---
+    # json drill 4: two-level descent WITH a genuine wrong turn — the
+    # first hypothesis (src/ layout) fails, the test fixture gives the
+    # real shape. Recovery beat for the json rung set.
+    module, sections, key, leaf = ("session_store", ("session", "user"),
+                                   "name", '"ann"')
+    path = f"{module}.py"
+    test_path = f"test_{module}.py"
+    module_code = "def lookup(data, key):\n    return data.get(key)\n"
+    data_literal = '{{"{}": {}}}'.format(key, leaf)
+    for section in reversed(sections):
+        data_literal = '{{"{}": {}}}'.format(section, data_literal)
+    test_code = (
+        "import unittest\n\nfrom {} import lookup\n\n\n"
+        "class TestLookup(unittest.TestCase):\n"
+        "    def test_nested(self):\n"
+        "        data = {}\n"
+        '        self.assertEqual(lookup(data, "{}"), {})\n\n\n'
+        'if __name__ == "__main__":\n    unittest.main()\n'.format(
+            module, data_literal, key, leaf))
+    broken = "    return data.get(key)\n"
+    descent = "data" + "".join(
+        '.get("{}", {{}})'.format(section) for section in sections)
+    fixed = '    return {}.get(key)\n'.format(descent)
+    diagnosis = (
+        "My first guess was the src/ layout — reading "
+        f"src/{path} failed, so that hypothesis was wrong. The failing "
+        "test builds its own fixture: data = "
+        f"{data_literal} — so the value for "
+        f"'{key}' lives under "
+        f"the {' -> '.join(sections)} sections, not at the top level. "
+        f"Reading {test_path} gave the shape and reading {path} "
+        "confirmed the lookup only checked the top level. The fix "
+        f"chains the gets: {fixed.strip()} — each level with an "
+        "empty-dict default so a missing section cannot crash. "
+        "Tests pass.")
+    script = [_list(), _read(f"src/{path}"), _tests(python),
+              _read(test_path), _read(path),
+              _edit(path, broken, fixed), _tests(python),
+              _final(diagnosis)]
+    files = {path: module_code, test_path: test_code}
+    demos.append({
+        "script": script, "files": files,
+        "goal": ("The session_store lookup misses keys nested under the "
+                 "session -> user sections. Find the bug from the failing "
+                 "test, fix it, and run the tests to verify they pass.")})
+
+    # json drill 5: clean single-level drill on a fresh module so the
+    # synthesis pattern gets volume beyond the S80 three.
+    module, sections, key, leaf = ("retry_policy", ("retry",),
+                                   "max_attempts", "5")
+    path = f"{module}.py"
+    test_path = f"test_{module}.py"
+    module_code = "def lookup(data, key):\n    return data.get(key)\n"
+    data_literal = '{{"{}": {}}}'.format(key, leaf)
+    for section in reversed(sections):
+        data_literal = '{{"{}": {}}}'.format(section, data_literal)
+    test_code = (
+        "import unittest\n\nfrom {} import lookup\n\n\n"
+        "class TestLookup(unittest.TestCase):\n"
+        "    def test_nested(self):\n"
+        "        data = {}\n"
+        '        self.assertEqual(lookup(data, "{}"), {})\n\n\n'
+        'if __name__ == "__main__":\n    unittest.main()\n'.format(
+            module, data_literal, key, leaf))
+    broken = "    return data.get(key)\n"
+    descent = "data" + "".join(
+        '.get("{}", {{}})'.format(section) for section in sections)
+    fixed = '    return {}.get(key)\n'.format(descent)
+    diagnosis = (
+        "The failing test builds its own fixture: data = "
+        f"{data_literal} — so the value for "
+        f"'{key}' does not sit at the top level, it lives under "
+        f"the {' -> '.join(sections)} section. The test is telling "
+        f"me the shape of the data. Reading {path} confirmed the "
+        f"lookup only checked the top level. The fix is to chain "
+        f"the gets: {fixed.strip()} — each level with an empty-dict "
+        f"default so a missing section cannot crash. Tests pass.")
+    core = [_tests(python), _read(test_path), _read(path),
+            _edit(path, broken, fixed), _tests(python)]
+    script = [_list()] + core + [_final(diagnosis)]
+    files = {path: module_code, test_path: test_code}
+    demos.append({
+        "script": script, "files": files,
+        "goal": ("The retry_policy lookup misses keys nested under the "
+                 "retry section. Diagnose from the failing test and "
+                 "repair it.")})
+
+    # cascade 2 (rung 2 on a second module): reverse + shout both
+    # broken — the chain must run twice and the final names BOTH.
+    str_module = ("def reverse(text):\n    return text\n\n\n"
+                  "def shout(text):\n    return text.lower()\n")
+    str_tests = (
+        "import unittest\n\nfrom string_ops import reverse, shout\n\n\n"
+        "class TestStringOps(unittest.TestCase):\n"
+        "    def test_reverse(self):\n"
+        '        self.assertEqual(reverse("abc"), "cba")\n\n'
+        "    def test_shout(self):\n"
+        '        self.assertEqual(shout("hey"), "HEY")\n\n\n'
+        'if __name__ == "__main__":\n    unittest.main()\n')
+    str_goal = ("The string_ops tests are failing on two functions. "
+                "There may be more than one bug — keep diagnosing and "
+                "fixing until the whole suite passes.")
+    str_diagnosis = (
+        "First failure: test_reverse expected reverse('abc') to be "
+        "'cba' but reverse returned the text unchanged — I fixed "
+        "reverse to return text[::-1] and reran. Second failure: the "
+        "suite STILL failed, so there was more than one bug — "
+        "test_shout expected shout('hey') to be 'HEY' but shout was "
+        "lowercasing. I re-read string_ops.py, fixed shout to return "
+        "text.upper(), and reran: the whole suite passes. Two bugs, "
+        "both fixed: reverse now reverses and shout now shouts.")
+    str_script = [
+        _list(),
+        _tests(python),
+        _read("test_string_ops.py"),
+        _read("string_ops.py"),
+        _edit("string_ops.py",
+              "def reverse(text):\n    return text",
+              "def reverse(text):\n    return text[::-1]"),
+        _tests(python),   # second failure: shout still broken
+        _read("string_ops.py"),   # re-diagnose from scratch
+        _edit("string_ops.py",
+              "def shout(text):\n    return text.lower()",
+              "def shout(text):\n    return text.upper()"),
+        _tests(python),
+        _final(str_diagnosis),
+    ]
+    demos.append({"script": str_script,
+                  "files": {"string_ops.py": str_module,
+                            "test_string_ops.py": str_tests},
+                  "goal": str_goal})
     return demos
 
 

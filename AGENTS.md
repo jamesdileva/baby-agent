@@ -80,6 +80,17 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S82 — Agent-authored batch 2 (json volume + second
+  cascade, rungs 1-2 only)** — the S80 lane working as intended:
+  session_store two-level drill with a genuine wrong-turn read
+  (recovery beat for the json set), retry_policy clean drill
+  (synthesis volume), string_ops second cascade (persistence beyond
+  one module); rung 3+ stays gated. Live: lane 7/7 passed on the
+  real store, curate 1135/2/1, training export 169 = 165
+  step-trainable + 4 SRFT (all 7 demos present). Colab order: upload
+  the fresh training.jsonl BEFORE the ep11 run. Suite 1687 OK,
+  pyflakes clean. Spec: docs/s82-spec.md.
+
 - 2026-09-25 — **S81 — 7B T4 OOM fix (lean prepare, batch 1,
   checkpointing on)** — Colab error after the S79 bf16 fix:
   `prepare_model_for_kbit_training` OOM at the fp32 norm upcast

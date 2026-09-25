@@ -624,7 +624,7 @@ class AgentAuthoredTests(unittest.TestCase):
 
     def test_batches_pass_the_quality_validator(self):
         demos = agent_authored_demos(sys.executable)
-        self.assertEqual(4, len(demos))
+        self.assertEqual(7, len(demos))
         for demo in demos:
             with self.subTest(goal=demo["goal"][:40]):
                 ok, reasons = validate_demonstration(
@@ -663,14 +663,14 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             stats = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(4, stats["runs"])
-            self.assertEqual(4, stats["passed"], stats)
+            self.assertEqual(7, stats["runs"])
+            self.assertEqual(7, stats["passed"], stats)
             self.assertEqual(0, stats["rejected"])
             records = store.load()
             tagged = [r for r in records
                       if "agent-authored" in r.tags]
-            self.assertEqual(4, len(tagged))
-            self.assertEqual(4, len({r.goal.split(" (benchmark")[0]
+            self.assertEqual(7, len(tagged))
+            self.assertEqual(7, len({r.goal.split(" (benchmark")[0]
                                      for r in tagged}))
 
 

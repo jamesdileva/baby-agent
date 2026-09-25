@@ -1315,3 +1315,17 @@ zcode session context (bf16 GradScaler fix already landed) recovered
 read-only from the local zcode DB.
 
 Status: Adopted 2026-09-25. Spec: docs/s81-spec.md.
+
+### S82 agent-authored batch 2 (json volume + second cascade)
+
+**Decision:** Second authored batch through the S80 lane (no mechanism
+change): session_store two-level drill with a genuine wrong-turn read
+(recovery beat for the json set), retry_policy clean drill (volume),
+string_ops second cascade (persistence is not a single-module trick).
+Rung 3+ demos stay gated until rung 2 is stable-band (anti-flaky gate
+holds). Colab order ruled: the fresh training.jsonl (169 rows) ships
+before the ep11 run, so ep11 trains with these demos. Provenance: this
+session authoring in the GLM vein per the human's direction; validator
++ gate passed 7/7.
+
+Status: Adopted 2026-09-25. Spec: docs/s82-spec.md.
