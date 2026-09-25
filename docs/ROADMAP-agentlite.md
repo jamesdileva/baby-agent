@@ -225,6 +225,11 @@ Status: S31 is **next**; all others proposed until their slice commits.
 | S66 | Demonstrator 2.0 (Gen-2 corpus) | proposed |
 | S67 | Gen-2 Training + Verdict Harness v2 | proposed |
 | S68 | The Self-Improvement Loop | proposed |
+| S69-S78 | Protocol consistency, failure-state demos, dashboard ops, coverage, SRFT, volume teaching | done |
+| S79 | Base-model step-up: Qwen2.5-Coder-7B | proposed |
+| S80 | Agent-authored demonstrations (distillation from the agent) | proposed |
+| S81 | Cascade-class training demonstrators | proposed |
+| S82 | Dashboard usefulness (folder picker, output visibility) | deferred |
 
 ---
 
@@ -1186,6 +1191,64 @@ command per stage, every verdict run feeding the next corpus.
 **Verification.** The loop is re-runnable end-to-end without manual
 surgery; each generation's verdict lands in the worklog with the full
 metric table.
+
+---
+
+## S79+ — The generation program: next levers (researched 2026-09-25)
+
+Ten generations produced a capability map: calculator solved-band
+(0.33-1.0), strings solidifying (0-0.67), json synthesis and cascade
+persistence unsolved at 3B — the synthesis limit is now the
+best-evidenced conclusion in the program (0/6 across two verdicts
+despite 24-variant volume teaching). The next levers, in value order:
+
+### S79 — Base-model step-up: Qwen2.5-Coder-7B (the research-backed move)
+
+"Small Language Models are the Future of Agentic AI" (arXiv 2025)
+argues ~8B models reach state-of-the-art tool-calling in constrained
+agentic workflows — and the scaling evidence inside our own program
+(1.5B fails everything → 3B solves calculator) says the wall moves
+with scale. Same family (Qwen2.5-Coder), so every known fixup
+(lm_head untie, rope_theta, template) carries over unchanged.
+
+- **Training:** 4-bit QLoRA — 7B fp16 does not fit the free T4's
+  16GB, but 4-bit (~5-6GB weights) + LoRA + gradient checkpointing is
+  the standard setup (Unsloth notebooks, LLaMA-Factory, the DecodingML
+  course notebook all run Qwen2.5-7B QLoRA on free T4). Kit change:
+  load_in_4bit + paged optimizer; masking, fixups, sanity gate
+  unchanged.
+- **Inference:** qwen2.5-coder:7b q4 ≈ 4.7GB — the host runs
+  llama3.1:8b today; slower tokens are acceptable (speed explicitly
+  deprioritized by the human).
+- **Attribution stays clean:** same corpus (v8), same harness, same
+  4-task ladder — ep11-7b vs ep10-3b isolates the base-size variable.
+  Verdict rule unchanged: improvement is measured, never assumed.
+
+### S80 — Agent-authored demonstrations (distillation from the agent)
+
+The human's direction: "smarter thinking from you, directly." The
+mechanism already half-exists — the drips distill from Gemini, the
+zcode/labdb miners capture real agent sessions — but the
+highest-density form is the agent (in-session) authoring
+demonstrations for the wall tasks through the REAL loop: genuine
+diagnostic reasoning in the exploration and finals, verified by the
+S41 gate, provenance-labeled `agent-authored`. Zero quota, unlimited
+volume, and the reasoning quality is that of the session that ran ten
+generations. Adds as many sprints as the ladder needs.
+
+### S81 — Cascade-class training demonstrators
+
+The cascade eval task (S78) is the persistence rung: two defects, the
+chain must run twice. Teaching toward it needs demonstrators whose
+scripts run the chain, hit the second failure, and CONTINUE — the
+failure-state pattern (S72) applied to multi-cycle persistence.
+Landed after S79/S80 so the new base learns cascade from the start.
+
+### S82 — Dashboard usefulness (deferred; promoted from backlog)
+
+Folder picker + session output visibility (human-tested 2026-09-24;
+see the S52 section backlog note). Deliberately behind the capability
+sprints — polish waits until the model justifies the front end.
 
 ---
 
