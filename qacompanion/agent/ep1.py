@@ -45,7 +45,7 @@ DEMO_MODEL_TAG = "scripted-demo"
 # a CURRENT-version record, and mark_superseded_demos supersedes
 # scripted demos lacking the tag (their FORMAT is stale for training
 # even when the task itself is unchanged)
-CORPUS_VERSION = "v6"
+CORPUS_VERSION = "v7"
 VERSION_TAG = f"corpus-{CORPUS_VERSION}"
 
 # the corpus recipe (S66): categories with declared shapes and honest
@@ -60,7 +60,9 @@ CATEGORY_VARIANTS = {
     # S73: coverage targeting — mirroring the two S57 evaluation tasks
     # the gen-6 corpus never covered (string reverse, nested lookup)
     "string_reverse": 1,
-    "nested_lookup": 1,
+    # S77: the json wall — chained-descent synthesis needs more
+    # examples (4 variants x 8 levels = 32 nested-lookup runs)
+    "nested_lookup": 4,
 }
 DEFAULT_LEVELS = tuple(range(1, 9))
 
@@ -430,40 +432,71 @@ def _string_reverse_script(strategy: str, variant: int, level: int,
     return script, files, goal, strategy
 
 
+# S77: nested-lookup variants — the chained-descent expression is the
+# two-hop synthesis the json wall demands, and it needs more examples
+# than one variant provides. v0 is the exact S57 eval-task shape;
+# v1-v3 generalize the pattern (section names, depth, defaults).
+# (module, sections, key, leaf_literal, default_or_None)
+_NESTED_LOOKUP_VARIANTS = [
+    ("config_parser", ("settings",), "timeout", "30", None),
+    ("db_config", ("database",), "host", '"localhost"', None),
+    ("prefs", ("ui", "font"), "size", "12", None),
+    ("service_config", ("settings",), "retries", "5", "3"),
+]
+
+
 def _nested_lookup_script(strategy: str, variant: int, level: int,
                           python: str):
-    """S73: mirrors the S57 nested-JSON-lookup eval task."""
-    module = "config_parser"
-    "lookup"
+    """S73/S77: the nested-JSON-lookup eval-task shape, generalized."""
+    module, sections, key, leaf, default = _NESTED_LOOKUP_VARIANTS[
+        variant % len(_NESTED_LOOKUP_VARIANTS)]
     path = f"{module}.py"
     test_path = f"test_{module}.py"
-    module_code = ('def lookup(data, key):\n    return data.get(key)\n')
+    module_code = "def lookup(data, key):\n    return data.get(key)\n"
+    # the leaf lives under the KEY inside the innermost section, then
+    # the sections wrap outward: {"settings": {"timeout": 30}}
+    data_literal = '{{"{}": {}}}'.format(key, leaf)
+    for section in reversed(sections):
+        data_literal = '{{"{}": {}}}'.format(section, data_literal)
     test_code = (
-        "import unittest\n\nfrom config_parser import lookup\n\n\n"
+        "import unittest\n\nfrom {} import lookup\n\n\n"
         "class TestLookup(unittest.TestCase):\n"
         "    def test_nested(self):\n"
-        "        data = {\"settings\": {\"timeout\": 30}}\n"
-        "        self.assertEqual(lookup(data, \"timeout\"), 30)\n\n\n"
-        'if __name__ == "__main__":\n    unittest.main()\n')
+        "        data = {}\n"
+        '        self.assertEqual(lookup(data, "{}"), {})\n'.format(
+            module, data_literal, key, leaf))
+    if default is not None:
+        test_code += (
+            "    def test_missing_section_uses_default(self):\n"
+            '        self.assertEqual(lookup({{}}, "{}"), {})\n'.format(
+                key, default))
+    test_code += '\nif __name__ == "__main__":\n    unittest.main()\n'
     broken = "    return data.get(key)\n"
-    fixed = '    return data.get("settings", {}).get(key)\n'
+    descent = "data" + "".join(
+        '.get("{}", {{}})'.format(section) for section in sections)
+    fixed = '    return {}.get(key{})\n'.format(
+        descent, ', {}'.format(default) if default is not None else '')
     diagnosis = (
-        f"The test showed lookup should find keys nested under the "
-        f"settings section of {path}'s data, but the code only checked "
-        f"the top level. I chained the lookup into the settings dict "
-        f"and the tests pass.")
+        "The test showed lookup must descend through the {} section(s) "
+        "of the data before reading the key, but the code only checked "
+        "the top level. I chained the lookups and the tests pass.".format(
+            " -> ".join(sections)))
     core = [_tests(python), _read(test_path), _read(path),
             _edit(path, broken, fixed), _tests(python)]
     script = [_list()] + core + [_final(diagnosis)]
     if strategy == "diagnostic_recovery":
         script = [_read(f"src/{path}"), _list()] + core + [_final(diagnosis)]
     files = {path: module_code, test_path: test_code}
-    goal = (
+    goals = (
         "The tests in this project are failing. Find the bug, fix it, "
-        "and run the tests to verify they pass."
-        if (variant + level) % 2 == 0 else
+        "and run the tests to verify they pass.",
         "The config lookup in this project is not finding nested keys. "
-        "Diagnose the failure and repair the lookup.")
+        "Diagnose the failure and repair the lookup.",
+        "The lookup function here misses keys nested inside a "
+        "configuration section. Find the defect from the failing test "
+        "and fix it.",
+    )
+    goal = goals[(variant + level) % len(goals)]
     return script, files, goal, strategy
 
 

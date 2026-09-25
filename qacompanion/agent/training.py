@@ -342,12 +342,111 @@ def build_records(curated_dir=None) -> List[TrajectoryRecord]:
     return records
 
 
+def _srft_prefix_steps(steps: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
+    """S77 SRFT prefix rule (deterministic): the verified-productive
+    discovery+diagnosis chain of a FAILED trajectory — steps up to and
+    including the last read_file BEFORE the first edit_file/write_file.
+    Everything after the first write is the failed fix attempt and is
+    never trained; a prefix without a read (no diagnosis happened) is
+    not worth training."""
+    first_write = next((i for i, s in enumerate(steps)
+                        if s.get("tool") in ("edit_file", "write_file")),
+                       None)
+    window = steps if first_write is None else steps[:first_write]
+    last_read = max((i for i, s in enumerate(window)
+                     if s.get("tool") == "read_file"), default=None)
+    if last_read is None:
+        return None
+    prefix = window[:last_read + 1]
+    if len(prefix) < 2:
+        return None
+    return prefix
+
+
+def _srft_chat_record(traj: Dict[str, Any]) -> "tuple[Optional[Dict[str, Any]], int]":
+    """S77: one SRFT prefix chat record from a FAILED trajectory —
+    goal -> discovery/diagnosis turns, NO final answer (the run has no
+    honest one; the failure tail is masked by simply not being
+    included). Returns (chat, prefix_len); (None, 0) when the
+    trajectory does not qualify."""
+    steps = [s for s in (traj.get("steps") or [])
+             if isinstance(s, dict) and isinstance(s.get("args"), dict)]
+    prefix = _srft_prefix_steps(steps)
+    if prefix is None:
+        return None, 0
+    system = (build_system_prompt(tools=_runtime_catalog(),
+                                  native_tools=False)
+              + TOOL_PROTOCOL_PROMPT)
+    goal = re.sub(r"\s*\(benchmark run [0-9a-f]{8}\)$", "",
+                  traj.get("goal") or "")
+    messages: List[Dict[str, str]] = [{"role": "system", "content": system},
+                                      {"role": "user",
+                                       "content": goal}]
+    for step in prefix:
+        messages.append({"role": "assistant",
+                         "content": format_tool_call(step["tool"],
+                                                     step["args"])})
+        head = step.get("result_head") or ""
+        observation = head if head else (
+            "ok" if step.get("ok") else "no output captured")
+        messages.append({"role": "user",
+                         "content": observation[:MAX_TEXT_CHARS]})
+    chat = {"messages": messages,
+            "metadata": {"session_id": traj.get("session_id"),
+                         "source": traj.get("source"),
+                         "model": traj.get("model"),
+                         "steps": len(prefix),
+                         "capture_tier": "behavior-trace",
+                         "truncated": False,
+                         "srft-prefix": True}}
+    return chat, len(prefix)
+
+
+def _srft_lane(trajectory_rows: List[Dict[str, Any]]
+               ) -> "tuple[List[Dict[str, Any]], int]":
+    """S77: the SRFT lane over the CURATED export's FAILED-class rows —
+    never raw experience. Gate: no hard flags, captured steps, prefix
+    rule passes. One record per normalized goal (the longest prefix
+    wins) so repeated failures of the same task do not flood the
+    dataset."""
+    best: Dict[str, "tuple[Dict[str, Any], int]"] = {}
+    candidates = 0
+    for traj in trajectory_rows:
+        if traj.get("classification") != "FAILED":
+            continue
+        if traj.get("hard_flags"):
+            continue
+        chat, prefix_len = _srft_chat_record(traj)
+        if chat is None:
+            continue
+        candidates += 1
+        key = re.sub(r"\s*\(benchmark run [0-9a-f]{8}\)$", "",
+                     traj.get("goal") or "").strip().lower()
+        if key not in best or prefix_len > best[key][1]:
+            best[key] = (chat, prefix_len)
+    return ([chat for chat, _ in best.values()], candidates)
+
+
 def build_training(curated_dir=None, out_dir=None,
                    dry_run: bool = False) -> Dict[str, Any]:
     """Build the training corpus exports; report honestly."""
     records = build_records(curated_dir)
     eligible = [r for r in records if r.eligible]
     step_trainable = [r for r in eligible if r.chat is not None]
+
+    # S77 SRFT lane: prefix records mined from the FAILED trajectories
+    # of the SAME curated export (never raw experience)
+    directory = Path(curated_dir or os.environ.get("QA_CURATED_DIR")
+                     or "curated")
+    trajectory_rows: List[Dict[str, Any]] = []
+    trajectory_path = directory / "trajectory.jsonl"
+    if trajectory_path.exists():
+        for raw in trajectory_path.read_text(
+                encoding="utf-8-sig").splitlines():
+            if raw.strip():
+                trajectory_rows.append(json.loads(raw))
+    srft_chats, srft_candidates = _srft_lane(trajectory_rows)
+
     report: Dict[str, Any] = {
         "trajectories": len(records),
         "classes": _tally(r.trajectory_class for r in records),
@@ -355,6 +454,8 @@ def build_training(curated_dir=None, out_dir=None,
         "step_trainable": len(step_trainable),
         "invalid_skipped": getattr(build_records, "last_invalid_count", 0),
         "truncated": sum(1 for r in records if r.truncated),
+        "srft_prefix_records": len(srft_chats),
+        "srft_candidate_trajectories": srft_candidates,
         "excluded": _tally(r.trajectory_class for r in records
                            if not r.eligible),
         "exclusion_reasons": _tally_reasons(records),
@@ -369,7 +470,7 @@ def build_training(curated_dir=None, out_dir=None,
     _write_jsonl(out_path / "trajectories.jsonl",
                  [r.to_dict() for r in records])
     _write_jsonl(out_path / "training.jsonl",
-                 [r.chat for r in step_trainable])
+                 [r.chat for r in step_trainable] + srft_chats)
     _write_json(out_path / "report.json", report)
     report["out_dir"] = str(out_path)
     return report

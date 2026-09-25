@@ -256,6 +256,35 @@ class CoverageTargetingTests(unittest.TestCase):
                       edit["args"]["new_string"])
         self.assertEqual("success", self.store.load()[-1].outcome)
 
+    def test_nested_lookup_variant_expansion(self):
+        # S77: the chained-descent synthesis needs more examples —
+        # three new variants generalize the pattern (v0 = eval shape)
+        expected = {
+            1: ('    return data.get("database", {}).get(key)\n',
+                "db_config"),
+            2: ('    return data.get("ui", {}).get("font", {}).get(key)\n',
+                "prefs"),
+            3: ('    return data.get("settings", {}).get(key, 3)\n',
+                "service_config"),
+        }
+        for variant, (new_string, module) in expected.items():
+            with self.subTest(variant=variant):
+                script, files, _goal, _tag = build_demo(
+                    "nested_lookup", "diagnostic_clean", variant, 1,
+                    sys.executable)
+                edit = [t for t in script
+                        if getattr(t, "name", None) == "edit_file"][0]
+                self.assertEqual(new_string,
+                                 edit.arguments["new_string"])
+                self.assertEqual(f"{module}.py",
+                                 edit.arguments["path"])
+
+    def test_all_nested_variants_verify_through_the_loop(self):
+        # S77: every variant's demo passes the real verification gate
+        stats = build_corpus(self.store, python=sys.executable,
+                             categories={"nested_lookup": 4}, levels=(1,))
+        self.assertEqual(4, stats["passed"], stats)
+
     def test_goal_phrasing_varies_in_new_categories(self):
         build_corpus(self.store, python=sys.executable,
                      categories={"string_reverse": 1}, levels=(1, 2))

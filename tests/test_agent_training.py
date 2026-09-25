@@ -23,7 +23,8 @@ from qacompanion.agent.curation import TrajectoryCurator
 from qacompanion.agent.experience import ExperienceStore
 from qacompanion.agent.session_learning import session_to_experience
 from qacompanion.agent.training import (
-    TrainingError, build_training, build_records, format_tool_call)
+    TrainingError, build_training, build_records, format_tool_call,
+    _srft_lane, _srft_prefix_steps)
 
 PY = f'"{__import__("sys").executable}"'
 
@@ -398,3 +399,93 @@ class EscapingDialectTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SrftLaneTests(unittest.TestCase):
+    """S77: the SRFT prefix lane — verified-productive discovery
+    prefixes mined from FAILED trajectories, no final trained."""
+
+    def _failed_row(self, steps, goal="json lookup task", **kw):
+        row = {
+            "experience_id": "f1", "session_id": "s1", "source": "labdb",
+            "goal": goal, "outcome": "failed",
+            "classification": "FAILED", "verdict": "REJECT",
+            "score": {"overall": 0.4, "dimensions": {},
+                      "unknown_dims": []},
+            "hard_flags": [], "penalties": [], "reasons": [],
+            "confidence": 0.5, "times_seen": 1, "diversity_score": 0.5,
+            "actions": [s["tool"] for s in steps],
+            "failure": "unit-tests=FAIL", "diagnosis": None,
+            "resolution": None, "verification": {},
+            "steps": steps, "final_answer": "I fixed it.",
+            "model": "m", "verification_failures": [], "tags": [],
+        }
+        row.update(kw)
+        return row
+
+    def test_prefix_ends_at_last_read_before_first_write(self):
+        steps = [
+            {"tool": "list_directory", "args": {"path": "."},
+             "ok": True, "result_head": "files"},
+            {"tool": "read_file", "args": {"path": "m.py"},
+             "ok": True, "result_head": "def lookup"},
+            {"tool": "edit_file", "args": {"path": "m.py"},
+             "ok": True, "result_head": "edit applied"},
+            {"tool": "run_tests", "args": {"command": "t"},
+             "ok": True, "result_head": "FAIL"},
+        ]
+        prefix = _srft_prefix_steps(steps)
+        self.assertEqual(["list_directory", "read_file"],
+                         [s["tool"] for s in prefix])
+
+    def test_no_edit_whole_prefix(self):
+        steps = [
+            {"tool": "list_directory", "args": {"path": "."},
+             "ok": True, "result_head": "files"},
+            {"tool": "read_file", "args": {"path": "m.py"},
+             "ok": True, "result_head": "code"},
+        ]
+        self.assertEqual(2, len(_srft_prefix_steps(steps)))
+
+    def test_no_read_no_record(self):
+        steps = [{"tool": "run_tests", "args": {"command": "t"},
+                  "ok": True, "result_head": "FAIL"}]
+        self.assertIsNone(_srft_prefix_steps(steps))
+
+    def test_lane_gates_flags_and_dedupes_by_goal(self):
+        discovery = [
+            {"tool": "list_directory", "args": {"path": "."},
+             "ok": True, "result_head": "files"},
+            {"tool": "read_file", "args": {"path": "m.py"},
+             "ok": True, "result_head": "code"},
+        ]
+        rows = [
+            self._failed_row(discovery, goal="json task"),
+            # same goal, longer prefix wins the dedupe
+            self._failed_row(discovery + discovery, goal="JSON  Task"),
+            # hard-flagged: excluded
+            self._failed_row(discovery, goal="other task",
+                             hard_flags=[{"kind": "credential_exposure",
+                                          "pattern": "x"}]),
+        ]
+        chats, candidates = _srft_lane(rows)
+        self.assertEqual(2, candidates)
+        self.assertEqual(2, len(chats))  # two distinct goals
+        longest = [c for c in chats
+                   if c["metadata"]["steps"] == 4][0]
+        self.assertTrue(longest["metadata"]["srft-prefix"])
+        # no final answer trained: the record ends on an observation
+        self.assertEqual("user", longest["messages"][-1]["role"])
+
+    def test_lane_skips_non_failed(self):
+        discovery = [
+            {"tool": "list_directory", "args": {"path": "."},
+             "ok": True, "result_head": "files"},
+            {"tool": "read_file", "args": {"path": "m.py"},
+             "ok": True, "result_head": "code"},
+        ]
+        rows = [self._failed_row(discovery)]
+        rows[0]["classification"] = "SUCCESS"
+        chats, candidates = _srft_lane(rows)
+        self.assertEqual(0, len(chats))
+        self.assertEqual(0, candidates)
