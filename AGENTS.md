@@ -80,6 +80,15 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S84 — bf16 with a clean audit (v5 kwarg +
+  setup-time sources)** — the S83 audit output diagnosed it: 0 bf16
+  params pre-LoRA yet bf16 grads at the first backward (setup-time
+  source), and 5.17 deprecation-proves `torch_dtype` no-ops
+  (model.dtype=float32). 7B path now signature-sniffs the v5 `dtype`
+  kwarg, pins `config.torch_dtype`, and audits effective bnb compute
+  + post-LoRA adapters, each fail-loud. 3B string form untouched.
+  Suite 1687 OK, pyflakes clean. Spec: docs/s84-spec.md.
+
 - 2026-09-25 — **S83 — Colab bf16 second strike (dtype objects +
   audit gate)** — Colab threw the same GradScaler bf16 error against
   the current 326-line file, proving the S79 string fix insufficient.

@@ -35,7 +35,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s83"
+KIT_VERSION = "s84"
 
 
 def load_dataset(path=DATASET):
@@ -232,10 +232,20 @@ def main():
         # GradScaler then chokes on bf16 grads
         # (NotImplementedError: _amp_foreach_non_finite_check_and_unscale_
         # cuda not implemented for BFloat16 — Colab catch, S79; object
-        # form pinned S83)
+        # form pinned S83; v5 kwarg name pinned S84 — 5.17 prints
+        # "`torch_dtype` is deprecated! Use `dtype` instead!" and the
+        # deprecated spelling loaded float32, i.e. it NO-OPs)
+        import inspect as _inspect
+        _fp_kwargs = ({"dtype": torch.float16}
+                      if "dtype" in _inspect.signature(
+                          AutoModelForCausalLM.from_pretrained).parameters
+                      else {"torch_dtype": torch.float16})
         model = AutoModelForCausalLM.from_pretrained(
-            BASE_MODEL, quantization_config=bnb, torch_dtype=torch.float16,
-            device_map="auto")
+            BASE_MODEL, quantization_config=bnb, device_map="auto",
+            **_fp_kwargs)
+        # belt and suspenders: the config default (bf16) leaks into
+        # adapter dtypes and compute fallbacks if left in place
+        model.config.torch_dtype = torch.float16
         # S81 lean prepare (T4 OOM fix): full
         # prepare_model_for_kbit_training upcasts norms to fp32 (+1GB
         # transient, peft #3265/#3293) and OOMs at
@@ -281,13 +291,47 @@ def main():
                     for _n, _p in model.named_parameters()
                     if "bfloat16" in str(_p.dtype)})
     print(f"dtype audit: model.dtype={model.dtype} "
+          f"config.torch_dtype={model.config.torch_dtype} "
           f"bf16_params={len(_bf16)}")
     for _line in _bf16[:10]:
         print(f"  bf16: {_line}")
+    # the compute dtype is the other silent fallback: print the
+    # EFFECTIVE value (post-load config), not what was requested
+    _qconf = getattr(model.config, "quantization_config", None)
+    if isinstance(_qconf, dict):
+        _eff_compute = _qconf.get("bnb_4bit_compute_dtype")
+    else:
+        _eff_compute = getattr(_qconf, "bnb_4bit_compute_dtype", None)
+    if _eff_compute is None:
+        _hq = getattr(model, "hf_quantizer", None)
+        _eff_compute = getattr(
+            getattr(_hq, "quantization_config", None),
+            "bnb_4bit_compute_dtype", None)
+    print(f"dtype audit: effective bnb_4bit_compute_dtype={_eff_compute}")
     if _bf16:
         sys.exit("DTYPE GATE FAILED: bf16 params present on a T4 build "
                  "— paste the versions + bf16 list above; do not train")
+    if "bfloat16" in str(_eff_compute).lower():
+        sys.exit("DTYPE GATE FAILED: bnb compute dtype resolved to bf16 "
+                 "— paste the versions + effective dtype above; do not "
+                 "train")
     model = get_peft_model(model, lora)
+    # second gate, post-LoRA: adapters inherit dtypes from wherever
+    # they please (config default, target modules) — census them too,
+    # since the S83 crash arrived with a CLEAN pre-LoRA audit and died
+    # at the first backward
+    _lora_dtypes = sorted({f"{_n}:{_p.dtype}"
+                           for _n, _p in model.named_parameters()
+                           if "lora_" in _n})
+    _bf16_post = [_d for _d in _lora_dtypes if "bfloat16" in _d]
+    print(f"dtype audit: lora_params={len(_lora_dtypes)} "
+          f"bf16_lora={len(_bf16_post)}")
+    for _line in _bf16_post[:10]:
+        print(f"  bf16 lora: {_line}")
+    if _bf16_post:
+        sys.exit("DTYPE GATE FAILED: bf16 LoRA adapters on a T4 build "
+                 "— paste the versions + bf16 lora list above; do not "
+                 "train")
     model.print_trainable_parameters()
 
     from transformers import DataCollatorForSeq2Seq

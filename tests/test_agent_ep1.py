@@ -325,7 +325,7 @@ class TrainingKitTests(unittest.TestCase):
             # direct edits get clobbered by export_training_kit)
             self.assertIn('BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2', script)
             self.assertIn("first-render shapes", script)
-            self.assertIn("KIT_VERSION = \"s83\"", script)
+            self.assertIn("KIT_VERSION = \"s84\"", script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
@@ -349,9 +349,17 @@ class TrainingKitTests(unittest.TestCase):
             # compute fell back to the bf16 model default) + a
             # fail-loud dtype audit gate before LoRA/training
             self.assertIn('bnb_4bit_compute_dtype=torch.float16', script)
-            self.assertIn('torch_dtype=torch.float16', script)
+            self.assertIn('config.torch_dtype = torch.float16', script)
             self.assertIn('bf16_params=', script)
             self.assertIn('DTYPE GATE FAILED', script)
+            # S84: v5 kwarg name (torch_dtype deprecated-ignored →
+            # float32!), explicit config pin, effective compute dtype
+            # + post-LoRA adapter census (S83 crashed with a clean
+            # pre-LoRA audit, so bf16 entered during training setup)
+            self.assertIn('"dtype"', script)
+            self.assertIn('config.torch_dtype = torch.float16', script)
+            self.assertIn('effective bnb_4bit_compute_dtype=', script)
+            self.assertIn('bf16_lora=', script)
             self.assertIn("merge_and_unload", script)
             # verdict-day fixes, pinned: disk-level untie + legacy
             # rope_theta (transformers v5 config format broke ollama's

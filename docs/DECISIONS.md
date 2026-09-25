@@ -1346,3 +1346,18 @@ zcode DB confirms the epN gguf→Modelfile→verdict→gitignore import
 ritual for the post-training side (no ep11.gguf exists yet).
 
 Status: Adopted 2026-09-25. Spec: docs/s83-spec.md.
+
+### S84 bf16 with a clean audit: v5 kwarg + setup-time sources
+
+**Decision:** The S83 audit output IS the diagnosis: 0 bf16 params
+pre-LoRA yet bf16 grads at the first backward, so bf16 enters during
+training setup; plus transformers 5.17 deprecation-proves the
+`torch_dtype` spelling no-ops (model.dtype came out float32). The 7B
+path now signature-sniffs the v5 `dtype` kwarg (fallback to
+`torch_dtype`), pins `model.config.torch_dtype` explicitly, and
+extends the audit to the effective bnb compute dtype plus a post-LoRA
+adapter census, each fail-loud. Proven 3B string form untouched.
+Provenance: full S83 Colab paste (mask 0.223, 339/339 weights,
+40.3M trainable, then the 8-frame GradScaler death).
+
+Status: Adopted 2026-09-25. Spec: docs/s84-spec.md.
