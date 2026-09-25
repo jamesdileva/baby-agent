@@ -325,7 +325,7 @@ class TrainingKitTests(unittest.TestCase):
             # direct edits get clobbered by export_training_kit)
             self.assertIn('BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2', script)
             self.assertIn("first-render shapes", script)
-            self.assertIn("KIT_VERSION = \"s76.3\"", script)
+            self.assertIn("KIT_VERSION = \"s81\"", script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
@@ -337,6 +337,13 @@ class TrainingKitTests(unittest.TestCase):
             self.assertIn('paged_adamw_32bit', script)
             self.assertIn("fp16=True", script)
             self.assertIn('"use_reentrant": False', script)
+            # S81 T4 OOM fix, pinned: lean prepare (no fp32-upcast peak),
+            # manual checkpoint enable, use_cache off, 7B batch 1 x 8
+            self.assertIn('use_gradient_checkpointing=False', script)
+            self.assertIn('gradient_checkpointing_enable', script)
+            self.assertIn('use_cache = False', script)
+            self.assertIn('empty_cache()', script)
+            self.assertIn('expandable_segments', readme)
             self.assertIn("merge_and_unload", script)
             # verdict-day fixes, pinned: disk-level untie + legacy
             # rope_theta (transformers v5 config format broke ollama's

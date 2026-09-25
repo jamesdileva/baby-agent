@@ -14,6 +14,10 @@ qacompanion stays stdlib-only — this kit runs on EXTERNAL free compute
     `%run train_ep1.py ep11 Qwen/Qwen2.5-Coder-7B-Instruct`   (S79:
     arg 2 selects the base — 7B trains in 4-bit QLoRA on the T4; add
     `!pip install bitsandbytes` for the 4-bit path)
+    S81 7B OOM runbook (T4 15GB): Runtime → Restart runtime first
+    (a re-run in the same runtime keeps the old model allocated);
+    `%env PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`;
+    7B runs batch 1 x accum 8 with checkpointing (slower, fits).
 - **Kaggle** (free 30 GPU-hours/week): same two files, P100/T4 kernel.
 
 ## After training (script outputs `ep1-merged/`)

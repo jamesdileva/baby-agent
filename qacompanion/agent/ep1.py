@@ -926,7 +926,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s76.3"
+KIT_VERSION = "s81"
 
 
 def load_dataset(path=DATASET):
@@ -1077,12 +1077,14 @@ def main():
 
     config = SFTConfig(
         output_dir=OUTPUT_DIR,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=4,
+        per_device_train_batch_size=(1 if SEVEN_B else 2),
+        gradient_accumulation_steps=(8 if SEVEN_B else 4),
         num_train_epochs=3,
         learning_rate=2e-4,
         fp16=True,                      # T4 (Turing) has no bf16
-        gradient_checkpointing=not SEVEN_B,
+        gradient_checkpointing=True,
+        # S81: 7B needs checkpointing too (was `not SEVEN_B`, which
+        # disabled the main activation saver on the hungriest path).
         # LoRA + checkpointing: frozen embeddings break the default
         # (reentrant) checkpoint implementation. The 4-bit path
         # checkpoint via prepare_model_for_kbit_training instead.
@@ -1120,10 +1122,27 @@ def main():
         model = AutoModelForCausalLM.from_pretrained(
             BASE_MODEL, quantization_config=bnb, torch_dtype="float16",
             device_map="auto")
+        # S81 lean prepare (T4 OOM fix): full
+        # prepare_model_for_kbit_training upcasts norms to fp32 (+1GB
+        # transient, peft #3265/#3293) and OOMs at
+        # param.data.to(torch.float32) with 12+GB already allocated.
+        # Lean path: skip the upcast/checkpoint wrapper here, enable
+        # checkpointing manually (maintainer-sanctioned for constrained
+        # GPUs), disable use_cache, and clear the allocator cache.
+        # 7B-only, fail loudly — no silent 3B fallback (S79 attribution).
+        import gc as _gc
+        import torch as _torch
+        _gc.collect()
+        if _torch.cuda.is_available():
+            _torch.cuda.empty_cache()
         from peft import prepare_model_for_kbit_training
         model = prepare_model_for_kbit_training(
-            model, use_gradient_checkpointing=True,
+            model, use_gradient_checkpointing=False)
+        model.gradient_checkpointing_enable(
             gradient_checkpointing_kwargs={"use_reentrant": False})
+        model.config.use_cache = False
+        if _torch.cuda.is_available():
+            _torch.cuda.empty_cache()
     else:
         model = AutoModelForCausalLM.from_pretrained(
             BASE_MODEL, torch_dtype="float16")
@@ -1215,6 +1234,10 @@ qacompanion stays stdlib-only — this kit runs on EXTERNAL free compute
     `%run train_ep1.py ep11 Qwen/Qwen2.5-Coder-7B-Instruct`   (S79:
     arg 2 selects the base — 7B trains in 4-bit QLoRA on the T4; add
     `!pip install bitsandbytes` for the 4-bit path)
+    S81 7B OOM runbook (T4 15GB): Runtime → Restart runtime first
+    (a re-run in the same runtime keeps the old model allocated);
+    `%env PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`;
+    7B runs batch 1 x accum 8 with checkpointing (slower, fits).
 - **Kaggle** (free 30 GPU-hours/week): same two files, P100/T4 kernel.
 
 ## After training (script outputs `ep1-merged/`)

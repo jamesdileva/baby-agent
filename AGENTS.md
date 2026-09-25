@@ -80,6 +80,19 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S81 — 7B T4 OOM fix (lean prepare, batch 1,
+  checkpointing on)** — Colab error after the S79 bf16 fix:
+  `prepare_model_for_kbit_training` OOM at the fp32 norm upcast
+  (2.03 GiB ask, 1.72 free, 12.84 in use on the 14.56 GiB T4).
+  7B path now leans out the prepare (`use_gradient_checkpointing=
+  False` + manual checkpoint enable + `use_cache=False` +
+  `empty_cache`), `SFTConfig` checkpoints on 7B (was off) at batch
+  1 x accum 8, README gains the fresh-runtime +
+  `expandable_segments` runbook; 7B-only fail-loud, no 3B fallback
+  (S79 attribution intact). Zcode last-context recovered read-only
+  (bf16 fix confirmed landed; quota ended that session). Suite 1687
+  OK, pyflakes clean. Spec: docs/s81-spec.md.
+
 - 2026-09-25 — **S80 + S79 — Agent-authored demonstrations, the
   capability ladder, and the 7B kit** — **S80:** the authoring lane
   is untrusted-by-design — `validate_demonstration` (the

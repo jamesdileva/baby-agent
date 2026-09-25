@@ -1297,3 +1297,21 @@ candidates — only the "high-value trajectory" claim is withdrawn.
 Provenance: human review of curated/review.jsonl, 2026-09-11.
 
 Status: Adopted 2026-09-11. Teaching authority; no spec amendment.
+
+### S81 7B T4 OOM: lean k-bit prepare, batch 1, checkpointing on
+
+**Decision:** The 7B QLoRA path trains lean on the free T4:
+`prepare_model_for_kbit_training(use_gradient_checkpointing=False)` +
+manual `gradient_checkpointing_enable(use_reentrant=False)` +
+`use_cache = False` + allocator `empty_cache()` around prepare (the
+full prepare's fp32 norm upcast is the load-bearing OOM allocation —
+peft #3265/#3293); `SFTConfig` gains `gradient_checkpointing=True` for
+7B (it was off on the hungriest path) with batch 1 x accum 8 (same
+effective batch). 7B-only, fail loudly: no silent 3B fallback, keeping
+the S79 attribution clean. README carries the Colab runbook (fresh
+runtime, `expandable_segments:True`, bitsandbytes). Provenance: Colab
+OutOfMemoryError at `param.data.to(torch.float32)`, 2026-09-25;
+zcode session context (bf16 GradScaler fix already landed) recovered
+read-only from the local zcode DB.
+
+Status: Adopted 2026-09-25. Spec: docs/s81-spec.md.
