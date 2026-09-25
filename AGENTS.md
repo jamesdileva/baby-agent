@@ -80,6 +80,30 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S78.1 Gen-10 verdict — strings solidifies (2/3),
+  json and cascade walls hold, ep10 > ep9 on every task** — ep10
+  imported clean (GGUF path) and the verdict (rate-based, n=3 x 4
+  tasks, budget 12): **ep10 3/12 (25%) vs ep9 1/12 (8.3%)** —
+  calculator 1/3 vs 1/3 (the rate band at this scale is 1/3-3/3
+  across generations; single-run variance is real), **strings 2/3
+  (strings is solidifying: 0 -> 1 -> 2 successes across gens 8-10)**,
+  json 0/3 and **cascade 0/3 — the new rung failed as a next-step-up
+  test should** (two defects, persistence beyond one chain; that is
+  the ladder working, giving gen-11 a target). The SRFT ok=True
+  filter did its job: guessed_path 1.22 -> 0.42 (no path-guessing
+  inflation). Metrics: discovery 0.67 vs 0.33, chaining 0.92 both,
+  tool failures 14 vs 33. Honest notes: (1) an earlier same-evening
+  3-task verdict run showed ep9 degraded (three provider timeouts,
+  chaining 0.44) — model-swapping load contamination; the 4-task run
+  is the clean one; (2) json held at 0/6 across both verdicts DESPITE
+  24-variant volume teaching — the synthesis capability limit at 3B
+  is now the best-evidenced conclusion in the program; (3) ep9's
+  recorded 3/3 calculator from its own verdict day did not reproduce
+  (1/3 both runs) — the band is real and n=3 rates are the honest
+  floor. The ledger after ten generations: calculator solved-band
+  (0.33-1.0), strings flickering-to-solid (0-0.67), json and cascade
+  unsolved. Suite 1683 OK, CI green. Spec: docs/s78-spec.md.
+
 - 2026-09-25 — **S77.1 Gen-9 verdict — calculator consolidated to
   1.0 (first perfect task rate); the json wall holds; strings was
   variance** — ep9 imported clean (GGUF path) and the verdict
