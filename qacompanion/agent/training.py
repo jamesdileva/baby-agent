@@ -358,6 +358,11 @@ def _srft_prefix_steps(steps: List[Dict[str, Any]]) -> Optional[List[Dict[str, A
     if last_read is None:
         return None
     prefix = window[:last_read + 1]
+    # S78 (the gen-9 correction): prefixes from failed runs included
+    # their FAILED reads — guessed paths — and taught path-guessing
+    # (guessed_path 0.78 -> 1.22). Keep only the steps that SUCCEEDED:
+    # the productive chain, without the wandering.
+    prefix = [s for s in prefix if s.get("ok")]
     if len(prefix) < 2:
         return None
     return prefix

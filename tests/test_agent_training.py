@@ -452,6 +452,22 @@ class SrftLaneTests(unittest.TestCase):
                   "ok": True, "result_head": "FAIL"}]
         self.assertIsNone(_srft_prefix_steps(steps))
 
+    def test_failed_reads_filtered_from_prefix(self):
+        # S78 (gen-9 correction): failed reads are the guessed paths —
+        # mining them taught path-guessing (guessed_path 0.78 -> 1.22)
+        steps = [
+            {"tool": "read_file", "args": {"path": "src/m.py"},
+             "ok": False, "result_head": "file not found"},
+            {"tool": "list_directory", "args": {"path": "."},
+             "ok": True, "result_head": "files"},
+            {"tool": "read_file", "args": {"path": "m.py"},
+             "ok": True, "result_head": "code"},
+        ]
+        prefix = _srft_prefix_steps(steps)
+        self.assertTrue(all(s.get("ok") for s in prefix), prefix)
+        self.assertEqual(["list_directory", "read_file"],
+                         [s["tool"] for s in prefix])
+
     def test_lane_gates_flags_and_dedupes_by_goal(self):
         discovery = [
             {"tool": "list_directory", "args": {"path": "."},

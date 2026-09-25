@@ -163,6 +163,32 @@ def default_tasks() -> List[EvalTask]:
             },
             verify_command=f"{python} -m unittest",
         ),
+        # S78: the capability ladder — calculator is solved (3/3), so
+        # the next rung is PERSISTENCE: two defects in one module; the
+        # tests fail on both, fixing one only reveals the other, and
+        # the diagnosis chain must run TWICE with a rerun between.
+        EvalTask(
+            name="defect-fix-cascade",
+            goal="The tests in this project are failing. There may be "
+                 "more than one bug — keep diagnosing and fixing until "
+                 "the whole suite passes.",
+            files={
+                "calc_ops.py":
+                    "def add(a, b):\n    return a - b\n\n\n"
+                    "def multiply(a, b):\n    return a + b\n",
+                "test_calc_ops.py":
+                    "import unittest\n\nfrom calc_ops import add, "
+                    "multiply\n\n\nclass TestCalcOps(unittest.TestCase):"
+                    "\n    def test_add(self):\n        "
+                    "self.assertEqual(add(2, 3), 5)\n\n    def "
+                    "test_multiply(self):\n        "
+                    "self.assertEqual(multiply(3, 4), 12)\n\n\n"
+                    "if __name__ == \"__main__\":\n    unittest.main()\n",
+                "README.md": "add() must return the SUM; multiply() the "
+                             "product. There may be more than one bug.",
+            },
+            verify_command=f"{python} -m unittest",
+        ),
     ]
 
 

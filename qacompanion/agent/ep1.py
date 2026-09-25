@@ -45,7 +45,7 @@ DEMO_MODEL_TAG = "scripted-demo"
 # a CURRENT-version record, and mark_superseded_demos supersedes
 # scripted demos lacking the tag (their FORMAT is stale for training
 # even when the task itself is unchanged)
-CORPUS_VERSION = "v7"
+CORPUS_VERSION = "v8"
 VERSION_TAG = f"corpus-{CORPUS_VERSION}"
 
 # the corpus recipe (S66): categories with declared shapes and honest
@@ -437,12 +437,27 @@ def _string_reverse_script(strategy: str, variant: int, level: int,
 # than one variant provides. v0 is the exact S57 eval-task shape;
 # v1-v3 generalize the pattern (section names, depth, defaults).
 # (module, sections, key, leaf_literal, default_or_None)
+_NESTED_SECTION_POOL = ("settings", "database", "server", "cache",
+                        "auth", "logging", "network", "storage")
+_NESTED_KEY_POOL = ("timeout", "host", "retries", "size", "mode",
+                    "region", "retries", "port", "theme", "user",
+                    "timeout", "version")
+# S78: volume-teach the chained-descent synthesis — 24 deterministic
+# variants from fixed pools (no randomness): depths 1-2, varied
+# sections/keys/leaves, a default on every fourth variant.
 _NESTED_LOOKUP_VARIANTS = [
     ("config_parser", ("settings",), "timeout", "30", None),
     ("db_config", ("database",), "host", '"localhost"', None),
     ("prefs", ("ui", "font"), "size", "12", None),
     ("service_config", ("settings",), "retries", "5", "3"),
 ]
+for _i in range(20):
+    _sections = (_NESTED_SECTION_POOL[_i % 8],) if _i % 3 == 0 else (
+        _NESTED_SECTION_POOL[_i % 8], _NESTED_KEY_POOL[_i % 12])
+    _default = str(_i) if _i % 4 == 3 else None
+    _NESTED_LOOKUP_VARIANTS.append((
+        f"config_mod{_i}", _sections, _NESTED_KEY_POOL[(_i + 3) % 12],
+        str(10 + _i), _default))
 
 
 def _nested_lookup_script(strategy: str, variant: int, level: int,

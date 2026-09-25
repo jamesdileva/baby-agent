@@ -280,7 +280,10 @@ class CoverageTargetingTests(unittest.TestCase):
                                  edit.arguments["path"])
 
     def test_all_nested_variants_verify_through_the_loop(self):
-        # S77: every variant's demo passes the real verification gate
+        # S77/S78: every variant's demo passes the real verification
+        # gate; the pool generates 24 deterministic variants
+        from qacompanion.agent.ep1 import _NESTED_LOOKUP_VARIANTS
+        self.assertEqual(24, len(_NESTED_LOOKUP_VARIANTS))
         stats = build_corpus(self.store, python=sys.executable,
                              categories={"nested_lookup": 4}, levels=(1,))
         self.assertEqual(4, stats["passed"], stats)
