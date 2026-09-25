@@ -80,6 +80,15 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S86 — Failure-path census (name the bf16 tensor
+  in situ)** — the S85 probe (fp16 autocast default, 392 fp32 grads)
+  plus the unchanged crash proves the tensor appears between probe
+  and scaler-step, and Colab's collapsed frames hide the site — so
+  `trainer.train()` now censuses param/grad dtypes by name plus
+  precision flags on `NotImplementedError`, then re-raises. Zero
+  cost green, full diagnosis red. Suite 1687 OK, pyflakes clean.
+  Spec: docs/s86-spec.md.
+
 - 2026-09-25 — **S85 — Runtime bf16 hunt (autocast probe + grad
   census)** — the S84 audit came back fully clean (params, config,
   effective compute, 392 adapters — 0 bf16) yet training still died,

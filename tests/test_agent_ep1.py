@@ -325,7 +325,7 @@ class TrainingKitTests(unittest.TestCase):
             # direct edits get clobbered by export_training_kit)
             self.assertIn('BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2', script)
             self.assertIn("first-render shapes", script)
-            self.assertIn("KIT_VERSION = \"s85\"", script)
+            self.assertIn("KIT_VERSION = \"s86\"", script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
@@ -367,6 +367,13 @@ class TrainingKitTests(unittest.TestCase):
             self.assertIn('get_autocast_dtype', script)
             self.assertIn('GRAD GATE FAILED', script)
             self.assertIn('grad dtype histogram=', script)
+            # S86: failure-path census (collapsed Colab frames made the
+            # crash site unreadable — census names bf16 tensors in
+            # situ) + always-on precision-flag prints
+            self.assertIn('FAILURE CENSUS', script)
+            self.assertIn('precision flags:', script)
+            self.assertIn('bf16 grad:', script)
+            self.assertIn('mixed_precision', script)
             self.assertIn("merge_and_unload", script)
             # verdict-day fixes, pinned: disk-level untie + legacy
             # rope_theta (transformers v5 config format broke ollama's

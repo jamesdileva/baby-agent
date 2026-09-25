@@ -1375,3 +1375,16 @@ path untouched. Provenance: full S84 Colab paste (392 LoRA params,
 0 bf16 anywhere, same 8-frame death).
 
 Status: Adopted 2026-09-25. Spec: docs/s85-spec.md.
+
+### S86 failure-path census around trainer.train()
+
+**Decision:** The S85 probe (fp16 default, 392 fp32 grads) plus the
+unchanged crash proves the bf16 tensor appears between probe and
+scaler-step, and Colab's collapsed frames hide the site — so the
+next failure must diagnose itself. `trainer.train()` is wrapped in
+a `NotImplementedError` handler that censuses param/grad dtypes by
+name plus precision flags, then re-raises; precision flags print on
+every run. Zero cost when green. Provenance: S85 Colab paste
+(autocast fp16, all-fp32 grad histogram, same 8-frame death).
+
+Status: Adopted 2026-09-25. Spec: docs/s86-spec.md.

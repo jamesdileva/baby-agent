@@ -35,7 +35,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s85"
+KIT_VERSION = "s86"
 
 
 def load_dataset(path=DATASET):
@@ -409,7 +409,62 @@ def main():
         data_collator=DataCollatorForSeq2Seq(
             tokenizer, model=model, label_pad_token_id=-100),
     )
-    trainer.train()
+    # S86 precision flags (always printed, near-free): what the
+    # trainer THINKS it runs — the S85 probe proved the model side
+    # clean, so a bf16-leaning trainer/accelerator config is the last
+    # unobserved actor
+    try:
+        _acc = trainer.accelerator
+        print(f"precision flags: fp16={config.fp16} bf16={config.bf16} "
+              f"half_precision_backend={config.half_precision_backend} "
+              f"accelerator.mixed_precision="
+              f"{getattr(_acc, 'mixed_precision', 'n/a')} "
+              f"scaler_enabled="
+              f"{getattr(getattr(_acc, 'scaler', None), '_enabled', 'n/a')}")
+    except Exception as _flag_exc:
+        print(f"precision flags: probe failed: {_flag_exc}")
+    # S86 failure-path census: the S85 crash arrived with 392 fp32
+    # grads and STILL died on a bf16 group inside the scaler, and
+    # Colab collapses the middle traceback frames — so on
+    # NotImplementedError, name every bf16 tensor IN SITU (params,
+    # grads, autocast default, config) and re-raise. Zero cost when
+    # green; the whole diagnosis when red.
+    try:
+        trainer.train()
+    except NotImplementedError:
+        print("FAILURE CENSUS (trainer died in torch/amp — naming "
+              "every bf16 tensor):")
+        try:
+            _phist = {}
+            for _n, _p in model.named_parameters():
+                _phist[str(_p.dtype)] = _phist.get(str(_p.dtype), 0) + 1
+            print(f"failure census: param dtype histogram={_phist}")
+            for _n, _p in model.named_parameters():
+                if "bfloat16" in str(_p.dtype):
+                    print(f"  bf16 param: {_n}:{_p.dtype}")
+        except Exception as _cen_exc:
+            print(f"failure census: param scan failed: {_cen_exc}")
+        try:
+            _ghist2 = {}
+            for _n, _p in model.named_parameters():
+                if _p.grad is None:
+                    continue
+                _gdt = str(_p.grad.dtype)
+                _ghist2[_gdt] = _ghist2.get(_gdt, 0) + 1
+            print(f"failure census: grad dtype histogram={_ghist2}")
+            for _n, _p in model.named_parameters():
+                if (_p.grad is not None
+                        and "bfloat16" in str(_p.grad.dtype)):
+                    print(f"  bf16 grad: {_n}:{_p.grad.dtype}")
+        except Exception as _cen_exc2:
+            print(f"failure census: grad scan failed: {_cen_exc2}")
+        try:
+            print(f"failure census: autocast default="
+                  f"{torch.get_autocast_dtype('cuda')} "
+                  f"config.torch_dtype={model.config.torch_dtype}")
+        except Exception as _cen_exc3:
+            print(f"failure census: misc probe failed: {_cen_exc3}")
+        raise
     trainer.save_model(OUTPUT_DIR)
     print("adapter saved to", OUTPUT_DIR)
 
