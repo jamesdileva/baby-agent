@@ -1092,6 +1092,10 @@ def main():
         # S76: the dataset is pre-tokenized with labels — TRL must not
         # re-apply its own (unmasked) preparation
         dataset_kwargs={"skip_prepare_dataset": True},
+        # S79: the 4-bit path wants the paged optimizer (adamw_torch is
+        # right for the 3B fp16 path). optim is a TrainingArguments/
+        # SFTConfig field — NOT an SFTTrainer kwarg (Colab catch).
+        optim=("paged_adamw_32bit" if SEVEN_B else "adamw_torch"),
     )
     lora = LoraConfig(
         r=16, lora_alpha=32, lora_dropout=0.05,
@@ -1128,7 +1132,6 @@ def main():
         processing_class=tokenizer,
         data_collator=DataCollatorForSeq2Seq(
             tokenizer, model=model, label_pad_token_id=-100),
-        optim=("paged_adamw_32bit" if SEVEN_B else "adamw_torch"),
     )
     trainer.train()
     trainer.save_model(OUTPUT_DIR)
