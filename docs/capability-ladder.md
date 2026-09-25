@@ -24,6 +24,8 @@ band). Rates are per-task success rates (n=3, S74 harness).
 | 8 | ep8 (loss masking) | 2/3 | 1/3 | 0/3 |
 | 9 | ep9 (SRFT + coverage) | 3/3 | 0/3 | 0/3 |
 | 10 | ep10 (volume + filter) | 1/3 | 2/3 | 0/3 |
+| 9 | ep9 (SRFT + coverage) | 3/3 | 0/3 | 0/3 |
+| 10 | ep10 (volume + filter) | 1/3 | 2/3 | 0/3 |
 
 Bands: calculator 0.33-1.0 (solved-band), strings 0-0.67
 (solidifying), json 0 (wall). ep9's own-day 3/3 did not reproduce —

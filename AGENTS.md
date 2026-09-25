@@ -80,6 +80,40 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S80 + S79 — Agent-authored demonstrations, the
+  capability ladder, and the 7B kit** — **S80:** the authoring lane
+  is untrusted-by-design — `validate_demonstration` (the
+  anti-flakiness quality bar: discovery-first, module read, exactly
+  one non-empty final that names a file it actually touched, every
+  edit anchor matches its fixture exactly once, goal identity) plus
+  the S41 gate are the only trust, so ANY author can write demos
+  without being able to poison the corpus; `build_agent_corpus` runs
+  the lane (validator → real benchmark → `agent-authored` tag). The
+  validator rejected the author's own first goal on landing (too
+  few substantive words — the flow working as intended). First
+  batches: 3 json synthesis drills whose narratives walk the TEST
+  FIXTURE (teaching where the nesting comes from — the inference
+  step, not just the expression) + 1 cascade double-chain
+  persistence demo (second failure → re-diagnose from scratch →
+  name BOTH fixes). **The capability ladder** (docs/capability-
+  ladder.md): 6 rungs documented (persistence → cross-file
+  dependency tracing → test authorship with mutation proof →
+  runtime-behavior debugging → multi-file feature), each with
+  graduation criteria; the anti-flaky gate is structural — no
+  rung's demos are authored until the rung below is stable for 3
+  consecutive verdicts; the authoring runbook makes external
+  authoring (muse-spark, any agent) a documented workflow.
+  **S79:** the kit takes the base model as argv[2] — 7B trains in
+  4-bit QLoRA (nf4 + double quant + prepare_model_for_kbit +
+  paged_adamw_32bit) on the free T4; fixups/masking/gates carry
+  over; README now generated from the template with both args (a
+  direct README edit was getting clobbered by regeneration —
+  root-caused). **Subjects stay coding-only by direction; the
+  ladder's rungs ARE the new subjects.** Next: one Colab job —
+  ep11-7b on corpus-v8 + agent-authored lane → 4-task verdict vs
+  ep10. Suite 1687 OK, pyflakes clean. Specs: docs/s79-spec.md,
+  docs/s80-spec.md.
+
 - 2026-09-25 — **S78.1 Gen-10 verdict — strings solidifies (2/3),
   json and cascade walls hold, ep10 > ep9 on every task** — ep10
   imported clean (GGUF path) and the verdict (rate-based, n=3 x 4
