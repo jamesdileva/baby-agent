@@ -35,7 +35,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s89"
+KIT_VERSION = "s90"
 
 
 def load_dataset(path=DATASET):
@@ -503,6 +503,25 @@ def main():
     # merge the adapter into the base so ollama (or llama.cpp) can take
     # the WHOLE model without any adapter dance
     merged = model.merge_and_unload()
+    if SEVEN_B:
+        # S90 convertible-output gate: merge_and_unload on the 4-bit
+        # base leaves bnb Linear4bit layers + quantization_config
+        # behind, and llama.cpp's converter refuses those ("Quant
+        # method is not yet supported: 'bitsandbytes'" — Colab catch).
+        # A full fp16 dequant (15.2GB) fits neither the T4 (14.56GB)
+        # nor free-Colab CPU RAM, so the 7B import path is the
+        # GGUF-LoRA merge pipeline (README: base GGUF + adapter GGUF
+        # + llama-export-lora), NOT direct conversion of this dir.
+        # Census here so the run states what it produced.
+        _q4_n = sum(1 for _m in merged.modules()
+                    if _m.__class__.__name__ == "Linear4bit")
+        _qconf = getattr(merged.config, "quantization_config", None)
+        print(f"merge census: surviving Linear4bit={_q4_n} "
+              f"quantization_config_present={_qconf is not None}")
+        if _q4_n or _qconf is not None:
+            print("merge census: this dir is NOT directly convertible "
+                  "— use the README GGUF-LoRA pipeline (no retraining: "
+                  "the adapter dir is the import artifact)")
     merged.save_pretrained(MERGED_DIR)
     tokenizer.save_pretrained(MERGED_DIR)
 
@@ -523,6 +542,12 @@ def main():
             print("fixup: lm_head made explicit in", shard)
     cfg_path = f"{MERGED_DIR}/config.json"
     cfg = _json.load(open(cfg_path, encoding="utf-8"))
+    if SEVEN_B and _q4_n == 0 and cfg.pop("quantization_config", None)             is not None:
+        # S90: strip a STALE bnb claim only — safe iff no Linear4bit
+        # survived (censused above), i.e. the tensors are already
+        # plain fp16 and only the config would make the converter
+        # refuse the dir
+        print("fixup: stale quantization_config removed from config.json")
     cfg["tie_word_embeddings"] = False
     cfg["rope_theta"] = (cfg.get("rope_theta")
                          or cfg.get("rope_parameters", {}).get("rope_theta")

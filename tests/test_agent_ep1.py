@@ -325,7 +325,7 @@ class TrainingKitTests(unittest.TestCase):
             # direct edits get clobbered by export_training_kit)
             self.assertIn('BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2', script)
             self.assertIn("first-render shapes", script)
-            self.assertIn("KIT_VERSION = \"s89\"", script)
+            self.assertIn("KIT_VERSION = \"s90\"", script)
             # S76: the generation name is a script argument — outputs
             # land as epN-merged directly (no manual renames)
             self.assertIn('GEN = sys.argv[1] if len(sys.argv) > 1', script)
@@ -387,6 +387,14 @@ class TrainingKitTests(unittest.TestCase):
             self.assertIn('max_grad_norm=(0 if SEVEN_B else 1.0)', script)
             self.assertIn('except (NotImplementedError, ValueError):',
                           script)
+            # S90: 7B merged output keeps bnb quantization (converter
+            # refuses it) — census + stale-config strip + GGUF-LoRA
+            # pipeline in the README (no 15GB fp16 dequant anywhere)
+            self.assertIn('merge census:', script)
+            self.assertIn('Linear4bit', script)
+            self.assertIn('quantization_config", None', script)
+            self.assertIn('convert_lora_to_gguf.py', readme)
+            self.assertIn('llama-export-lora', readme)
             self.assertIn("merge_and_unload", script)
             # verdict-day fixes, pinned: disk-level untie + legacy
             # rope_theta (transformers v5 config format broke ollama's

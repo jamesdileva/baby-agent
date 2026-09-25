@@ -1430,3 +1430,19 @@ Provenance: S88 Colab census (fp16 grad histogram + moved crash
 site at trainer.py:1865/2679).
 
 Status: Adopted 2026-09-25. Spec: docs/s89-spec.md.
+
+### S90 7B import via the GGUF-LoRA merge pipeline
+
+**Decision:** Training ran; import is the new wall
+(`convert_hf_to_gguf` refuses bnb-quantized merged dirs, and the
+q8_0 outtype is innocent). Full fp16 dequant (15.2GB) fits neither
+the T4 nor free-Colab RAM, so the 7B import path merges at GGUF
+level (base GGUF + adapter GGUF + llama-export-lora — verified
+against current llama.cpp, including the tied-embedding
+non-issue for our target set), streaming without ever
+materializing 15GB. The kit censuses the merged dir, strips only
+stale quant claims, and points at the pipeline otherwise; no
+retraining needed (adapter dir is the artifact). Provenance: live
+Colab converter traceback on ep11-merged.
+
+Status: Adopted 2026-09-25. Spec: docs/s90-spec.md.

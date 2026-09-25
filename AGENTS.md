@@ -80,6 +80,15 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S90 — 7B import via GGUF-LoRA merge (no 15GB
+  dequant)** — training RAN; the converter refuses bnb-quantized
+  merged dirs (q8_0 innocent). Full fp16 dequant fits neither T4
+  nor Colab RAM, so 7B merges at GGUF level (base + adapter GGUFs
+  + llama-export-lora, verified vs current llama.cpp); kit
+  censuses the merged dir, strips only stale quant claims, README
+  splits 3B/7B paths. No retraining (adapter is the artifact).
+  Suite 1687 OK, pyflakes clean. Spec: docs/s90-spec.md.
+
 - 2026-09-25 — **S89 — Adapters to fp32 (the clip path's only
   accepted dtype)** — the S88 census completed the truth table:
   cast held, grads fp16, crash moved to `_get_grad_norm`'s
