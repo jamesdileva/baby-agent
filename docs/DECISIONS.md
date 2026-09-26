@@ -1509,6 +1509,21 @@ human-approved plan.
 
 Status: Adopted 2026-09-26. Spec: docs/s93-spec.md.
 
+### S94 strings-repair batch (Branch B); indirect solved zero-shot
+
+**Decision:** The ep13 fork resolved to Branch B (dilution):
+ep13-strings 0/3 pinned with the clip OFF doubly exonerates the
+clip; authored batches carried 0 string drills against 5+5
+json/cascade. Three string drills authored (fresh modules,
+fixture-inference narratives, one recovery beat); kit untouched
+(s92). Noted: rung-3 indirect went 3/3 with zero demos — first
+pinned point via transfer; rung-3 demos stay gated until cascade
+holds 3 pinned points AND indirect confirms. Crown rule (≥5/6,
+never single n=3) stands for ep14. Provenance: S94 ep13 verdict
++ human-approved fork 2026-09-26.
+
+Status: Adopted 2026-09-26. Spec: docs/s94-spec.md.
+
 ### S93.1 pinned verdict: cascade solved, ep12 strings deficit real
 
 **Decision:** (1) Cascade 3/3 both models under pinned decoding =

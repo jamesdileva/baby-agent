@@ -584,7 +584,15 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
     on string_ops so the persistence lesson is not a single module.
     S91 batch 3 (rung-2 strengthening): three more double-chains on
     FRESH modules (math_ops, text_ops, list_ops — never calc_ops,
-    which shares the eval task's module)."""
+    which shares the eval task's module).
+    S94 strings-repair batch (rung-1 holding): the authored batches
+    added 5 json + 5 cascade drills and ZERO string drills while
+    scripted string_reverse sits at volume 1 — strings is the
+    thinnest volume in the modern corpus, and ep12/ep13 flicker it
+    (0,3,0 / 1,0) while ep11 holds 3s. Three string drills on fresh
+    modules with fixture-inference narratives (the test's expected
+    value teaches the shape, as in the json drills), one with a
+    genuine wrong-turn read."""
     demos: List[Dict[str, Any]] = []
 
     # --- json synthesis drills (the 3B wall, taught directly) ---
@@ -920,6 +928,76 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
                       "files": {path: module_code,
                                 test_path: test_code},
                       "goal": goal})
+    # --- S94 strings-repair batch (rung-1 holding, fresh modules) ---
+    string_drills = [
+        # (module, fixture_test_body, broken_line, fixed_line,
+        #  goal, diagnosis, recovery?)
+        ("greeting",
+         '        self.assertEqual(greet("Ann"), "Hello, Ann")\n',
+         '    return "Hello"\n',
+         '    return "Hello, " + name\n',
+         "The greeting function drops the name. Find the bug from "
+         "the failing test, fix it, and run the tests to verify "
+         "they pass.",
+         "The failing test builds its own fixture: it calls "
+         'greet("Ann") and expects "Hello, Ann" — so the name must '
+         "appear in the output after a comma. Reading "
+         "test_greeting.py gave the shape and reading greeting.py "
+         "confirmed the function returned a constant. The fix "
+         'returns "Hello, " + name. Tests pass.',
+         False),
+        ("word_ops",
+         '        self.assertEqual(join_words(["a", "b"]), "a b")\n',
+         '    return "".join(words)\n',
+         '    return " ".join(words)\n',
+         "The word joiner mashes words together. Diagnose from the "
+         "failing test and repair it.",
+         "The failing test builds its own fixture: it joins "
+         '["a", "b"] and expects "a b" — so the separator must be '
+         "a space, not the empty string. Reading test_word_ops.py "
+         "gave the shape and reading word_ops.py confirmed the "
+         "empty join. The fix joins with \" \". Tests pass.",
+         False),
+        ("text_utils",
+         '        self.assertEqual(strip_punct("hey!"), "hey")\n',
+         "    return text\n",
+         '    return text.rstrip("!")\n',
+         "The punctuation stripper returns text unchanged. Track "
+         "down the defect and prove the fix.",
+         "My first guess was the src/ layout — reading "
+         "src/text_utils.py failed, so that hypothesis was wrong. "
+         "The failing test builds its own fixture: it passes "
+         '"hey!" and expects "hey" — so a trailing bang must go. '
+         "Reading test_text_utils.py gave the shape and reading "
+         "text_utils.py confirmed the function returned its input "
+         "untouched. The fix strips trailing bangs with "
+         'rstrip("!"). Tests pass.',
+         True),
+    ]
+    for (module, test_body, broken, fixed,
+            goal, diagnosis, recovery) in string_drills:
+        path = f"{module}.py"
+        test_path = f"test_{module}.py"
+        func = {"greeting": "greet", "word_ops": "join_words",
+                "text_utils": "strip_punct"}[module]
+        module_code = (f"def {func}({('name' if module == 'greeting' else 'words' if module == 'word_ops' else 'text')}):\n"
+                       f"{broken}")
+        test_code = (
+            "import unittest\n\nfrom {} import {}\n\n\n"
+            "class TestStringDrill(unittest.TestCase):\n"
+            "    def test_shape(self):\n"
+            "{}\n\n"
+            'if __name__ == "__main__":\n    unittest.main()\n'.format(
+                module, func, test_body))
+        core = [_tests(python), _read(test_path), _read(path),
+                _edit(path, broken, fixed), _tests(python)]
+        if recovery:
+            script = ([_list(), _read(f"src/{path}")] + core
+                      + [_final(diagnosis)])
+        else:
+            script = [_list()] + core + [_final(diagnosis)]
+        files = {path: module_code, test_path: test_code}
+        demos.append({"script": script, "files": files, "goal": goal})
     return demos
 
 

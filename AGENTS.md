@@ -80,6 +80,19 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-26 — **S94 — Strings-repair batch (Branch B of the ep13
+  fork)** — ep13 pinned full verdict: calc 3/3, strings 0/3
+  (deterministic), json 3/3, cascade 3/3, **indirect 3/3 with zero
+  demos** → 12/15. Clip doubly exonerated for strings → dilution
+  confirmed (0 authored string drills vs 5+5 json/cascade). Batch:
+  greeting/word_ops/text_utils drills with fixture-inference
+  narratives + one recovery beat. Live: lane 13/13, curate
+  1302/2/1, export 299 = 294 + 5 SRFT (verdict successes feeding
+  the corpus, S41-gated, watched). Kit untouched (s92). Colab:
+  fresh 299-row training.jsonl + s92 kit → ep14 → pinned
+  head-to-head vs ep11. Suite 1695 OK, pyflakes clean. Spec:
+  docs/s94-spec.md.
+
 - 2026-09-26 — **S93.1 Pinned verdict — cascade SOLVED (3/3 both),
   ep12 strings flicker confirmed REAL (0/3 deterministic)** —
   temp 0 / seed 42, 5 tasks: ep12-q4 9/15 (calc 3/3, strings 0/3,

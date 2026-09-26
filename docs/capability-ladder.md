@@ -12,7 +12,7 @@ band). Rates are per-task success rates (n=3, S74 harness).
 |---|---|---|---|---|
 | 1 | single-defect single-file | calculator / strings / json | S57 | calculator solved (3/3 everywhere); strings solid ep11 (3/3 x3), volatile ep12 (0/3, 3/3); json SOLVED (3/3 x5/6 at 7B) |
 | 2 | persistence: two defects | defect-fix-cascade | S78 | volatile everywhere (ep11: 1/3, 0/3, 2/3, 0/3; ep12: 1/3, 2/3; ep13: 1/3) — best 2/3, stability NOT met |
-| 3 | cross-file dependency tracing | defect-fix-indirect | BUILT S93 (eval-only) | gated on rung 2 for demos; eval task frozen |
+| 3 | cross-file dependency tracing | defect-fix-indirect | BUILT S93 (eval-only) | 3/3 zero-shot first pinned point (S94 ep13 — transfer, demos still gated) |
 | 4 | test authorship with mutation proof | test-authoring | specified, not built | gated on rung 3 |
 | 5 | runtime-behavior debugging | observe-reproduce | specified, not built | gated on rung 4 |
 | 6 | multi-file feature with contract | spec'd, not built | gated on rung 5 |
@@ -46,6 +46,10 @@ convict on a single n=3).
   from scratch (never reuse the first diagnosis) → fix → final names
   BOTH fixes. Exist: agent-authored (S80: calc_ops; S82: string_ops;
   S91: math_ops, text_ops, list_ops — fresh modules, never calc_ops).
+- Rung 1 holding (S94): string drills — fixture-inference narratives
+  (the test's expected value teaches the shape) + one recovery
+  beat. Exist: agent-authored (S94: greeting, word_ops,
+  text_utils).
 - Rung 3: import-following demos — failing test → module B →
   code_imports/code_references → module A → fix A. To author.
 - Rung 4: write-test → mutation-check demos (the test must FAIL on
