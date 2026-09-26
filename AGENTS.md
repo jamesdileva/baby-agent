@@ -80,6 +80,24 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-25 — **S91.1 Gen-12 verdict — RECORDED AS FAILED
+  (regression): ep12-q4 6/12 vs ep11-q4 11/12** — ep12: calc 3/3,
+  **strings 0/3 (all max-iters WITH full 12-call chains — working,
+  not dialect confusion)**, json 2/3, cascade 1/3; ep11 SAME DAY:
+  calc 3/3, strings 3/3, json 3/3, **cascade 2/3** (11/12, 91.7%).
+  Metrics all favor ep11 (discovery 1.0 vs 0.75, chaining 0.75 vs
+  0.5, failures 18 vs 22, guessed_path 0.0 vs 0.25). Same-day
+  head-to-head controls for environment — this is signal, not luck.
+  Suspects (ranked): (1) clip restoration changed every update —
+  the bundled variable, per the user's own contingency S92 reverts
+  it for a clean clip-effect test (ep13 = S91 corpus + clip 0);
+  (2) corpus dilution — batch 3 added cascades only, strings/json
+  share fell; (3) the pre-verdict 0/3 dialect mode did NOT
+  reproduce (ep11 cascade now 1/3, 0/3, 2/3 — volatile, rung-3
+  stays gated). ep11-q4 REMAINS champion; ep12 not shipped.
+  Bright spots: ep11 json 3/3 reproduced (solving), cascade 2/3 is
+  the best rung-2 rate yet. Suite untouched (docs-only slice).
+
 - 2026-09-25 — **S91 — ep12 corpus (cascade batch 3 + clip
   restoration)** — pre-verdict 0/3 is a NEW mode (dialect confusion:
   native-JSON-as-text finals, 0 parsed calls — not a refutation of
