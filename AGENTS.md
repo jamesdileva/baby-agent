@@ -80,6 +80,21 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-26 — **S93.1 Pinned verdict — cascade SOLVED (3/3 both),
+  ep12 strings flicker confirmed REAL (0/3 deterministic)** —
+  temp 0 / seed 42, 5 tasks: ep12-q4 9/15 (calc 3/3, strings 0/3,
+  json 3/3, **cascade 3/3**, indirect 0/3) vs ep11-q4 13/15
+  (calc 3/3, strings 3/3, json 3/3, **cascade 3/3**, indirect
+  1/3). Cascade deterministic 3/3 both = capability real, all
+  prior volatility was sampling noise (rung-2 first pinned point).
+  ep12 strings 0/3 with byte-identical failing trajectories =
+  NOT variance (0,3,0 across verdicts) vs ep11 rock-solid
+  (3,3,3,3) — a genuine ep12 deficit signal (batch-3 dilution or
+  clip; unisolated). Indirect baseline: 0-1/3 as designed (no
+  demos). Metrics: failures 15 vs 3, guessed 0.2 vs 0.0.
+  ep11-q4 REMAINS champion; ep12 not shipped. Suite untouched
+  (docs-only slice).
+
 - 2026-09-26 — **S93 — Measurement-first stability (pinned
   decoding + rung-3 eval-only task)** — the variance was sampling
   noise: harness never set temperature (all verdicts ran Ollama

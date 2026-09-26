@@ -1508,3 +1508,15 @@ noise. Provenance: variance research + S93 probe 2026-09-26,
 human-approved plan.
 
 Status: Adopted 2026-09-26. Spec: docs/s93-spec.md.
+
+### S93.1 pinned verdict: cascade solved, ep12 strings deficit real
+
+**Decision:** (1) Cascade 3/3 both models under pinned decoding =
+capability real; all prior volatility was sampling noise (rung-2
+first pinned point; 2 more needed for graduation). (2) ep12
+strings 0/3 deterministic across 3 byte-identical runs is NOT
+variance — pattern 0,3,0 vs ep11's 3,3,3,3 names a genuine ep12
+deficit (batch-3 dilution or clip, unisolated); ep11 stays
+champion. (3) Indirect baseline 0-1/3 recorded as designed (no
+demos); rung-3 demos stay gated. Provenance: S93.1 pinned
+5-task verdict 2026-09-26.

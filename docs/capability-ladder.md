@@ -83,3 +83,7 @@ the Ollama default 0.8; bands are annotated, not rewritten).
 Pinned probe 2026-09-26: cascade 12/12 (ep12+ep13 × budgets 12/16)
 — the rung-2 variance was sampling noise. Budget stays 12 (all
 successes closed in 10 iters).
+Pinned verdict S93.1: cascade 3/3 BOTH (capability real — rung-2
+first pinned point, 2 more needed); ep12 strings 0/3 deterministic
+(real deficit vs ep11's 3/3 ×4 — flicker pattern 0,3,0);
+indirect baseline ep12 0/3, ep11 1/3 (no demos, as designed).
