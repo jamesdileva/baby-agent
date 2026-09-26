@@ -1462,3 +1462,16 @@ Dashboard stays deferred. Provenance: this session + human plan
 approval 2026-09-25.
 
 Status: Adopted 2026-09-25. Spec: docs/s91-spec.md.
+
+### S92 clip revert: the clean clip-effect test
+
+**Decision:** Per the human-approved contingency, the S91.1
+regression (ep12 6/12 vs ep11 11/12) triggers the clip revert:
+`max_grad_norm=0` back on the 7B path, corpus untouched, so ep13
+(S91 corpus + clip 0) vs ep12 (same corpus + clip 1.0) isolates
+the clip effect exactly. Three-way verdict (ep13/ep12/ep11-q4)
+judges both suspects at once. Restore 1.0 only on verdict
+evidence. Provenance: S91.1 worklog entry; human "proceed" on the
+contingency 2026-09-26.
+
+Status: Adopted 2026-09-26. Spec: docs/s92-spec.md.

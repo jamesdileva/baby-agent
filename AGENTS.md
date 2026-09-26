@@ -80,6 +80,14 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-26 — **S92 — Clip revert (the clean clip-effect test)**
+  — S91.1 convicted the S91 clip restoration (ep12 6/12 vs ep11
+  11/12), so 7B is back to `max_grad_norm=0`, corpus untouched.
+  ep13 (S91 corpus + clip 0) vs ep12 isolates the clip exactly;
+  three-way verdict vs ep11-q4 judges dilution too. Colab order:
+  SAME 194-row training.jsonl + s92 kit (rebuild only on corpus
+  change). Suite 1687 OK, pyflakes clean. Spec: docs/s92-spec.md.
+
 - 2026-09-25 — **S91.1 Gen-12 verdict — RECORDED AS FAILED
   (regression): ep12-q4 6/12 vs ep11-q4 11/12** — ep12: calc 3/3,
   **strings 0/3 (all max-iters WITH full 12-call chains — working,

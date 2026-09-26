@@ -1174,7 +1174,7 @@ OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
 
 
-KIT_VERSION = "s91"
+KIT_VERSION = "s92"
 
 
 def load_dataset(path=DATASET):
@@ -1347,13 +1347,15 @@ def main():
         # right for the 3B fp16 path). optim is a TrainingArguments/
         # SFTConfig field — NOT an SFTTrainer kwarg (Colab catch).
         optim=("paged_adamw_32bit" if SEVEN_B else "adamw_torch"),
-        # S91: clip RESTORED on the 7B path. S88 disabled it because
-        # torch 2.11's unscale_() rejects fp16 grads — but S89 moved
-        # adapters to fp32, whose grads pass unscale_ fine, so the
-        # original reason is gone and the standard guardrail returns.
-        # If a Colab run ever dies in the clip path again, revert to
-        # 0 (one-line change, documented here). 3B keeps 1.0 as ever.
-        max_grad_norm=1.0,
+        # S92: clip REVERTED to 0 on the 7B path (the S91.1 verdict
+        # convicted the S91 restoration: ep12 6/12 vs ep11 11/12 with
+        # strings collapsing 3/3 -> 0/3 on full working chains). The
+        # clip touched every gradient update, so it is suspect #1 for
+        # the regression; ep13 (this kit + the S91 corpus, clip 0)
+        # isolates the clip effect vs ep12 exactly. Restore 1.0 only
+        # on verdict evidence, never on theory.
+        # 3B keeps 1.0 as ever.
+        max_grad_norm=(0 if SEVEN_B else 1.0),
     )
     lora = LoraConfig(
         r=16, lora_alpha=32, lora_dropout=0.05,
