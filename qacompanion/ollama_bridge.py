@@ -65,6 +65,36 @@ def _think_flag():
     if value is None:
         return None
     return value.lower() in ("1", "true", "yes")
+
+
+def _decode_options(temperature=None, seed=None):
+    """S93: decoding knobs for measurement stability. Explicit args win;
+    env (OLLAMA_TEMPERATURE/OLLAMA_SEED) fills the rest; invalid values
+    are ignored like _num_ctx. Returns None when nothing is set, so the
+    server default applies (today's behavior everywhere else)."""
+    if temperature is None:
+        raw = os.environ.get("OLLAMA_TEMPERATURE")
+        if raw is not None:
+            try:
+                temperature = float(raw)
+            except ValueError:
+                temperature = None
+    if seed is None:
+        raw = os.environ.get("OLLAMA_SEED")
+        if raw is not None:
+            try:
+                seed = int(raw)
+            except ValueError:
+                seed = None
+    options = {}
+    num_ctx = _num_ctx()
+    if num_ctx is not None:
+        options["num_ctx"] = num_ctx
+    if temperature is not None:
+        options["temperature"] = temperature
+    if seed is not None:
+        options["seed"] = seed
+    return options or None
 DEFAULT_CASES = "cases.jsonl"
 DEFAULT_DIGEST = "digest.jsonl"
 
@@ -97,7 +127,8 @@ def _http_post(url, data, timeout=None):
         raise OllamaError(f"Ollama connection error: {exc}") from exc
 
 
-def _ollama_generate(prompt, model=None, url=None):
+def _ollama_generate(prompt, model=None, url=None, temperature=None,
+                     seed=None):
     """Send a prompt to Ollama and return the response text."""
     model = model or os.environ.get("OLLAMA_MODEL") or DEFAULT_MODEL
     base_url = url or os.environ.get("OLLAMA_URL") or DEFAULT_URL
@@ -106,15 +137,15 @@ def _ollama_generate(prompt, model=None, url=None):
     think = _think_flag()
     if think is not None:
         data["think"] = think
-    num_ctx = _num_ctx()
-    if num_ctx is not None:
-        data["options"] = {"num_ctx": num_ctx}
+    options = _decode_options(temperature=temperature, seed=seed)
+    if options is not None:
+        data["options"] = options
     result = _http_post(endpoint, data)
     return result.get("response", "") or ""
 
 
 def _ollama_chat(messages, tools=None, model=None, url=None,
-                 think=None):
+                 think=None, temperature=None, seed=None):
     """S55: /api/chat with native structured tool calling. Returns the
     parsed response (message.tool_calls carries the model's calls)."""
     model = model or os.environ.get("OLLAMA_MODEL") or DEFAULT_MODEL
@@ -125,9 +156,9 @@ def _ollama_chat(messages, tools=None, model=None, url=None,
         data["tools"] = tools
     if think is not None:
         data["think"] = think
-    num_ctx = _num_ctx()
-    if num_ctx is not None:
-        data["options"] = {"num_ctx": num_ctx}
+    options = _decode_options(temperature=temperature, seed=seed)
+    if options is not None:
+        data["options"] = options
     # S64 finding: the native path hardcoded a 300s ceiling and ignored
     # OLLAMA_TIMEOUT — thinking models + big catalogs on CPU need more.
     # Keep 300s as the floor (the historical native default) and let

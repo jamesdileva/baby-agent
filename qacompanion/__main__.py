@@ -688,6 +688,15 @@ def build_parser():
         help="ep0.5 A/B: first model, first task, with and without "
              "demonstration injection")
     verdicter.add_argument(
+        "--temperature", type=float, default=None, metavar="T",
+        help="S93: pinned decoding temperature for measurement "
+             "stability (e.g. 0); unset leaves the server default, "
+             "as all pre-S93 verdicts ran")
+    verdicter.add_argument(
+        "--seed", type=int, default=None, metavar="S",
+        help="S93: pinned sampling seed (e.g. 42); unset leaves the "
+             "server default")
+    verdicter.add_argument(
         "--store", dest="store_path", default=None, metavar="PATH",
         help="experience store file (default: QA_EXPERIENCE_FILE or "
              "experience.jsonl)")
@@ -1368,7 +1377,9 @@ def _cmd_verdict(args):
         print("error: --models required", file=sys.stderr)
         return 1
     store = ExperienceStore(args.store_path)
-    providers = {model: OllamaProvider(model=model, native_tools=False)
+    providers = {model: OllamaProvider(model=model, native_tools=False,
+                                       temperature=args.temperature,
+                                       seed=args.seed)
                  for model in models}
     verdict = run_verdict(providers, task_count=args.tasks,
                           store=store,

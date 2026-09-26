@@ -80,6 +80,18 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-26 — **S93 — Measurement-first stability (pinned
+  decoding + rung-3 eval-only task)** — the variance was sampling
+  noise: harness never set temperature (all verdicts ran Ollama
+  default 0.8). Pinned temp 0/seed 42 plumbed bridge→provider→CLI;
+  `defect-fix-indirect` built eval-only (subprocess-proven, zero
+  demos — gate-letter override, spirit holds). Probe headline:
+  **cascade 12/12** (ep12+ep13 × budgets 12/16, all 10/9/2) —
+  greedy decoding executes the taught chain deterministically;
+  budget stays 12. Honest bound: one trajectory repeated (seed-
+  robustness unmeasured). Suite 1687 OK, pyflakes clean. Spec:
+  docs/s93-spec.md.
+
 - 2026-09-26 — **S92.1 Gen-13 verdict — clip EXONERATED, gen-12
   "regression" WITHDRAWN as variance (three-way, same day)** —
   ep13-q4 (S91 corpus + clip 0) **8/12** vs ep12-q4 (same corpus +

@@ -102,6 +102,37 @@ if __name__ == "__main__":
 JSON_DEFECT_FIXED_HINT = {"settings": {"x": 1}}
 
 
+# S93 rung-3 eval task (eval-only: NO demos authored — the anti-flaky
+# gate holds for training). Cross-file dependency tracing: the defect
+# lives in module A (taxcalc), the failing test covers module B
+# (cart) which imports A. The fix must land in A; editing B cannot
+# satisfy the test.
+INDIRECT_A_DEFECT = '''def with_tax(amount):
+    return amount * 1.5
+'''
+
+INDIRECT_B = '''from taxcalc import with_tax
+
+
+def total(prices):
+    return sum(with_tax(p) for p in prices)
+'''
+
+INDIRECT_TESTS = '''import unittest
+
+from cart import total
+
+
+class TestCart(unittest.TestCase):
+    def test_total(self):
+        self.assertEqual(total([10, 20]), 36)
+
+
+if __name__ == "__main__":
+    unittest.main()
+'''
+
+
 @dataclass
 class EvalTask:
     """One deterministic defect-fix task."""
@@ -186,6 +217,22 @@ def default_tasks() -> List[EvalTask]:
                     "if __name__ == \"__main__\":\n    unittest.main()\n",
                 "README.md": "add() must return the SUM; multiply() the "
                              "product. There may be more than one bug.",
+            },
+            verify_command=f"{python} -m unittest",
+        ),
+        # S93: rung 3 as MEASUREMENT only (demos stay gated until rung
+        # 2 is stable-band). Same cascade-style goal hint, new skill:
+        # the failing test names module B; the defect is in A.
+        EvalTask(
+            name="defect-fix-indirect",
+            goal="The tests in this project are failing. The failing "
+                 "test covers one module, but the defect may live in "
+                 "another — follow the imports to the source, fix it "
+                 "there, and run the tests to verify they pass.",
+            files={
+                "taxcalc.py": INDIRECT_A_DEFECT,
+                "cart.py": INDIRECT_B,
+                "test_cart.py": INDIRECT_TESTS,
             },
             verify_command=f"{python} -m unittest",
         ),

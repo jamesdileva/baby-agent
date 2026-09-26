@@ -12,7 +12,7 @@ band). Rates are per-task success rates (n=3, S74 harness).
 |---|---|---|---|---|
 | 1 | single-defect single-file | calculator / strings / json | S57 | calculator solved (3/3 everywhere); strings solid ep11 (3/3 x3), volatile ep12 (0/3, 3/3); json SOLVED (3/3 x5/6 at 7B) |
 | 2 | persistence: two defects | defect-fix-cascade | S78 | volatile everywhere (ep11: 1/3, 0/3, 2/3, 0/3; ep12: 1/3, 2/3; ep13: 1/3) — best 2/3, stability NOT met |
-| 3 | cross-file dependency tracing | defect-fix-indirect | specified, not built | gated on rung 2 |
+| 3 | cross-file dependency tracing | defect-fix-indirect | BUILT S93 (eval-only) | gated on rung 2 for demos; eval task frozen |
 | 4 | test authorship with mutation proof | test-authoring | specified, not built | gated on rung 3 |
 | 5 | runtime-behavior debugging | observe-reproduce | specified, not built | gated on rung 4 |
 | 6 | multi-file feature with contract | spec'd, not built | gated on rung 5 |
@@ -75,3 +75,11 @@ corpus.
 
 Subjects stay CODING-ONLY by direction: deeper rungs of the same
 discipline, not new domains.
+
+## Measurement regime (S93)
+
+Verdicts pin decoding (temperature 0, seed 42 — pre-S93 verdicts ran
+the Ollama default 0.8; bands are annotated, not rewritten).
+Pinned probe 2026-09-26: cascade 12/12 (ep12+ep13 × budgets 12/16)
+— the rung-2 variance was sampling noise. Budget stays 12 (all
+successes closed in 10 iters).

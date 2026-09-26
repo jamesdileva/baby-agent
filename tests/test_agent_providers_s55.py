@@ -105,7 +105,7 @@ class TestOllamaNativeToolCalling(unittest.TestCase):
         from qacompanion.agent import OllamaProvider
         from qacompanion import ollama_bridge as bridge
         captured = {}
-        def fake_generate(prompt, model=None, url=None):
+        def fake_generate(prompt, model=None, url=None, **kwargs):
             captured["prompt"] = prompt
             return "plain answer"
         provider = OllamaProvider()

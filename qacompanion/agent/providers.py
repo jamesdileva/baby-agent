@@ -470,12 +470,17 @@ class OllamaProvider(ModelProvider):
 
     name = "ollama"
 
-    def __init__(self, model=None, url=None, native_tools: bool = True):
+    def __init__(self, model=None, url=None, native_tools: bool = True,
+                 temperature=None, seed=None):
         self.model = model
         self.url = url
         # S55: qwen2.5-coder-class models lack Ollama native tool support
         # — instantiate with native_tools=False to force the textual shim
         self.native_tools = native_tools
+        # S93: pinned decoding for measurement stability (verdicts);
+        # None leaves the server default (all other callers unchanged)
+        self.temperature = temperature
+        self.seed = seed
 
     def generate(self, request: ModelRequest) -> ModelResponse:
         model = self.model or request.model
@@ -504,7 +509,9 @@ class OllamaProvider(ModelProvider):
         think = bridge._think_flag()
         try:
             data = bridge._ollama_chat(messages, tools=tools, model=model,
-                                       url=self.url, think=think)
+                                       url=self.url, think=think,
+                                       temperature=self.temperature,
+                                       seed=self.seed)
         except bridge.OllamaError as exc:
             raise ProviderError(f"ollama failure: {exc}") from exc
         message = data.get("message") or {}
@@ -527,7 +534,9 @@ class OllamaProvider(ModelProvider):
                           model: Optional[str]) -> ModelResponse:
         try:
             prompt = _flatten_messages(request.messages)
-            text = bridge._ollama_generate(prompt, model=model, url=self.url)
+            text = bridge._ollama_generate(prompt, model=model, url=self.url,
+                                           temperature=self.temperature,
+                                           seed=self.seed)
         except bridge.OllamaError as exc:
             raise ProviderError(f"ollama failure: {exc}") from exc
         calls = _parse_textual_tool_calls(text)

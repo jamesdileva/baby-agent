@@ -47,6 +47,10 @@ FIXES = (
      "def add(a, b):\n    return a + b"),
     ("calc_ops.py", "def multiply(a, b):\n    return a + b",
      "def multiply(a, b):\n    return a * b"),
+    # S93 indirect: the defect lives in taxcalc.py; the test covers
+    # cart.py which imports it — the fix must land in A
+    ("taxcalc.py", "    return amount * 1.5",
+     "    return amount * 1.2"),
 )
 
 
@@ -97,10 +101,12 @@ class EvalBase(unittest.TestCase):
 class TestFixtures(EvalBase):
     def test_deterministic_tasks(self):
         tasks = default_tasks()
-        # S78: the ladder grew — cascade (two defects) joins the suite
+        # S78: the ladder grew — cascade (two defects) joins the suite;
+        # S93: rung-3 indirect joins as eval-only (no demos authored)
         self.assertEqual([t.name for t in tasks],
                          ["defect-fix-calculator", "defect-fix-strings",
-                          "defect-fix-json", "defect-fix-cascade"])
+                          "defect-fix-json", "defect-fix-cascade",
+                          "defect-fix-indirect"])
         for task in tasks:
             self.assertNotIn(".py", task.goal)  # goals name no files
             root = self.tmp / task.name
@@ -115,6 +121,31 @@ class TestFixtures(EvalBase):
         self.assertIn("a - b", (root / "calculator.py").read_text(
             encoding="utf-8"))
 
+    def test_indirect_defect_in_a_fixable_in_a(self):
+        # S93 rung-3 eval contract, verified by subprocess: the suite
+        # fails pre-fix, and fixing module A (not B) makes it pass
+        import subprocess
+        task = default_tasks()[4]
+        self.assertEqual("defect-fix-indirect", task.name)
+        root = self.tmp / "indirect"
+        task.write_fixture(root)
+        pre = subprocess.run(
+            [sys.executable, "-m", "unittest"], cwd=root,
+            capture_output=True)
+        self.assertNotEqual(0, pre.returncode)
+        target = root / "taxcalc.py"
+        src = target.read_text(encoding="utf-8")
+        self.assertIn("1.5", src)
+        # size-changing replacement: a same-size edit inside the same
+        # second would leave CPython's stale .pyc "valid" (mtime is
+        # int-second + size — the S64 lesson this test bypasses by
+        # writing the fixture directly instead of via edit_file)
+        target.write_text(src.replace("1.5", "1.20"), encoding="utf-8")
+        post = subprocess.run(
+            [sys.executable, "-m", "unittest"], cwd=root,
+            capture_output=True)
+        self.assertEqual(0, post.returncode)
+
 
 class TestRunner(EvalBase):
     def test_all_pass_run(self):
@@ -122,7 +153,7 @@ class TestRunner(EvalBase):
             models={"test-model": _ScriptedFactory(succeed=True)},
             store=self.store, run_id="run-all-pass")
         agg = report.aggregates()["test-model"]
-        self.assertEqual(agg["tasks"], 4)
+        self.assertEqual(agg["tasks"], 5)
         self.assertEqual(agg["success_rate"], 1.0)
         self.assertEqual(agg["total_interventions"], 0)
 

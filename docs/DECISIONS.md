@@ -1492,3 +1492,19 @@ Provenance: S92.1 three-way verdict 2026-09-26.
 
 Status: Adopted 2026-09-26. Teaching authority (new standing rule
 from lesson, per case-authority protocol).
+
+### S93 measurement-first: pinned decoding + rung-3 eval-only
+
+**Decision:** (1) Verdicts pin decoding (temp 0 + seed 42) via new
+bridge/provider/CLI plumbing — our harness never set temperature,
+so all past verdicts ran Ollama's default 0.8 (maximum sampling
+noise); past bands annotated, not rewritten. (2) Gate-letter
+override: `defect-fix-indirect` implemented as an eval-only 5th
+task (proven by subprocess) with NO demos — more items beats more
+trials for verdict variance, and nothing trains toward rung 3, so
+the gate's spirit holds. (3) Budget probe verdict: 12/12 at both
+budgets — yardstick stays 12; the rung-2 volatility was sampling
+noise. Provenance: variance research + S93 probe 2026-09-26,
+human-approved plan.
+
+Status: Adopted 2026-09-26. Spec: docs/s93-spec.md.

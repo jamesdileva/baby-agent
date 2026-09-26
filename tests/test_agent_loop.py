@@ -361,7 +361,7 @@ class TestPromptAndSession(unittest.TestCase):
             ]
 
             def scripted_chat(messages, tools=None, model=None, url=None,
-                              think=None):
+                              think=None, **kwargs):
                 return chat_responses.pop(0)
 
             with patch("qacompanion.ollama_bridge._ollama_chat",

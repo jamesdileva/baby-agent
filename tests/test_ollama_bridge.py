@@ -1,6 +1,7 @@
 """Tests for S26 Ollama bridge: local model integration with retrieval context."""
 
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -497,6 +498,82 @@ class TestEdgeCases(unittest.TestCase):
         ctx = {"cases": cases, "digest": [], "total_items": 49}
         prompt = _build_prompt("q", ctx)
         self.assertLessEqual(len(prompt), 8000)
+
+
+# --- S93 pinned decoding ---
+
+class TestDecodeOptions(unittest.TestCase):
+    def test_unset_means_server_default(self):
+        from qacompanion import ollama_bridge as bridge
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("OLLAMA_TEMPERATURE", None)
+            os.environ.pop("OLLAMA_SEED", None)
+            os.environ.pop("OLLAMA_NUM_CTX", None)
+            self.assertIsNone(bridge._decode_options())
+
+    def test_explicit_args_win(self):
+        from qacompanion import ollama_bridge as bridge
+        opts = bridge._decode_options(temperature=0, seed=42)
+        self.assertEqual(opts, {"temperature": 0, "seed": 42})
+
+    def test_env_fallback_and_invalid_ignored(self):
+        import os
+        from qacompanion import ollama_bridge as bridge
+        with patch.dict(os.environ, {"OLLAMA_TEMPERATURE": "0.2",
+                                     "OLLAMA_SEED": "7"}):
+            self.assertEqual(bridge._decode_options(),
+                             {"temperature": 0.2, "seed": 7})
+        with patch.dict(os.environ, {"OLLAMA_TEMPERATURE": "hot",
+                                     "OLLAMA_SEED": "x"}):
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("OLLAMA_NUM_CTX", None)
+                self.assertIsNone(bridge._decode_options())
+
+    def test_num_ctx_merges(self):
+        import os
+        from qacompanion import ollama_bridge as bridge
+        with patch.dict(os.environ, {"OLLAMA_NUM_CTX": "8192"}):
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("OLLAMA_TEMPERATURE", None)
+                os.environ.pop("OLLAMA_SEED", None)
+                self.assertEqual(bridge._decode_options(temperature=0),
+                                 {"num_ctx": 8192, "temperature": 0})
+
+    def test_generate_posts_options(self):
+        with patch("qacompanion.ollama_bridge._http_post") as mock_post:
+            mock_post.return_value = {"response": "ok"}
+            _ollama_generate("p", model="m", temperature=0, seed=42)
+            data = mock_post.call_args[0][1]
+            self.assertEqual(data["options"],
+                             {"temperature": 0, "seed": 42})
+
+    def test_generate_omits_options_when_unset(self):
+        import os
+        with patch("qacompanion.ollama_bridge._http_post") as mock_post:
+            mock_post.return_value = {"response": "ok"}
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("OLLAMA_TEMPERATURE", None)
+                os.environ.pop("OLLAMA_SEED", None)
+                os.environ.pop("OLLAMA_NUM_CTX", None)
+                _ollama_generate("p", model="m")
+            data = mock_post.call_args[0][1]
+            self.assertNotIn("options", data)
+
+    def test_provider_carries_pinned_decoding(self):
+        from qacompanion.agent import (ModelMessage, ModelRequest,
+                                      OllamaProvider)
+        captured = {}
+        def fake_post(url, data, timeout=None):
+            captured["data"] = data
+            return {"response": "done"}
+        provider = OllamaProvider(model="m", native_tools=False,
+                                  temperature=0, seed=42)
+        with patch("qacompanion.ollama_bridge._http_post",
+                   side_effect=fake_post):
+            provider.generate(ModelRequest(
+                messages=[ModelMessage(role="user", content="hi")]))
+        self.assertEqual(captured["data"]["options"],
+                         {"temperature": 0, "seed": 42})
 
 
 if __name__ == "__main__":
