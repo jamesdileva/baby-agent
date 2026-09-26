@@ -10,8 +10,8 @@ band). Rates are per-task success rates (n=3, S74 harness).
 
 | rung | capability | eval task | introduced | status |
 |---|---|---|---|---|
-| 1 | single-defect single-file | calculator / strings / json | S57 | calculator solved-band 0.33-1.0; strings 3/3 (ep11, perfect); json wall BROKEN by ep11 3/3 |
-| 2 | persistence: two defects | defect-fix-cascade | S78 | ep12 1/3, ep11 2/3 same day (1/3 → 0/3 → 2/3 — volatile, stability NOT met) |
+| 1 | single-defect single-file | calculator / strings / json | S57 | calculator solved (3/3 everywhere); strings solid ep11 (3/3 x3), volatile ep12 (0/3, 3/3); json SOLVED (3/3 x5/6 at 7B) |
+| 2 | persistence: two defects | defect-fix-cascade | S78 | volatile everywhere (ep11: 1/3, 0/3, 2/3, 0/3; ep12: 1/3, 2/3; ep13: 1/3) — best 2/3, stability NOT met |
 | 3 | cross-file dependency tracing | defect-fix-indirect | specified, not built | gated on rung 2 |
 | 4 | test authorship with mutation proof | test-authoring | specified, not built | gated on rung 3 |
 | 5 | runtime-behavior debugging | observe-reproduce | specified, not built | gated on rung 4 |
@@ -29,11 +29,16 @@ band). Rates are per-task success rates (n=3, S74 harness).
 | 11 | ep11-q4 (7B + batch 2) | 3/3 | 3/3 | 3/3 |
 | 12 | ep12-q4 (batch 3 + clip) | 3/3 | 0/3 | 2/3 |
 | 11 | ep11-q4 re-verdict (same day) | 3/3 | 3/3 | 3/3 |
+| 13 | ep13-q4 (clip 0 test) | 3/3 | 1/3 | 3/3 |
+| 12 | ep12-q4 re-verdict (same day) | 3/3 | 3/3 | 3/3 |
+| 11 | ep11-q4 re-verdict (3-way day) | 3/3 | 3/3 | 3/3 |
 
-Bands: calculator 0.33-1.0 (solved-band), strings 0-1.0
-(solved by ep11 3/3), json broke 0 → 1.0 (ep11).
-ep9's own-day 3/3 did not reproduce —
-the band is the honest measure, not a single verdict.
+Bands: calculator 1.0 (solved — 3/3 everywhere, every gen); strings
+solid for ep11 (3/3 x3 verdicts), volatile for ep12 (0/3 then 3/3);
+json SOLVED at 7B (3/3 in 5 of last 6 readings across ep11/ep12/ep13).
+ep12's verdict-day strings 0/3 did not reproduce — the S91.1
+regression call is withdrawn as variance (see DECISIONS: never
+convict on a single n=3).
 
 ## Demonstration requirements per rung
 

@@ -1475,3 +1475,20 @@ evidence. Provenance: S91.1 worklog entry; human "proceed" on the
 contingency 2026-09-26.
 
 Status: Adopted 2026-09-26. Spec: docs/s92-spec.md.
+
+### S92.1 clip exonerated; never convict on a single n=3
+
+**Decision:** (1) The three-way verdict exonerates the clip: ep13
+(clip 0) 8/12 lost to ep12 (clip 1.0) 11/12 on the identical
+corpus, same day — a guilty clip would show the reverse. The
+gen-12 "regression" is WITHDRAWN as variance (ep12: 6/12 then
+11/12 back-to-back). (2) Institutional rule from S91.1's error: no
+regression is recorded on a single n=3 verdict — regressions need
+confirmation (a second verdict or n≥5); bands, not points, judge.
+Cascade volatility (ep11 0/3 to 2/3 across days) is the standing
+proof that single readings mislead at high capability. Champions
+shared ep11/ep12 pending stability; rung-3 stays gated.
+Provenance: S92.1 three-way verdict 2026-09-26.
+
+Status: Adopted 2026-09-26. Teaching authority (new standing rule
+from lesson, per case-authority protocol).

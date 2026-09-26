@@ -80,6 +80,24 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-26 — **S92.1 Gen-13 verdict — clip EXONERATED, gen-12
+  "regression" WITHDRAWN as variance (three-way, same day)** —
+  ep13-q4 (S91 corpus + clip 0) **8/12** vs ep12-q4 (same corpus +
+  clip 1.0) **11/12** vs ep11-q4 **9/12**: calc 3/3 all; strings
+  ep13 1/3, **ep12 3/3 (the verdict-day 0/3 did NOT reproduce)**,
+  ep11 3/3; json 3/3 all three (solved, 5 of last 6 7B readings);
+  cascade ep13 1/3, **ep12 2/3 (ties best rung-2 rate)**,
+  ep11 0/3. If the clip were guilty ep13 would beat ep12 — it
+  lost by 3, so the clip is innocent (possibly helpful) and the
+  gen-12 gap was a bad n=3 draw. Institutional lesson recorded:
+  NEVER convict a regression on a single n=3 verdict (S91.1's
+  error — ep12 went 6/12 then 11/12 on back-to-back days);
+  regressions need confirmation. Cascade stays volatile everywhere
+  (ep11: 1/3, 0/3, 2/3, 0/3) — rung-3 gated. Champions SHARED
+  ep11/ep12 pending stability; ep13 not shipped. Metrics: ep11
+  behaviorally cleanest (failures 9, chaining 0.92), ep12 best
+  rates. Suite untouched (docs-only slice).
+
 - 2026-09-26 — **S92 — Clip revert (the clean clip-effect test)**
   — S91.1 convicted the S91 clip restoration (ep12 6/12 vs ep11
   11/12), so 7B is back to `max_grad_norm=0`, corpus untouched.
