@@ -350,6 +350,15 @@ class TestS96DashboardSurface(ServerBase):
             self.get("/api/browse?path=" + str(self.tmp / "nope"))
         self.assertEqual(404, ctx.exception.code)
 
+    def test_browse_decodes_percent_encoded_paths(self):
+        # S96.1: browsers encode Windows paths (C%3A%5C…); the raw
+        # form matched nothing and Up navigation 404'd
+        import urllib.parse
+        (self.tmp / "proj-a").mkdir()
+        encoded = urllib.parse.quote(str(self.tmp / "proj-a"), safe="")
+        out = self.get("/api/browse?path=" + encoded)
+        self.assertIn("directories", out)
+
     def test_verdict_carries_decoding_flags(self):
         seen = {}
         self.app.verdict_runner = lambda models, tasks, temperature=None, \

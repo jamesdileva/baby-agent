@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+from urllib.parse import unquote as _unquote
 
 from .benchmark import coding_registry
 
@@ -381,8 +382,14 @@ def make_handler(app: AgentServerApp):
 
         def do_GET(self):
             path, _, query = self.path.partition("?")
-            params = dict(pair.split("=", 1) for pair in query.split("&")
-                          if "=" in pair)
+            # S96.1: percent-decode query params — browsers encode
+            # Windows paths (C%3A%5C…) and the raw form matched nothing
+            params = {}
+            for pair in query.split("&"):
+                if "=" not in pair:
+                    continue
+                key, _, value = pair.partition("=")
+                params[_unquote(key)] = _unquote(value)
             if path == "/" or not path.startswith("/api/"):
                 self._serve_dist(path)
                 return

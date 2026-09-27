@@ -196,7 +196,7 @@ export default function App() {
       {showPicker && browse && (
         <section className="picker">
           <h2>Choose workspace</h2>
-          <p>{browse.path}</p>
+          <p className="path">{browse.path}</p>
           <button onClick={() => navigatePicker(browse.parent)}>Up</button>
           <ul>
             {browse.directories.map((d) => (
@@ -205,6 +205,7 @@ export default function App() {
               </li>
             ))}
           </ul>
+          {browse.directories.length === 0 && <p>No subdirectories here.</p>}
           <button onClick={() => { setWorkspace(browse.path); setShowPicker(false); }}>
             Use this folder
           </button>

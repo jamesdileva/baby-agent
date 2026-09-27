@@ -80,6 +80,15 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-27 — **S96.1 Dashboard repair (user-tested same
+  day)** — root cause: `main.tsx` never imported the stylesheet
+  (dark theme existed since S52, never wired — always white) +
+  query params never URL-decoded (Up-button KeyError) + `qa`
+  never installed (`qa.bat` shim + docs) + stylesheet completed
+  for every class. npm build emits real CSS now; live smoke
+  (CSS link, encoded browse, 20 models). Suite 1706 OK. Spec:
+  docs/s96-spec.md (S96.1 section).
+
 - 2026-09-27 — **S96 — Dashboard usefulness (deferred backlog,
   now unblocked)** — model chooser from `ollama list` (9B slides
   in free) + per-session provider override + folder picker over

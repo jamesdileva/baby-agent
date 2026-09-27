@@ -1,6 +1,8 @@
 # Quick Reference — baby-agent operations
 
-The standing commands. Full details live in the worklog (AGENTS.md) and
+The standing commands (`qa` = the repo-root `qa.bat` shim — add the
+repo root to PATH once — or `python -m qacompanion` from the root).
+Full details live in the worklog (AGENTS.md) and
 the per-sprint specs (docs/sNN-spec.md).
 
 ## The two loops

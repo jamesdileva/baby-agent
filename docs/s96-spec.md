@@ -40,3 +40,26 @@ does (ep11 12-13/15), so the polish unblocks:
   pyflakes clean.
 - Live smoke: `/api/models` vs real ollama, `/api/browse` vs
   real fs.
+
+## S96.1 repair (user-tested same day)
+
+Four live findings, all fixed:
+
+1. **White/vanilla UI — root cause: `main.tsx` never imported
+   `./styles.css`.** The dark stylesheet existed since S52 but was
+   never wired in: the dashboard was ALWAYS unstyled. One-line
+   fix; the build now emits a real CSS asset (verified present).
+2. **Up-button KeyError** (`C%3A%5C…`): the hand-rolled query
+   parser never URL-decoded params. Decode centrally + regression
+   test with an encoded Windows path; live smoke browses the real
+   repo root through the encoded URL.
+3. **`qa` not recognized:** `qa` was never installed anywhere —
+   docs assumed it. New `qa.bat` shim (PYTHONPATH-based, keeps
+   caller CWD for per-project stores) + quick-reference line;
+   verified `qa --help` works.
+4. **Stylesheet completed** (every class in use: picker modal,
+   error, rows, history affordance) + picker path display and
+   empty-state; "auto-picks baby-agent" was the modal opening at
+   the server cwd, now explicit.
+- Suite 1706 OK (1705 + 1); pyflakes clean; npm build green;
+  live smoke re-run (CSS link present, encoded browse, 20 models).
