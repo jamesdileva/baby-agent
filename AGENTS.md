@@ -80,6 +80,15 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-27 — **S97 — Eyes for dashboard sessions + blank
+  detector** — screenshots were never offered (coding registry
+  has no vision); dashboard sessions now get all 5 vision tools
+  (captures land as workspace PNGs, inspect needs the key and
+  stays confirmer-denied) + new READ_ONLY `detect_blank_screen`
+  for loading-hang detection. Live proof: real session
+  COMPLETED with shot.png in workspace. Suite 1713 OK, pyflakes
+  clean. Spec: docs/s97-spec.md.
+
 - 2026-09-27 — **S96.2 Dashboard protocol fix (user-tested)** —
   dashboard was the only NATIVE-path consumer; ep11 speaks
   TEXTUAL, so sessions completed with 0 calls. Factory now

@@ -1553,6 +1553,27 @@ training stay deferred. Provenance: human-tested backlog
 
 Status: Adopted 2026-09-27. Spec: docs/s96-spec.md.
 
+### S96.2 dashboard protocol fix (user-tested)
+
+**Decision:** Dashboard sessions were the only NATIVE-path
+consumer while our models speak TEXTUAL — sessions completed
+with 0 calls. Factory builds ollama sessions textual (gemini
+stays native); UNVERIFIED badge + verify-command input added.
+Live re-run proved 25 calls. Provenance: user-tested sessions
+2026-09-27.
+
+### S97 eyes for dashboard sessions + blank detector
+
+**Decision:** Dashboard sessions offer the vision tools (the
+refusal was a missing-tool problem, not a capability problem);
+benchmark catalogs stay hermetic. New READ_ONLY `detect_blank_
+screen` for loading-hang detection (the human's white-screen
+idea, built from owned primitives). inspect_image needs the key
+and stays confirmer-denied. Provenance: user-tested screenshot
+refusal + human "proceed" 2026-09-27.
+
+Status: Adopted 2026-09-27. Spec: docs/s97-spec.md.
+
 ### S94.3 9B exploration verdict: 4b out, think off, 9B queued
 
 **Decision:** (1) qwen3.5:4b RULED OUT as an agent base: 0/15

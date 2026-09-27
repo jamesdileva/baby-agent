@@ -49,6 +49,11 @@ GEMINI_ENDPOINT = ("https://generativelanguage.googleapis.com/v1beta/models/"
 DEFAULT_VISION_MODEL = "gemini-3.1-flash-lite"
 VISION_TIMEOUT = 60.0
 DEFAULT_DIFF_THRESHOLD = 8
+# S97 blank-screen detection (loading-hang vs rendered app): a pixel
+# counts as white at/above this channel value; the screen counts as
+# blank when at/above this percentage of pixels are white
+DEFAULT_WHITE_THRESHOLD = 240
+DEFAULT_BLANK_PERCENT = 95
 DEFAULT_INSPECT_PROMPT = ("Describe this screenshot in detail: what "
                           "application is shown, what state is it in, and "
                           "is anything visually broken?")
@@ -422,7 +427,7 @@ class VisionToolkit:
         }, ensure_ascii=False)
 
     def compare_images(self, path_a: str, path_b: str,
-                       threshold: int = DEFAULT_DIFF_THRESHOLD) -> str:
+                         threshold: int = DEFAULT_DIFF_THRESHOLD) -> str:
         width_a, height_a, rows_a = decode_png(self._load_png(path_a))
         width_b, height_b, rows_b = decode_png(self._load_png(path_b))
         if (width_a, height_a) != (width_b, height_b):
@@ -440,6 +445,40 @@ class VisionToolkit:
             "diff_ratio": round(differing / total, 6) if total else 0.0,
             "threshold": threshold,
             "identical": differing == 0,
+        }, ensure_ascii=False)
+
+    def detect_blank_screen(
+            self, path: str,
+            white_threshold: int = DEFAULT_WHITE_THRESHOLD,
+            min_white_percent: int = DEFAULT_BLANK_PERCENT) -> str:
+        """S97 loading-hang detection: fraction of near-white pixels in
+        a workspace PNG. A freshly launched app showing an empty white
+        window reads ~100%; a rendered UI reads far less."""
+        if not 0 <= white_threshold <= 255:
+            raise VisionError(
+                f"white_threshold must be 0-255, got {white_threshold}")
+        if not 0 <= min_white_percent <= 100:
+            raise VisionError(
+                f"min_white_percent must be 0-100, got {min_white_percent}")
+        width, height, rows = decode_png(self._load_png(path))
+        white = 0
+        total = 0
+        for row in rows:
+            for offset in range(0, len(row), 3):
+                total += 1
+                if (row[offset] >= white_threshold
+                        and row[offset + 1] >= white_threshold
+                        and row[offset + 2] >= white_threshold):
+                    white += 1
+        percent = round(100.0 * white / total, 2) if total else 0.0
+        return json.dumps({
+            "path": path,
+            "width": width,
+            "height": height,
+            "white_percent": percent,
+            "white_threshold": white_threshold,
+            "min_white_percent": min_white_percent,
+            "blank": percent >= min_white_percent,
         }, ensure_ascii=False)
 
     def tools(self) -> List[RegisteredTool]:
@@ -494,6 +533,15 @@ class VisionToolkit:
                                   "threshold": {"type": "integer"}},
                    "required": ["path_a", "path_b"]},
                   self.compare_images, READ_ONLY),
+            _tool("detect_blank_screen",
+                  "Measure how white a workspace PNG is (loading-hang "
+                  "vs rendered app). No model, no network.",
+                  {"type": "object",
+                   "properties": {"path": {"type": "string"},
+                                  "white_threshold": {"type": "integer"},
+                                  "min_white_percent": {"type": "integer"}},
+                   "required": ["path"]},
+                  self.detect_blank_screen, READ_ONLY),
         ]
 
 

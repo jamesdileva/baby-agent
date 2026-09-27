@@ -32,8 +32,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import unquote as _unquote
 
-from .benchmark import coding_registry
-
 
 def _utc_stamp() -> str:
     from datetime import datetime, timezone
@@ -166,6 +164,20 @@ def _verify_plan(verify_command: str) -> VerificationPlan:
     ])
 
 
+def dashboard_registry(ws, store):
+    """S97: the dashboard session tool set — the coding families plus
+    the vision tools (screenshots land as workspace PNGs the human
+    can open; compare/blank run locally; inspect degrades honestly
+    without a key). Benchmarks keep the lean hermetic catalog; only
+    interactive sessions grow eyes."""
+    from .benchmark import coding_registry
+    from .vision import (update_agent_registry as
+                         update_vision_registry)
+    registry = coding_registry(ws, experience_store=store)
+    update_vision_registry(registry, ws)
+    return registry
+
+
 class AgentServerApp:
     """Application state + operations behind the HTTP surface."""
 
@@ -285,7 +297,7 @@ class AgentServerApp:
         def run():
             try:
                 run_provider = self.provider_factory(model, provider)
-                registry = coding_registry(ws, experience_store=store)
+                registry = dashboard_registry(ws, store)
                 loop = AgentLoop(run_provider, registry, ws,
                                  verifier=verifier,
                                  cancel_event=cancel_event, events=events)

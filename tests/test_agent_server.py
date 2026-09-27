@@ -359,6 +359,17 @@ class TestS96DashboardSurface(ServerBase):
         out = self.get("/api/browse?path=" + encoded)
         self.assertIn("directories", out)
 
+    def test_dashboard_registry_grows_eyes(self):
+        # S97: interactive sessions offer the vision tools (benchmarks
+        # keep the lean hermetic catalog — asserted by their own pins)
+        from qacompanion.agent.server import dashboard_registry
+        from qacompanion.agent.workspace import Workspace
+        reg = dashboard_registry(Workspace(self.tmp), self.store)
+        for name in ("capture_screen", "capture_window", "capture_region",
+                     "inspect_image", "compare_images",
+                     "detect_blank_screen"):
+            self.assertIn(name, reg.names())
+
     def test_verdict_carries_decoding_flags(self):
         seen = {}
         self.app.verdict_runner = lambda models, tasks, temperature=None, \

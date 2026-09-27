@@ -75,7 +75,7 @@ class TestRegistration(unittest.TestCase):
             # tools (the toolkit cannot construct there); the exact
             # count is platform-dependent, the families are not
             import os as _os
-            expected = 65 if _os.name == "nt" else 59
+            expected = 66 if _os.name == "nt" else 60
             self.assertEqual(len(reg.names()), expected)
             if _os.name == "nt":
                 for name in ("computer_click", "computer_type"):
@@ -94,6 +94,7 @@ class TestRegistration(unittest.TestCase):
             self.assertIn("capture_screen", reg.names())
             self.assertIn("inspect_image", reg.names())
             self.assertIn("compare_images", reg.names())
+            self.assertIn("detect_blank_screen", reg.names())
             self.assertIn("start_process", reg.names())
             self.assertIn("health_check", reg.names())
             self.assertIn("code_symbols", reg.names())

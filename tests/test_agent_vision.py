@@ -242,7 +242,7 @@ class TestVisionTools(unittest.TestCase):
         self.assertEqual(
             set(described),
             {"capture_screen", "capture_window", "capture_region",
-             "inspect_image", "compare_images"},
+             "inspect_image", "compare_images", "detect_blank_screen"},
         )
         for name in ("capture_screen", "capture_window", "capture_region"):
             self.assertEqual(described[name]["side_effect_level"], "SAFE_WRITE")
@@ -250,6 +250,9 @@ class TestVisionTools(unittest.TestCase):
                          "EXTERNAL")
         self.assertEqual(described["compare_images"]["side_effect_level"],
                          "READ_ONLY")
+        self.assertEqual(
+            described["detect_blank_screen"]["side_effect_level"],
+            "READ_ONLY")
 
     def test_inspect_through_registry(self):
         result = self.reg.execute(
@@ -319,6 +322,64 @@ class TestVisionTools(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("not found", result.error)
 
+    def test_blank_screen_all_white(self):
+        (self.tmp / "white.png").write_bytes(
+            encode_png(4, 2, _solid(4, 2, (255, 255, 255))))
+        result = self.reg.execute(
+            ToolCall(name="detect_blank_screen",
+                     arguments={"path": "white.png"}),
+            workspace=self.ws)
+        self.assertTrue(result.ok, result.error)
+        payload = json.loads(result.output)
+        self.assertTrue(payload["blank"])
+        self.assertEqual(payload["white_percent"], 100.0)
+
+    def test_blank_screen_rendered_ui_not_blank(self):
+        rows = _with_pixels(_solid(4, 2, (255, 255, 255)),
+                            {(0, 0): (10, 10, 10), (3, 1): (10, 10, 10)})
+        (self.tmp / "ui.png").write_bytes(encode_png(4, 2, rows))
+        result = self.reg.execute(
+            ToolCall(name="detect_blank_screen",
+                     arguments={"path": "ui.png"}),
+            workspace=self.ws)
+        self.assertTrue(result.ok, result.error)
+        payload = json.loads(result.output)
+        self.assertFalse(payload["blank"])
+        self.assertEqual(payload["white_percent"], 75.0)
+
+    def test_blank_threshold_honored(self):
+        (self.tmp / "gray.png").write_bytes(
+            encode_png(2, 1, _solid(2, 1, (200, 200, 200))))
+        gray = self.reg.execute(
+            ToolCall(name="detect_blank_screen",
+                     arguments={"path": "gray.png"}),
+            workspace=self.ws)
+        self.assertFalse(json.loads(gray.output)["blank"])
+        strict = self.reg.execute(
+            ToolCall(name="detect_blank_screen",
+                     arguments={"path": "gray.png",
+                                "white_threshold": 200,
+                                "min_white_percent": 100}),
+            workspace=self.ws)
+        self.assertTrue(json.loads(strict.output)["blank"])
+
+    def test_blank_bad_arguments_structured_error(self):
+        result = self.reg.execute(
+            ToolCall(name="detect_blank_screen",
+                     arguments={"path": "shot.png",
+                                "white_threshold": 999}),
+            workspace=self.ws)
+        self.assertFalse(result.ok)
+        self.assertIn("0-255", result.error)
+
+    def test_blank_missing_image_structured_error(self):
+        result = self.reg.execute(
+            ToolCall(name="detect_blank_screen",
+                     arguments={"path": "ghost.png"}),
+            workspace=self.ws)
+        self.assertFalse(result.ok)
+        self.assertIn("not found", result.error)
+
 
 class TestAgentRegistryIncludesVision(unittest.TestCase):
     def test_membership(self):
@@ -326,7 +387,8 @@ class TestAgentRegistryIncludesVision(unittest.TestCase):
         try:
             reg = agent_registry(Workspace(tmp), vision_provider=FakeVisionProvider())
             for name in ("capture_screen", "capture_window", "capture_region",
-                         "inspect_image", "compare_images"):
+                         "inspect_image", "compare_images",
+                         "detect_blank_screen"):
                 self.assertIn(name, reg.names())
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
