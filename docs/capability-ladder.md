@@ -34,6 +34,7 @@ band). Rates are per-task success rates (n=3, S74 harness).
 | 11 | ep11-q4 re-verdict (3-way day) | 3/3 | 3/3 | 3/3 |
 | 14 | ep14-q4 (strings batch) | 2/3 | 2/3 | 2/3 |
 | 11 | ep11-q4 re-verdict (pinned 5-task) | 3/3 | 3/3 | 3/3 |
+| 9b | qwen3.5:9b RAW (scout, think-disabled) | 3/3 | 3/3 | 1/3* |
 
 Bands: calculator 1.0 (solved — 3/3 everywhere, every gen); strings
 solid for ep11 (3/3 x3 verdicts), volatile for ep12 (0/3 then 3/3);
@@ -41,6 +42,9 @@ json SOLVED at 7B (3/3 in 5 of last 6 readings across ep11/ep12/ep13).
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).
+Raw-base scout (S94.2, think-disabled on CPU): qwen3.5:9b 3/3,
+3/3, 1/3* (*json + indirect losses are provider TIMEOUTS — slow
+turns, not proven incapability; cascade 3/3 zero-shot).
 
 ## Demonstration requirements per rung
 

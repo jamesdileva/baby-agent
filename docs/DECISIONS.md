@@ -1524,6 +1524,18 @@ never single n=3) stands for ep14. Provenance: S94 ep13 verdict
 
 Status: Adopted 2026-09-26. Spec: docs/s94-spec.md.
 
+### S94.2 scout: qwen3.5:9b raw 10/15, ep14 volatile, ep11 holds
+
+**Decision:** (1) Raw qwen3.5:9b (think-disabled, pinned) scores
+10/15 with zero-shot rung-1 + cascade — strongest raw base ever
+measured, queued as the next base-step-up candidate BEHIND rung-3
+work on the proven 7B line (new arch/tokenizer means kit fixups
+need re-derivation; thinking-enabled unmeasured). (2) ep14
+verdict-to-verdict volatility (11/15 → 8/15, strings 2/3 → 0/3)
+next to ep11's back-to-back 12/15 leaves the S94 batch effect
+inconclusive — ep14 not shipped, ep11-q4 REMAINS champion.
+Provenance: S94.2 pinned 3-way scout 2026-09-26.
+
 ### S94.1 rung-2 graduation; SFT attribution closed vs base
 
 **Decision:** (1) Rung 2 GRADUATES: probe 12/12 + S93.1 3/3 +

@@ -80,6 +80,24 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-26 — **S94.2 Scout verdict — raw qwen3.5:9b scores
+  10/15; ep11 consistency confirmed; ep14 volatile** — pinned
+  3-way (temp 0/seed 42, think-disabled for the 9B on CPU):
+  ep14-q4 8/15 (calc 1/3, strings 0/3, json 3/3, cascade 3/3,
+  indirect 1/3; failures 64) vs ep11-q4 12/15 (3/3,3/3,3/3,3/3,0/3;
+  failures 3, second straight 12/15) vs **qwen3.5:9b raw 10/15
+  (calc 3/3, strings 3/3, cascade 3/3, json 1/3, indirect 0/3)**.
+  The 9B solves rung-1 + cascade ZERO-shot under our contract —
+  strongest raw base ever measured. Honest caveats: its json/
+  indirect failures are provider TIMEOUTS (slow turns, not proven
+  incapability); think-disabled, so thinking-enabled remains
+  unmeasured; different arch/tokenizer (qwen35) means kit fixups
+  need re-derivation before any SFT. ep14 verdict-to-verdict
+  (11/15 → 8/15, strings 2/3 → 0/3) reads volatile next to
+  ep11's back-to-back 12/15 — the S94 batch effect is
+  inconclusive, ep14 not shipped. ep11-q4 REMAINS champion.
+  Suite untouched (docs-only slice).
+
 - 2026-09-26 — **S94.1 Gen-14 verdict — strings repaired (0→2),
   ep11 holds, base scores ZERO, rung 2 GRADUATES** — pinned
   3-way, 5 tasks: ep14-q4 11/15 (calc 2/3, **strings 2/3 (batch
