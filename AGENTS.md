@@ -80,6 +80,23 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-26 — **S94.1 Gen-14 verdict — strings repaired (0→2),
+  ep11 holds, base scores ZERO, rung 2 GRADUATES** — pinned
+  3-way, 5 tasks: ep14-q4 11/15 (calc 2/3, **strings 2/3 (batch
+  worked, 0→2)**, json 2/3, **cascade 3/3**, indirect 2/3) vs
+  ep11-q4 12/15 (3/3,3/3,3/3,3/3,0/3) vs **raw qwen2.5-coder:7b
+  0/15 — every run a provider timeout, discovery 0.0, chaining
+  0.0: the SFT added the entire capability** (honest caveat: base
+  too slow on CPU to complete turns, so "can't reason" vs "too
+  slow" is unisolated — but trained models finish in 6-8 clean
+  iters where base burns 8-11 and dies). ep14 NOT shipped (calc
+  drop 3→2, 44 failures vs 3 — thrash tax; strings gain real but
+  partial). **Rung-2 GRADUATION ruled**: probe 12/12 + S93.1 3/3
+  + S94.1 3/3 = three consecutive pinned in-band readings across
+  the 7B line → rung-3 demo authoring OPENS (S95). Rung-3
+  indirect: ep14 2/3, ep13 3/3, ep11 0-1/3 (transfer, volatile).
+  Suite untouched (docs-only slice).
+
 - 2026-09-26 — **S94 — Strings-repair batch (Branch B of the ep13
   fork)** — ep13 pinned full verdict: calc 3/3, strings 0/3
   (deterministic), json 3/3, cascade 3/3, **indirect 3/3 with zero

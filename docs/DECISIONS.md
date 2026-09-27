@@ -1524,6 +1524,20 @@ never single n=3) stands for ep14. Provenance: S94 ep13 verdict
 
 Status: Adopted 2026-09-26. Spec: docs/s94-spec.md.
 
+### S94.1 rung-2 graduation; SFT attribution closed vs base
+
+**Decision:** (1) Rung 2 GRADUATES: probe 12/12 + S93.1 3/3 +
+S94.1 3/3 = three consecutive pinned in-band cascade readings
+across the 7B line — rung-3 demo authoring OPENS (S95). (2) The
+base comparison closes the program's founding attribution: raw
+qwen2.5-coder:7b scores 0/15 (every run a provider timeout,
+discovery/chaining 0.0) where SFT'd models finish in 6-8 clean
+iters — honest caveat that CPU timeouts leave "can't reason" vs
+"too slow" unisolated, but the capability delta is total either
+way. (3) ep14 NOT shipped (11/15 vs 12/15; strings
+gain 0→2 real but partial, thrash tax elsewhere); ep11-q4 stays
+champion. Provenance: S94.1 pinned 3-way 2026-09-26.
+
 ### S93.1 pinned verdict: cascade solved, ep12 strings deficit real
 
 **Decision:** (1) Cascade 3/3 both models under pinned decoding =
