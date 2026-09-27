@@ -1250,6 +1250,19 @@ Folder picker + session output visibility (human-tested 2026-09-24;
 see the S52 section backlog note). Deliberately behind the capability
 sprints — polish waits until the model justifies the front end.
 
+### Dashboard backlog, round 2 (user-tested 2026-09-27)
+
+1. **Post-completion extra turns**: a session that screenshotted +
+   described Firefox kept acting (recapture, blank re-checks, code
+   search, guessed reads) instead of finalizing — vague goals with
+   no verifier never read as done. Candidates (undecided):
+   idle/no-progress-completion detection, goal-crispness hinting,
+   or verify-command habit. NOT approved for implementation.
+2. **Code-index 2000-file cap on huge workspaces**: picking the repo
+   root tripped `workspace exceeds the 2000-file index cap` on
+   code_symbols — honest error, but a workspace picker that lands
+   users on capped trees wants guidance (exclusion UX or cap note).
+
 ---
 
 # Part 4 — Dependency order

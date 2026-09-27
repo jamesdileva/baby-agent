@@ -1539,6 +1539,18 @@ session, S95 spec, human "proceed" 2026-09-27.
 
 Status: Adopted 2026-09-27. Spec: docs/s95-spec.md.
 
+### S95.1 gen-15 verdict: tie, batch failed, indirect solved
+
+**Decision:** ep15 (365-row S95 corpus, confirmed) ties ep11
+12/15 with opposite profiles: the S94 strings batch did NOT fix
+the lineage deficit (deterministic 0/3 through targeted volume
+— deeper than dilution); hygiene gets partial credit (44-64 →
+18 failures, still 6× ep11); rung-3 indirect solved cleanly
+(3/3) where ep11 is deterministically 0/3 — lineage gap real,
+demo-vs-transfer unisolated (ep13 did it with none). ep15 NOT
+shipped; ep11-q4 REMAINS champion. Provenance: S95.1 pinned
+5-task verdict 2026-09-27.
+
 ### S96 dashboard usefulness (deferred backlog, now unblocked)
 
 **Decision:** The S82-deferred polish lands now that the model

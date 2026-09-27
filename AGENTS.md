@@ -80,6 +80,19 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-27 — **S95.1 Gen-15 verdict — 12/15 TIE with ep11,
+  strings batch failed, indirect solved** — pinned 5-task, ep15
+  trained on the 365-row S95 export (confirmed): ep15-q4 12/15
+  (calc 3/3, **strings 0/3 deterministic — the S94 batch did NOT
+  fix the lineage deficit**, json 3/3, cascade 3/3, **indirect
+  3/3 clean**) vs ep11-q4 12/15 (3/3,3/3,3/3,3/3,0/3). Hygiene
+  partial credit (failures 44-64 → 18) but nowhere near ep11's
+  3; guessed 0.2 vs 0.0. Rung-3: ep13/15 solve indirect (3/3,
+  3/3) where ep11 scores 0/3, 0/3 — lineage gap real,
+  demo-vs-transfer unisolated. ep15 NOT shipped (tie + thrash
+  tax + strings 0); ep11-q4 REMAINS champion. Suite untouched
+  (docs-only slice).
+
 - 2026-09-27 — **S99 — Dashboard approvals + image guidance**
   — user Firefox forensics: capture ok, inspect denied (no
   confirmer), binary-read loop ×5 → honest FAILED at 9 via S98
