@@ -80,6 +80,19 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-26 — **S94.3 9B exploration close-out — 4b ruled out,
+  think adds nothing, 9B queued** — think-on cascade probes:
+  9b 3/3 (identical to think-off — thinking buys latency, not
+  capability here), 4b 0/3 BUT with calls appearing (14/6/4 vs
+  zero think-off: thinking is load-bearing for the small model's
+  tool-calling, yet completion still absent — 4b RULED OUT as an
+  agent base). Combined 9B: 11/15 with time (calc/strings/cascade
+  3/3, json 1/3, indirect 1/3); timeouts explained the cutoffs
+  but rates barely moved. Verdict default stays think-off.
+  Rung-3 demos (S95) are next; 9B-SFT stays queued (kit
+  re-derivation + bigger GPU required). Suite untouched
+  (docs-only slice).
+
 - 2026-09-26 — **S94.2 Scout verdict — raw qwen3.5:9b scores
   10/15; ep11 consistency confirmed; ep14 volatile** — pinned
   3-way (temp 0/seed 42, think-disabled for the 9B on CPU):

@@ -45,6 +45,13 @@ convict on a single n=3).
 Raw-base scout (S94.2, think-disabled on CPU): qwen3.5:9b 3/3,
 3/3, 1/3* (*json + indirect losses are provider TIMEOUTS — slow
 turns, not proven incapability; cascade 3/3 zero-shot).
+S94.3 with time (600s) + think-on probes: 9B combined 11/15
+(calc/strings/cascade 3/3, json 1/3, indirect 1/3 — timeouts
+explained cutoffs, rates barely moved); 9b think-on == think-off
+on cascade (no capability gain, think-off stays default); 4b
+0/15 think-off with ZERO calls, 0/3 think-on with calls but no
+completion — RULED OUT as agent base (thinking load-bearing for
+tool-calling at 4B, yet insufficient).
 
 ## Demonstration requirements per rung
 

@@ -1524,6 +1524,18 @@ never single n=3) stands for ep14. Provenance: S94 ep13 verdict
 
 Status: Adopted 2026-09-26. Spec: docs/s94-spec.md.
 
+### S94.3 9B exploration verdict: 4b out, think off, 9B queued
+
+**Decision:** (1) qwen3.5:4b RULED OUT as an agent base: 0/15
+think-off with zero tool calls; think-on restores calls but not
+completion (0/3). (2) Thinking buys nothing measurable on
+cascade at 9B (3/3 both modes) — verdict default stays
+think-disabled (5-10x cheaper on CPU). (3) qwen3.5:9b combined
+11/15 with time stays queued as the next base-step-up candidate
+behind rung-3 work (kit re-derivation + bigger GPU required).
+Next: S95 rung-3 demos on the proven 7B line. Provenance: S94.3
+probes 2026-09-26.
+
 ### S94.2 scout: qwen3.5:9b raw 10/15, ep14 volatile, ep11 holds
 
 **Decision:** (1) Raw qwen3.5:9b (think-disabled, pinned) scores
