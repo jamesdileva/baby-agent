@@ -179,6 +179,16 @@ class DashboardBrainTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 default_provider_factory()
 
+    def test_ollama_uses_textual_shim(self):
+        # S96.2: the dashboard is the only native-path consumer and
+        # it left sessions completing with zero calls — our models
+        # speak the textual contract every verdict runs under
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("QA_AGENT_PROVIDER", None)
+            provider = default_provider_factory("baby-agent:ep11-q4")
+        self.assertIsInstance(provider, OllamaProvider)
+        self.assertFalse(provider.native_tools)
+
 
 if __name__ == "__main__":
     unittest.main()

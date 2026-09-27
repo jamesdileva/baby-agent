@@ -25,7 +25,8 @@ export async function startSession(
   goal: string,
   workspace: string,
   model: string,
-  provider: string
+  provider: string,
+  verifyCommand: string
 ): Promise<{ session_id: string }> {
   const resp = await fetch("/api/session/start", {
     method: "POST",
@@ -35,6 +36,7 @@ export async function startSession(
       workspace,
       model: model || null,
       provider: provider || null,
+      verify_command: verifyCommand || null,
     }),
   });
   if (!resp.ok) throw new Error((await resp.json()).error ?? resp.statusText);

@@ -63,3 +63,20 @@ Four live findings, all fixed:
    the server cwd, now explicit.
 - Suite 1706 OK (1705 + 1); pyflakes clean; npm build green;
   live smoke re-run (CSS link present, encoded browse, 20 models).
+
+## S96.2 protocol fix + honesty badge (user-tested same day)
+
+The user's dashboard sessions (`Can you read the documents…`,
+ep11-q4) recorded `partial` with **0 tool calls**: the dashboard
+was the only consumer of the NATIVE tool path, while every
+verdict runs the TEXTUAL shim — ep11 emitted a JSON-shaped text
+blob that parsed to zero calls, and with no verifier the loop
+accepted it as final. Fix: `default_provider_factory` builds
+ollama sessions with `native_tools=False` (gemini stays native —
+its proven path). UI: UNVERIFIED badge + hint on verifier-less
+completions, plus a verify-command input plumbed end to end.
+Live re-run of the exact goal: 25 tool calls (list/reads/tests),
+document read — fix proven; session ran to max-iters on the
+vague goal (open-ended goals thrash without a verifier — noted,
+not this slice). Suite 1707 OK. `qa drip` 429s confirmed as
+spent free-tier quota (working as designed, no change).

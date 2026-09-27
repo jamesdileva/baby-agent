@@ -80,6 +80,14 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-27 — **S96.2 Dashboard protocol fix (user-tested)** —
+  dashboard was the only NATIVE-path consumer; ep11 speaks
+  TEXTUAL, so sessions completed with 0 calls. Factory now
+  builds ollama sessions textual (gemini stays native) +
+  UNVERIFIED badge + verify-command input. Live re-run: 25
+  calls, document read. Suite 1707 OK. Spec: docs/s96-spec.md
+  (S96.2 section).
+
 - 2026-09-27 — **S96.1 Dashboard repair (user-tested same
   day)** — root cause: `main.tsx` never imported the stylesheet
   (dark theme existed since S52, never wired — always white) +

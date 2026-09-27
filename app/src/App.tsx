@@ -22,6 +22,7 @@ export default function App() {
   const [models, setModels] = useState<string[]>([]);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [provider, setProvider] = useState("ollama");
+  const [verifyCommand, setVerifyCommand] = useState("");
   const [startError, setStartError] = useState<string | null>(null);
   const [browse, setBrowse] = useState<BrowseResult | null>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -88,7 +89,7 @@ export default function App() {
   async function handleStart() {
     setStartError(null);
     try {
-      const { session_id } = await startSession(goal, workspace, model, provider);
+      const { session_id } = await startSession(goal, workspace, model, provider, verifyCommand);
       setActiveId(session_id);
       refreshSessions();
     } catch (e) {
@@ -189,6 +190,11 @@ export default function App() {
           <option value="ollama">ollama (local)</option>
           <option value="gemini">gemini (free tier)</option>
         </select>
+        <input
+          value={verifyCommand}
+          onChange={(e) => setVerifyCommand(e.target.value)}
+          placeholder="verify command (optional, e.g. python -m unittest)"
+        />
         <button onClick={handleStart}>Start agent</button>
         {activeId && <button onClick={handleStop}>Stop</button>}
         {startError && <p className="error">{startError}</p>}
@@ -236,6 +242,13 @@ export default function App() {
             </ul>
           )}
           {active.done && <p className="done">done: {active.termination_reason}</p>}
+          {active.done && active.verification_results.length === 0 && (
+            <p className="unverified">
+              unverified — no verify command was set, so completion means the model
+              stopped, not that anything was proven. Add a verify command (e.g.
+              python -m unittest) next run for a real gate.
+            </p>
+          )}
         </section>
       )}
       <section className="feed">

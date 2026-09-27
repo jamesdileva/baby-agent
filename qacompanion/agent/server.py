@@ -55,14 +55,18 @@ def default_provider_factory(model: Optional[str] = None,
     locals. Any other value is an honest startup error. S96: an
     explicit per-session provider overrides the env (model choice
     already traveled per-session); unset keeps every old call
-    working."""
+    working. S96.2: ollama sessions use the TEXTUAL shim
+    (native_tools=False) — the contract our models speak and every
+    verdict runs under; the native path left dashboard sessions
+    completing with zero tool calls. Gemini stays native (its
+    proven passing path)."""
     import os as _os
 
     selected = ((provider or _os.environ.get("QA_AGENT_PROVIDER")
                  or "ollama").lower())
     if selected == "ollama":
         from .providers import OllamaProvider
-        return OllamaProvider(model=model)
+        return OllamaProvider(model=model, native_tools=False)
     if selected == "gemini":
         from .providers import GeminiModelProvider
         return GeminiModelProvider()
