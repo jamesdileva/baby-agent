@@ -207,29 +207,71 @@ def capture_screen_rgb() -> Tuple[int, int, List[bytes]]:
     return width, height, _capture_region_rgb(0, 0, width, height)
 
 
-def capture_window_rgb(title: str) -> Tuple[int, int, List[bytes], Tuple[int, int, int, int]]:
+class RECT(ctypes.Structure):
+    _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
+                ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+
+
+def _top_level_windows():
+    """[(hwnd, title)] for visible top-level windows (Windows only)."""
+    found = []
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def _enum(hwnd, _param):
+        if ctypes.windll.user32.IsWindowVisible(hwnd):
+            length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+            if length:
+                buffer = ctypes.create_unicode_buffer(length + 1)
+                ctypes.windll.user32.GetWindowTextW(hwnd, buffer, length + 1)
+                if buffer.value:
+                    found.append((hwnd, buffer.value))
+        return True
+
+    ctypes.windll.user32.EnumWindows(_enum, None)
+    return found
+
+
+def _match_window_title(query, candidates):
+    """Pure matcher: exact title first, else case-insensitive substring
+    (first hit). Returns the matched (hwnd, title) or None."""
+    for hwnd, title in candidates:
+        if title == query:
+            return hwnd, title
+    lowered = query.lower()
+    for hwnd, title in candidates:
+        if lowered in title.lower():
+            return hwnd, title
+    return None
+
+
+def _find_window(title: str):
+    """Exact FindWindowW, else substring scan (S98: real window titles
+    are page titles — bare 'Firefox' never matches exactly)."""
+    user32 = ctypes.windll.user32
+    hwnd = user32.FindWindowW(None, title)
+    if hwnd:
+        return hwnd, title
+    matched = _match_window_title(title, _top_level_windows())
+    if matched is not None:
+        return matched
+    raise VisionError(f"no window with title {title!r}")
+
+
+def capture_window_rgb(title: str):
     if os.name != "nt":
         raise VisionError(
             f"screen capture unsupported on {os.name!r} (Windows GDI only)"
         )
-    user32 = ctypes.windll.user32
-
-    class RECT(ctypes.Structure):
-        _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
-                    ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
-
-    hwnd = user32.FindWindowW(None, title)
-    if not hwnd:
-        raise VisionError(f"no window with title {title!r}")
+    hwnd, matched = _find_window(title)
     rect = RECT()
-    if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
-        raise VisionError(f"GetWindowRect failed for {title!r}")
+    if not ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+        raise VisionError(f"GetWindowRect failed for {matched!r}")
     width, height = rect.right - rect.left, rect.bottom - rect.top
     if width <= 0 or height <= 0:
-        raise VisionError(f"window {title!r} has no visible area")
+        raise VisionError(f"window {matched!r} has no visible area")
     return (width, height,
             _capture_region_rgb(rect.left, rect.top, width, height),
-            (rect.left, rect.top, width, height))
+            (rect.left, rect.top, width, height), matched)
 
 
 # --- vision providers -------------------------------------------------------
@@ -375,18 +417,30 @@ class VisionToolkit:
             "captured_at": _utc_stamp(),
         }
 
-    def capture_screen(self, path: str) -> str:
+    def capture_screen(self, path: str = "screenshot.png") -> str:
         width, height, rows = capture_screen_rgb()
         return json.dumps(self._save_capture(path, width, height, rows),
                           ensure_ascii=False)
 
-    def capture_window(self, path: str, title: str) -> str:
-        width, height, rows, _rect = capture_window_rgb(title)
-        return json.dumps(self._save_capture(path, width, height, rows),
-                          ensure_ascii=False)
+    def capture_window(self, path: str = "window.png", title: str = None,
+                       window: str = None) -> str:
+        # S98: `window` is the name models reach for ("named window" in
+        # the description); accept it as an alias for `title`
+        title = title or window
+        if not title:
+            raise VisionError("capture_window needs a window title "
+                              "(title= or window=)")
+        width, height, rows, _rect, matched = capture_window_rgb(title)
+        saved = self._save_capture(path, width, height, rows)
+        saved["matched_title"] = matched
+        return json.dumps(saved, ensure_ascii=False)
 
-    def capture_region(self, path: str, x: int, y: int,
-                       width: int, height: int) -> str:
+    def capture_region(self, x: int, y: int,
+                         width: int, height: int,
+                         path: str = "region.png") -> str:
+        # S98: path last with a default — the model twice omitted it
+        # (registry passes kwargs, so reordering is safe there;
+        # positional test callers updated alongside)
         if os.name != "nt":
             raise VisionError(
                 f"screen capture unsupported on {os.name!r} (Windows GDI only)"
@@ -496,26 +550,30 @@ class VisionToolkit:
 
         path_schema = {"type": "object",
                        "properties": {"path": {"type": "string"}},
-                       "required": ["path"]}
+                       "required": []}
         return [
             _tool("capture_screen", "Capture the whole screen as a PNG in "
-                  "the workspace.", path_schema, self.capture_screen,
+                  "the workspace (path optional, defaults to "
+                  "screenshot.png).", path_schema, self.capture_screen,
                   SAFE_WRITE),
             _tool("capture_window", "Capture a named window's visible "
-                  "rectangle as a PNG.",
+                  "rectangle as a PNG (partial titles match; path "
+                  "optional, defaults to window.png).",
                   {"type": "object",
                    "properties": {"path": {"type": "string"},
-                                  "title": {"type": "string"}},
-                   "required": ["path", "title"]},
+                                  "title": {"type": "string"},
+                                  "window": {"type": "string"}},
+                   "required": []},
                   self.capture_window, SAFE_WRITE),
-            _tool("capture_region", "Capture a screen region as a PNG.",
+            _tool("capture_region", "Capture a screen region as a PNG "
+                  "(path optional, defaults to region.png).",
                   {"type": "object",
                    "properties": {
                        "path": {"type": "string"}, "x": {"type": "integer"},
                        "y": {"type": "integer"},
                        "width": {"type": "integer"},
                        "height": {"type": "integer"}},
-                   "required": ["path", "x", "y", "width", "height"]},
+                   "required": ["x", "y", "width", "height"]},
                   self.capture_region, SAFE_WRITE),
             _tool("inspect_image", "Send a workspace image to the vision "
                   "provider and return its text observation (EXTERNAL: "

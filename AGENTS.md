@@ -80,6 +80,16 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-27 — **S98 — Window matching + loop termination** —
+  user session forensics (13 steps): desktop shot worked, Firefox
+  failed on arg-name + exact-only matching, then 5 identical
+  re-reads (S58 never wired into dashboard). Substring matching
+  with title echo, `window` alias, optional capture paths
+  (desktop also burned 2 turns on missing path), RecoveryPolicy
+  wired in. Live Firefox proof captured. Noted follow-up:
+  environment-marker failures loop uncounted. Suite 1721 OK
+  (1713 + 8, verified). Spec: docs/s98-spec.md.
+
 - 2026-09-27 — **S97 — Eyes for dashboard sessions + blank
   detector** — screenshots were never offered (coding registry
   has no vision); dashboard sessions now get all 5 vision tools

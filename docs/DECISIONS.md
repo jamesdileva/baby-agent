@@ -1574,6 +1574,19 @@ refusal + human "proceed" 2026-09-27.
 
 Status: Adopted 2026-09-27. Spec: docs/s97-spec.md.
 
+### S98 window matching + loop termination
+
+**Decision:** (1) Substring window matching (exact first,
+auto-pick + echo, listing on miss) — real titles are page
+titles. (2) `window` alias + optional capture paths (the
+desktop shot also burned two turns on missing path). (3) S58
+recovery wired into dashboard sessions; live-noted follow-up:
+environment-marker failures loop on ENVIRONMENT_CHECK without
+counting. Provenance: user-tested 13-step session forensics
+2026-09-27.
+
+Status: Adopted 2026-09-27. Spec: docs/s98-spec.md.
+
 ### S94.3 9B exploration verdict: 4b out, think off, 9B queued
 
 **Decision:** (1) qwen3.5:4b RULED OUT as an agent base: 0/15

@@ -204,15 +204,17 @@ class TestCaptureReal(unittest.TestCase):
         self.assertEqual(len(rows), height)
 
     def test_capture_region_exact_dimensions(self):
-        out = self.toolkit.capture_region("shots/region.png", 0, 0, 320, 200)
+        out = self.toolkit.capture_region(0, 0, 320, 200,
+                                          "shots/region.png")
         payload = json.loads(out)
         self.assertEqual((payload["width"], payload["height"]), (320, 200))
 
     def test_capture_region_bounds_validated(self):
         with self.assertRaises(VisionError):
-            self.toolkit.capture_region("shots/big.png", 0, 0, 999999, 100)
+            self.toolkit.capture_region(0, 0, 999999, 100,
+                                        "shots/big.png")
         with self.assertRaises(VisionError):
-            self.toolkit.capture_region("shots/neg.png", -1, 0, 10, 10)
+            self.toolkit.capture_region(-1, 0, 10, 10, "shots/neg.png")
 
     def test_capture_window_unknown_title(self):
         with self.assertRaises(VisionError) as ctx:
@@ -392,6 +394,80 @@ class TestAgentRegistryIncludesVision(unittest.TestCase):
                 self.assertIn(name, reg.names())
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+class TestWindowMatching(unittest.TestCase):
+    """S98: exact first, case-insensitive substring fallback."""
+
+    def test_exact_wins(self):
+        from qacompanion.agent.vision import _match_window_title
+        cands = [(1, "Mozilla Firefox"), (2, "Firefox")]
+        self.assertEqual(_match_window_title("Firefox", cands),
+                         (2, "Firefox"))
+
+    def test_substring_case_insensitive(self):
+        from qacompanion.agent.vision import _match_window_title
+        cands = [(1, "Inbox - Mozilla Firefox"), (2, "Explorer")]
+        self.assertEqual(_match_window_title("firefox", cands),
+                         (1, "Inbox - Mozilla Firefox"))
+
+    def test_first_hit_on_multi_match(self):
+        from qacompanion.agent.vision import _match_window_title
+        cands = [(1, "a-notepad"), (2, "b-notepad")]
+        self.assertEqual(_match_window_title("notepad", cands),
+                         (1, "a-notepad"))
+
+    def test_no_match_is_none(self):
+        from qacompanion.agent.vision import _match_window_title
+        self.assertIsNone(_match_window_title("zzz", [(1, "Explorer")]))
+        self.assertIsNone(_match_window_title("zzz", []))
+
+
+class TestCaptureConvenience(unittest.TestCase):
+    """S98: `window` alias + default paths (hermetic: GDI patched)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.ws = Workspace(self.tmp)
+        self.toolkit = VisionToolkit(self.ws, FakeVisionProvider())
+        self.reg = ToolRegistry()
+        for tool in self.toolkit.tools():
+            self.reg.register(tool)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_window_alias_accepted_and_echoed(self):
+        rows = _solid(2, 1, (9, 9, 9))
+        with patch("qacompanion.agent.vision.capture_window_rgb",
+                   return_value=(2, 1, rows, (0, 0, 2, 1),
+                                 "Inbox - Mozilla Firefox")):
+            result = self.reg.execute(
+                ToolCall(name="capture_window",
+                         arguments={"window": "firefox"}),
+                workspace=self.ws)
+        self.assertTrue(result.ok, result.error)
+        payload = json.loads(result.output)
+        self.assertEqual(payload["matched_title"],
+                         "Inbox - Mozilla Firefox")
+        self.assertTrue((self.tmp / "window.png").exists())
+
+    def test_missing_title_is_structured_error(self):
+        result = self.reg.execute(
+            ToolCall(name="capture_window", arguments={}),
+            workspace=self.ws)
+        self.assertFalse(result.ok)
+        self.assertIn("title", result.error)
+
+    def test_capture_screen_defaults_path(self):
+        rows = _solid(2, 1, (9, 9, 9))
+        with patch("qacompanion.agent.vision.capture_screen_rgb",
+                   return_value=(2, 1, rows)):
+            result = self.reg.execute(
+                ToolCall(name="capture_screen", arguments={}),
+                workspace=self.ws)
+        self.assertTrue(result.ok, result.error)
+        self.assertTrue((self.tmp / "screenshot.png").exists())
 
 
 if __name__ == "__main__":

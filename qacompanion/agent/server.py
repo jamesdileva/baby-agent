@@ -298,9 +298,14 @@ class AgentServerApp:
             try:
                 run_provider = self.provider_factory(model, provider)
                 registry = dashboard_registry(ws, store)
+                # S98: the S58 no-progress machinery, so identical
+                # failures terminate honestly (alternate, then ASK)
+                # instead of burning max_iterations on repeats
+                from .recovery import RecoveryStateMachine
                 loop = AgentLoop(run_provider, registry, ws,
                                  verifier=verifier,
-                                 cancel_event=cancel_event, events=events)
+                                 cancel_event=cancel_event, events=events,
+                                 recovery=RecoveryStateMachine())
                 session = loop.run(goal, session=pre_session)
                 managed.session = session
                 if store is not None:

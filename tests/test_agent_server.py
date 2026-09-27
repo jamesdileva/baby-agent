@@ -370,6 +370,43 @@ class TestS96DashboardSurface(ServerBase):
                      "detect_blank_screen"):
             self.assertIn(name, reg.names())
 
+    def test_repeating_failure_terminates_honestly(self):
+        # S98: the S58 no-progress machinery is wired in — an
+        # identical failing call terminates with a stated reason
+        # instead of burning max_iterations on repeats. The failure
+        # is a validation error (NOT an environment marker — those
+        # route to ENVIRONMENT_CHECK by S58 design, observed live
+        # looping there; separate follow-up, not this slice).
+        from qacompanion.agent import ModelResponse, ToolCall
+        from qacompanion.agent.providers import ModelProvider
+
+        class _Looper(ModelProvider):
+            name = "looper"
+
+            def generate(self, request):
+                return ModelResponse(
+                    text="", tool_calls=[ToolCall(
+                        name="read_file", arguments={})],
+                    finish_reason="tool_calls")
+
+        app = AgentServerApp(
+            provider_factory=lambda model=None, provider=None: _Looper(),
+            experience_store=self.store)
+        session_id = app.start_session(
+            goal="read the ghost file", workspace=str(self.tmp / "ws9"))
+        import time
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            if app.sessions[session_id].done:
+                break
+            time.sleep(0.05)
+        summary = app.sessions[session_id].summary()
+        self.assertTrue(summary["done"])
+        self.assertEqual(summary["state"], "FAILED")
+        self.assertLess(summary["iterations"], 25)
+        self.assertIn("human decision",
+                      summary["termination_reason"])
+
     def test_verdict_carries_decoding_flags(self):
         seen = {}
         self.app.verdict_runner = lambda models, tasks, temperature=None, \
