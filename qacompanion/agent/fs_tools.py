@@ -171,7 +171,14 @@ class FilesystemToolkit:
                 f"({size} bytes > {MAX_READ_BYTES}); read a narrower path"
             )
         if _is_binary_file(target):
-            raise ToolOperationError(f"binary file: {self._rel(target)}")
+            # S99: name the alternatives — the dashboard loop burned 5
+            # identical retries on a PNG because nothing said where
+            # images go (inspect_image needs approval,
+            # detect_blank_screen runs locally)
+            raise ToolOperationError(
+                f"binary file: {self._rel(target)} — images cannot be "
+                "read as text; use inspect_image (needs approval) or "
+                "detect_blank_screen for PNGs")
         try:
             text = target.read_text(encoding="utf-8-sig")
         except UnicodeDecodeError as exc:

@@ -137,6 +137,10 @@ class ManagedSession:
     done: bool = False
     thread: Optional[threading.Thread] = None
     subscribers: List[Any] = field(default_factory=list)
+    # S99: at most one outstanding EXTERNAL approval per session (the
+    # loop is sequential); the confirm endpoint resolves it
+    pending_confirmation: Optional[Dict[str, Any]] = None
+    confirm_event: Any = None
 
     def summary(self) -> Dict[str, Any]:
         session = self.session
@@ -154,6 +158,7 @@ class ManagedSession:
             else None,
             "done": self.done,
             "error": self.error,
+            "pending_confirmation": self.pending_confirmation,
         }
 
 
@@ -162,6 +167,11 @@ def _verify_plan(verify_command: str) -> VerificationPlan:
         VerificationStep(name="verify", category="RUNTIME",
                          command=verify_command),
     ])
+
+
+# S99: how long an EXTERNAL approval waits for the human before
+# safely denying (today's behavior when nobody answers)
+CONFIRM_TIMEOUT_SECONDS = 300.0
 
 
 def dashboard_registry(ws, store):
@@ -298,6 +308,26 @@ class AgentServerApp:
             try:
                 run_provider = self.provider_factory(model, provider)
                 registry = dashboard_registry(ws, store)
+                # S99: EXTERNAL approvals resolve through the dashboard
+                # (confirm endpoint); timeout or no answer denies safely
+                def session_confirmer(tool_call, decision):
+                    event = threading.Event()
+                    with self._lock:
+                        managed.pending_confirmation = {
+                            "tool": tool_call.name,
+                            "arguments": dict(tool_call.arguments),
+                        }
+                        managed.confirm_event = event
+                    answered = event.wait(
+                        timeout=CONFIRM_TIMEOUT_SECONDS)
+                    with self._lock:
+                        pending = managed.pending_confirmation or {}
+                        approved = bool(pending.get("approved")) \
+                            if answered else False
+                        managed.pending_confirmation = None
+                        managed.confirm_event = None
+                    return approved
+
                 # S98: the S58 no-progress machinery, so identical
                 # failures terminate honestly (alternate, then ASK)
                 # instead of burning max_iterations on repeats
@@ -305,6 +335,7 @@ class AgentServerApp:
                 loop = AgentLoop(run_provider, registry, ws,
                                  verifier=verifier,
                                  cancel_event=cancel_event, events=events,
+                                 confirmer=session_confirmer,
                                  recovery=RecoveryStateMachine())
                 session = loop.run(goal, session=pre_session)
                 managed.session = session
@@ -324,6 +355,23 @@ class AgentServerApp:
         if managed is None:
             return False
         managed.cancel_event.set()
+        return True
+
+    def confirm_session(self, session_id: str,
+                        approved: bool) -> Optional[bool]:
+        """S99: resolve a pending EXTERNAL approval. Returns True when
+        a pending confirmation was resolved, False when the session
+        has none, None for unknown sessions."""
+        with self._lock:
+            managed = self.sessions.get(session_id)
+            if managed is None:
+                return None
+            if managed.pending_confirmation is None:
+                return False
+            managed.pending_confirmation["approved"] = bool(approved)
+            event = managed.confirm_event
+        if event is not None:
+            event.set()
         return True
 
     def subscribe(self, session_id: str) -> Optional["queue.Queue"]:
@@ -513,6 +561,23 @@ def make_handler(app: AgentServerApp):
                 stopped = app.stop_session(session_id)
                 self._json({"stopped": bool(stopped)},
                            200 if stopped else 404)
+            elif self.path.startswith("/api/session/") \
+                    and self.path.endswith("/confirm"):
+                session_id = self.path[len("/api/session/"):-len("/confirm")]
+                try:
+                    body = self._read_json()
+                    resolved = app.confirm_session(
+                        session_id, bool(body.get("approved", False)))
+                except Exception as exc:
+                    self._json({"error": f"{type(exc).__name__}: {exc}"},
+                               400)
+                    return
+                if resolved is None:
+                    self._json({"error": "unknown session"}, 404)
+                elif not resolved:
+                    self._json({"error": "no pending confirmation"}, 409)
+                else:
+                    self._json({"confirmed": True})
             elif self.path == "/api/drip":
                 self._json({"job_id": app.start_drip()})
             elif self.path == "/api/verdict":

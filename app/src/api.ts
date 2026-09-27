@@ -10,6 +10,10 @@ export interface SessionSummary {
   termination_reason: string | null;
   done: boolean;
   error: string | null;
+  pending_confirmation: {
+    tool: string;
+    arguments: Record<string, unknown>;
+  } | null;
 }
 
 export interface AgentEvent {
@@ -45,6 +49,18 @@ export async function startSession(
 
 export async function stopSession(sessionId: string): Promise<void> {
   await fetch(`/api/session/${sessionId}/stop`, { method: "POST" });
+}
+
+export async function confirmSession(
+  sessionId: string,
+  approved: boolean
+): Promise<void> {
+  const resp = await fetch(`/api/session/${sessionId}/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ approved }),
+  });
+  if (!resp.ok) throw new Error((await resp.json()).error ?? resp.statusText);
 }
 
 export interface Job {

@@ -205,6 +205,15 @@ class TestReadFile(FsTestBase):
         self.assertFalse(result.ok)
         self.assertIn("binary", result.error)
 
+    def test_binary_rejection_names_image_alternatives(self):
+        # S99: the dashboard loop burned 5 identical retries on a PNG
+        # because nothing said where images go
+        (self.tmp / "shot.png").write_bytes(b"\x89PNG\x00fake")
+        result = self.call("read_file", path="shot.png")
+        self.assertFalse(result.ok)
+        self.assertIn("inspect_image", result.error)
+        self.assertIn("detect_blank_screen", result.error)
+
     def test_invalid_utf8_rejected(self):
         (self.tmp / "bad.txt").write_bytes(b"ok\xff\xfe tail")
         result = self.call("read_file", path="bad.txt")

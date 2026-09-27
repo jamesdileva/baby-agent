@@ -5,11 +5,14 @@ complete deterministically.
 """
 
 import json
+import os
 import sys
 import tempfile
+import time
 import unittest
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 from qacompanion.agent import FakeModelProvider, ModelResponse, ToolCall
 from qacompanion.agent.experience import ExperienceStore
@@ -370,8 +373,7 @@ class TestS96DashboardSurface(ServerBase):
                      "detect_blank_screen"):
             self.assertIn(name, reg.names())
 
-    def test_repeating_failure_terminates_honestly(self):
-        # S98: the S58 no-progress machinery is wired in — an
+    def test_repeating_failure_terminates_honestly(self):        # S98: the S58 no-progress machinery is wired in — an
         # identical failing call terminates with a stated reason
         # instead of burning max_iterations on repeats. The failure
         # is a validation error (NOT an environment marker — those
@@ -422,6 +424,125 @@ class TestS96DashboardSurface(ServerBase):
             time.sleep(0.1)
         self.assertEqual(seen["temperature"], 0)
         self.assertEqual(seen["seed"], 42)
+
+
+class TestSessionConfirmations(ServerBase):
+    """S99: EXTERNAL approvals resolve through the dashboard."""
+
+    def _inspect_session(self, timeout_patch=None):
+        from qacompanion.agent import FakeModelProvider, ModelResponse, ToolCall
+        from qacompanion.agent.vision import encode_png
+        ws = self.tmp / "shot-ws"
+        ws.mkdir(exist_ok=True)
+        (ws / "shot.png").write_bytes(encode_png(2, 1, [
+            b"\xff\xff\xff\xff\xff\xff"]))
+        script = [ToolCall(name="inspect_image",
+                           arguments={"path": "shot.png"}),
+                  ModelResponse(text="described", finish_reason="stop")]
+        app = AgentServerApp(
+            provider_factory=lambda model=None, provider=None: (
+                FakeModelProvider([i for i in script])),
+            experience_store=self.store)
+        # patches stay live for the whole session: the toolkit
+        # resolves the provider and the confirmer reads the timeout
+        # inside the session thread, not at construction
+        stoppers = []
+        env = patch.dict(os.environ, {}, clear=False)
+        env.start()
+        stoppers.append(env.stop)
+        os.environ.pop("GEMINI_API_KEY", None)
+        if timeout_patch is not None:
+            patcher = patch(
+                "qacompanion.agent.server.CONFIRM_TIMEOUT_SECONDS",
+                timeout_patch)
+            patcher.start()
+            stoppers.append(patcher.stop)
+        sid = app.start_session(
+            goal="describe the screenshot",
+            workspace=str(ws), model="m")
+        return app, sid, stoppers
+
+    def _await_pending(self, app, sid):
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            pending = app.sessions[sid].summary()["pending_confirmation"]
+            if pending is not None:
+                return pending
+            if app.sessions[sid].done:
+                return None
+            time.sleep(0.05)
+        return app.sessions[sid].summary()["pending_confirmation"]
+
+    def _await_done(self, app, sid):
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            if app.sessions[sid].done:
+                break
+            time.sleep(0.05)
+
+    def test_approve_reaches_tool(self):
+        app, sid, stoppers = self._inspect_session()
+        try:
+            pending = self._await_pending(app, sid)
+            self.assertIsNotNone(pending)
+            self.assertEqual(pending["tool"], "inspect_image")
+            self.assertTrue(app.confirm_session(sid, True))
+            self._await_done(app, sid)
+            summary = app.sessions[sid].summary()
+            self.assertTrue(summary["done"])
+            self.assertIsNone(summary["pending_confirmation"])
+        finally:
+            app.sessions[sid].cancel_event.set()
+            for stop in stoppers:
+                stop()
+
+    def test_deny_blocks_tool(self):
+        app, sid, stoppers = self._inspect_session()
+        try:
+            self.assertIsNotNone(self._await_pending(app, sid))
+            self.assertTrue(app.confirm_session(sid, False))
+            self._await_done(app, sid)
+            recs = [r for r in self.store.load()
+                    if "screenshot" in r.goal]
+            self.assertTrue(recs)
+            steps = recs[-1].context.get("tool_calls") or []
+            denied = [s for s in steps
+                      if s.get("tool") == "inspect_image"
+                      and not s.get("ok")]
+            self.assertTrue(denied)
+        finally:
+            app.sessions[sid].cancel_event.set()
+            for stop in stoppers:
+                stop()
+
+    def test_timeout_denies_safely(self):
+        app, sid, stoppers = self._inspect_session(timeout_patch=0.05)
+        try:
+            self._await_done(app, sid)
+            summary = app.sessions[sid].summary()
+            self.assertTrue(summary["done"])
+            self.assertIsNone(summary["pending_confirmation"])
+        finally:
+            app.sessions[sid].cancel_event.set()
+            for stop in stoppers:
+                stop()
+
+    def test_confirm_unknown_session_404(self):
+        import urllib.error
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            self.post("/api/session/ghost/confirm", {"approved": True})
+        self.assertEqual(404, ctx.exception.code)
+
+    def test_confirm_without_pending_409(self):
+        import urllib.error
+        session_id = self.post("/api/session/start", {
+            "goal": "create hello.txt",
+            "workspace": str(self.tmp / "ws10"),
+        })["session_id"]
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            self.post(f"/api/session/{session_id}/confirm",
+                      {"approved": True})
+        self.assertEqual(409, ctx.exception.code)
 
 
 if __name__ == "__main__":

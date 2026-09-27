@@ -1587,6 +1587,17 @@ counting. Provenance: user-tested 13-step session forensics
 
 Status: Adopted 2026-09-27. Spec: docs/s98-spec.md.
 
+### S99 dashboard approvals + image guidance
+
+**Decision:** Per-session Approve/Deny for EXTERNAL tools
+(timeout denies safely; DESTRUCTIVE stays DENY); binary-read
+rejections name the image tools; captures stay local-ignored.
+The S98 ladder is proven by the user's own session (honest
+FAILED at 9, not 25). Provenance: user-tested Firefox session
+forensics + approvals 2026-09-27.
+
+Status: Adopted 2026-09-27. Spec: docs/s99-spec.md.
+
 ### S94.3 9B exploration verdict: 4b out, think off, 9B queued
 
 **Decision:** (1) qwen3.5:4b RULED OUT as an agent base: 0/15

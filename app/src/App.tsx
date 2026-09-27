@@ -5,6 +5,7 @@ import {
   Job,
   SessionSummary,
   browseDirectory,
+  confirmSession,
   listJobs,
   listModels,
   listSessions,
@@ -99,6 +100,10 @@ export default function App() {
 
   async function handleStop() {
     if (activeId) await stopSession(activeId);
+  }
+
+  async function handleConfirm(approved: boolean) {
+    if (activeId) await confirmSession(activeId, approved);
   }
 
   async function openPicker() {
@@ -232,6 +237,16 @@ export default function App() {
             {active.model ?? "default"}
           </p>
           {active.error && <p className="error">{active.error}</p>}
+          {active.pending_confirmation && (
+            <div className="confirm">
+              <p>
+                Approval needed: {active.pending_confirmation.tool}{" "}
+                {JSON.stringify(active.pending_confirmation.arguments)}
+              </p>
+              <button onClick={() => handleConfirm(true)}>Approve</button>
+              <button onClick={() => handleConfirm(false)}>Deny</button>
+            </div>
+          )}
           {active.verification_results.length > 0 && (
             <ul>
               {active.verification_results.map((v, i) => (

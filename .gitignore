@@ -40,3 +40,6 @@ ep14-q4.gguf
 
 # Colab notebooks live locally only, never committed
 *.ipynb
+
+# session captures stay local (per-session workspace PNGs)
+*.png

@@ -80,6 +80,14 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-27 — **S99 — Dashboard approvals + image guidance**
+  — user Firefox forensics: capture ok, inspect denied (no
+  confirmer), binary-read loop ×5 → honest FAILED at 9 via S98
+  ladder. Approve/Deny seam (timeout denies, DESTRUCTIVE stays
+  DENY) + binary error names image tools + *.png ignored. Live
+  proof: approved inspect → COMPLETED. Suite 1727 OK. Spec:
+  docs/s99-spec.md.
+
 - 2026-09-27 — **S98 — Window matching + loop termination** —
   user session forensics (13 steps): desktop shot worked, Firefox
   failed on arg-name + exact-only matching, then 5 identical

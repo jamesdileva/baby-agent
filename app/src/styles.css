@@ -12,6 +12,7 @@ li { padding: 0.15rem 0; border-bottom: 1px solid #212933; }
 .type { color: #8ab4f8; }
 .done { color: #7ee787; }
 .unverified { color: #f8d38a; }
+.confirm { border: 1px solid #f8d38a; border-radius: 4px; padding: 0.4rem 0.6rem; margin: 0.4rem 0; }
 .error { color: #f87e7e; }
 .workspace-row { display: flex; gap: 0.4rem; align-items: center; }
 .workspace-row input { flex: 1; }
