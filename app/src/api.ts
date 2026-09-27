@@ -24,12 +24,18 @@ export interface AgentEvent {
 export async function startSession(
   goal: string,
   workspace: string,
-  model: string
+  model: string,
+  provider: string
 ): Promise<{ session_id: string }> {
   const resp = await fetch("/api/session/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ goal, workspace, model: model || null }),
+    body: JSON.stringify({
+      goal,
+      workspace,
+      model: model || null,
+      provider: provider || null,
+    }),
   });
   if (!resp.ok) throw new Error((await resp.json()).error ?? resp.statusText);
   return resp.json();
@@ -56,12 +62,14 @@ export async function startDrip(): Promise<{ job_id: string }> {
 
 export async function startVerdict(
   models: string,
-  tasks: number
+  tasks: number,
+  temperature?: string,
+  seed?: string
 ): Promise<{ job_id: string }> {
   const resp = await fetch("/api/verdict", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ models, tasks }),
+    body: JSON.stringify({ models, tasks, temperature, seed }),
   });
   if (!resp.ok) throw new Error((await resp.json()).error ?? resp.statusText);
   return resp.json();
@@ -76,6 +84,25 @@ export async function listJobs(): Promise<Job[]> {
 export async function listSessions(): Promise<SessionSummary[]> {
   const resp = await fetch("/api/sessions");
   return (await resp.json()).sessions;
+}
+
+export async function listModels(): Promise<string[]> {
+  const resp = await fetch("/api/models");
+  if (!resp.ok) throw new Error((await resp.json()).error ?? resp.statusText);
+  return (await resp.json()).models;
+}
+
+export interface BrowseResult {
+  path: string;
+  parent: string;
+  directories: string[];
+  sep: string;
+}
+
+export async function browseDirectory(path: string): Promise<BrowseResult> {
+  const resp = await fetch(`/api/browse?path=${encodeURIComponent(path)}`);
+  if (!resp.ok) throw new Error((await resp.json()).error ?? resp.statusText);
+  return resp.json();
 }
 
 export function openEventStream(

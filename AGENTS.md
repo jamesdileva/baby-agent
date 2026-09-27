@@ -80,6 +80,15 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-27 — **S96 — Dashboard usefulness (deferred backlog,
+  now unblocked)** — model chooser from `ollama list` (9B slides
+  in free) + per-session provider override + folder picker over
+  `/api/browse` + feed payload rendering (the tested complaint)
+  + verdict temp/seed inputs. Server hermetic tests (7 new),
+  npm build green, live smoke vs real ollama/fs. Electron,
+  thinking toggles, dashboard training stay deferred. Suite 1705
+  OK, pyflakes clean. Spec: docs/s96-spec.md.
+
 - 2026-09-27 — **S95 — Rung-3 demos + success-hygiene filter
   (ep11-beats-ep14 explained)** — forensics: verdict successes
   at ~1 fail/run with uncorrected wrong turns taught ep12–14 to

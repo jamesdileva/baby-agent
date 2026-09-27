@@ -241,7 +241,10 @@ class AgentLoop:
                        iteration=session.iterations,
                        finish_reason=response.finish_reason,
                        has_tool_calls=response.has_tool_calls(),
-                       tool_call_names=[c.name for c in response.tool_calls])
+                       tool_call_names=[c.name for c in response.tool_calls],
+                       # S96: the dashboard feed renders this — capped so
+                       # a runaway generation cannot flood subscribers
+                       text=(response.text or "")[:300])
 
             if response.finish_reason == "error":
                 self._record_failure(session, response.text or "model error")

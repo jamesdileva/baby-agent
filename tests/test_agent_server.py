@@ -20,7 +20,7 @@ PY = f'"{sys.executable}"'
 
 def _fake_factory(fix_script=None):
     """Provider factory: each session gets a fresh scripted provider."""
-    def factory(model=None):
+    def factory(model=None, provider=None):
         script = fix_script if fix_script is not None else [
             ToolCall(name="write_file", arguments={
                 "path": "hello.txt", "content": "built by the agent"}),
@@ -152,7 +152,8 @@ class TestSSEStream(ServerBase):
 
     def test_stop_endpoint_cancels(self):
         # a scripted provider that never finishes: cancel mid-flight
-        app = AgentServerApp(provider_factory=lambda model=None: (
+        app = AgentServerApp(provider_factory=lambda model=None,
+                                                              provider=None: (
             _NeverDoneProvider()), experience_store=self.store)
         server = AgentServer(app)
         server.serve()
@@ -208,8 +209,9 @@ class TestOperations(ServerBase):
     def setUp(self):
         super().setUp()
         self.app.drip_runner = lambda: ("SUCCESS | goal completed"
-                                        " | iters=6 | calls=5")
-        self.app.verdict_runner = lambda models, tasks: (
+                                         " | iters=6 | calls=5")
+        self.app.verdict_runner = lambda models, tasks, temperature=None, \
+            seed=None: (
             f"generation verdict: {','.join(models)}"
             f" ({tasks} tasks)")
 
@@ -256,6 +258,113 @@ class TestOperations(ServerBase):
                          {job["kind"] for job in jobs})
         self.assertGreaterEqual(jobs[0]["started_at"],
                                 jobs[1]["started_at"])
+
+
+class TestS96DashboardSurface(ServerBase):
+    """S96: model chooser data, per-session provider, folder picker,
+    verdict decoding flags — all hermetic."""
+
+    def test_models_lists_ollama_names(self):
+        import subprocess
+        from unittest.mock import patch
+        blob = ("NAME\tID\tSIZE\n"
+                "baby-agent:ep11-q4\tce5a\t4.7 GB\n"
+                "qwen3.5:9b\t6488\t6.6 GB\n")
+        fake = subprocess.CompletedProcess(args=["ollama", "list"],
+                                           returncode=0, stdout=blob,
+                                           stderr="")
+        with patch("subprocess.run", return_value=fake):
+            out = self.get("/api/models")
+        self.assertEqual(out["models"],
+                         ["baby-agent:ep11-q4", "qwen3.5:9b"])
+
+    def test_models_missing_ollama_is_structured(self):
+        from unittest.mock import patch
+        import urllib.error
+        with patch("subprocess.run",
+                   side_effect=FileNotFoundError("nope")):
+            with self.assertRaises(urllib.error.HTTPError) as ctx:
+                self.get("/api/models")
+            self.assertEqual(503, ctx.exception.code)
+
+    def test_session_accepts_provider_and_model(self):
+        import json
+        import urllib.request
+        seen = {}
+        def factory(model=None, provider=None):
+            seen["model"] = model
+            seen["provider"] = provider
+            return _fake_factory()()
+        app = AgentServerApp(provider_factory=factory,
+                             experience_store=self.store)
+        server = AgentServer(app)
+        server.serve()
+        try:
+            request = urllib.request.Request(
+                server.url + "/api/session/start",
+                data=json.dumps({
+                    "goal": "create hello.txt",
+                    "workspace": str(self.tmp / "ws3"),
+                    "model": "baby-agent:ep11-q4",
+                    "provider": "ollama",
+                }).encode(),
+                headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(request,
+                                        timeout=5) as resp:
+                out = json.loads(resp.read().decode())
+            self.assertIn("session_id", out)
+            import time
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                with urllib.request.urlopen(
+                        server.url + "/api/session/"
+                        + out["session_id"],
+                        timeout=5) as resp:
+                    if json.loads(resp.read().decode())["done"]:
+                        break
+                time.sleep(0.05)
+        finally:
+            server.shutdown()
+        self.assertEqual(seen["model"], "baby-agent:ep11-q4")
+        self.assertEqual(seen["provider"], "ollama")
+
+    def test_unknown_provider_is_structured_error(self):
+        from qacompanion.agent.server import default_provider_factory
+        with self.assertRaises(ValueError):
+            default_provider_factory("m", "gpt-5")
+
+    def test_browse_lists_subdirectories(self):
+        (self.tmp / "proj-a").mkdir()
+        (self.tmp / "proj-b").mkdir()
+        (self.tmp / "file.txt").write_text("x", encoding="utf-8")
+        out = self.get("/api/browse?path=" + str(self.tmp).replace(
+            "\\", "/"))
+        self.assertIn("proj-a", out["directories"])
+        self.assertIn("proj-b", out["directories"])
+        self.assertNotIn("file.txt", out["directories"])
+        self.assertIn("parent", out)
+
+    def test_browse_missing_is_404(self):
+        import urllib.error
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
+            self.get("/api/browse?path=" + str(self.tmp / "nope"))
+        self.assertEqual(404, ctx.exception.code)
+
+    def test_verdict_carries_decoding_flags(self):
+        seen = {}
+        self.app.verdict_runner = lambda models, tasks, temperature=None, \
+            seed=None: (seen.update(temperature=temperature, seed=seed)
+                        or "done")
+        self.post("/api/verdict", {"models": "m1", "temperature": 0,
+                                   "seed": 42})
+        import time
+        for _ in range(50):
+            jobs = self.get("/api/jobs")["jobs"]
+            if jobs[0]["status"] != "running":
+                break
+            time.sleep(0.1)
+        self.assertEqual(seen["temperature"], 0)
+        self.assertEqual(seen["seed"], 42)
 
 
 if __name__ == "__main__":

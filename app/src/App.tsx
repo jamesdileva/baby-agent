@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AgentEvent,
+  BrowseResult,
   Job,
   SessionSummary,
+  browseDirectory,
   listJobs,
+  listModels,
   listSessions,
   openEventStream,
   startDrip,
@@ -15,14 +18,22 @@ import {
 export default function App() {
   const [goal, setGoal] = useState("The tests in this project are failing. Find the bug, fix it, and run the tests to verify they pass.");
   const [workspace, setWorkspace] = useState("");
-  const [model, setModel] = useState("qwen2.5-coder:1.5b");
+  const [model, setModel] = useState("baby-agent:ep11-q4");
+  const [models, setModels] = useState<string[]>([]);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+  const [provider, setProvider] = useState("ollama");
+  const [startError, setStartError] = useState<string | null>(null);
+  const [browse, setBrowse] = useState<BrowseResult | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [feed, setFeed] = useState<AgentEvent[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [verdictModels, setVerdictModels] = useState(
-    "baby-agent:ep4-q4,baby-agent:ep3-q4"
+    "baby-agent:ep12-q4,baby-agent:ep11-q4"
   );
+  const [verdictTemp, setVerdictTemp] = useState("");
+  const [verdictSeed, setVerdictSeed] = useState("");
   const sourceRef = useRef<EventSource | null>(null);
 
   async function refreshSessions() {
@@ -40,6 +51,7 @@ export default function App() {
   useEffect(() => {
     refreshSessions();
     refreshJobs();
+    listModels().then(setModels).catch((e: Error) => setModelsError(e.message));
     const timer = setInterval(() => {
       refreshSessions();
       refreshJobs();
@@ -74,13 +86,35 @@ export default function App() {
   }, [activeId]);
 
   async function handleStart() {
-    const { session_id } = await startSession(goal, workspace, model);
-    setActiveId(session_id);
-    refreshSessions();
+    setStartError(null);
+    try {
+      const { session_id } = await startSession(goal, workspace, model, provider);
+      setActiveId(session_id);
+      refreshSessions();
+    } catch (e) {
+      setStartError(e instanceof Error ? e.message : String(e));
+    }
   }
 
   async function handleStop() {
     if (activeId) await stopSession(activeId);
+  }
+
+  async function openPicker() {
+    try {
+      setBrowse(await browseDirectory(workspace));
+      setShowPicker(true);
+    } catch (e) {
+      setStartError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function navigatePicker(path: string) {
+    try {
+      setBrowse(await browseDirectory(path));
+    } catch (e) {
+      setStartError(e instanceof Error ? e.message : String(e));
+    }
   }
 
   async function handleDrip() {
@@ -89,7 +123,7 @@ export default function App() {
   }
 
   async function handleVerdict() {
-    await startVerdict(verdictModels, 3);
+    await startVerdict(verdictModels, 3, verdictTemp, verdictSeed);
     refreshJobs();
   }
 
@@ -107,6 +141,16 @@ export default function App() {
             onChange={(e) => setVerdictModels(e.target.value)}
             placeholder="models, comma-separated (newest first)"
           />
+          <input
+            value={verdictTemp}
+            onChange={(e) => setVerdictTemp(e.target.value)}
+            placeholder="temp (unset)"
+          />
+          <input
+            value={verdictSeed}
+            onChange={(e) => setVerdictSeed(e.target.value)}
+            placeholder="seed (unset)"
+          />
           <button onClick={handleVerdict}>Run verdict</button>
         </div>
         <ul className="jobs">
@@ -121,15 +165,52 @@ export default function App() {
       </section>
       <section className="new-task">
         <textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={3} />
+        <div className="workspace-row">
+          <input
+            value={workspace}
+            onChange={(e) => setWorkspace(e.target.value)}
+            placeholder="workspace path (optional)"
+          />
+          <button onClick={openPicker}>Browse…</button>
+        </div>
         <input
-          value={workspace}
-          onChange={(e) => setWorkspace(e.target.value)}
-          placeholder="workspace path (optional)"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          placeholder="model"
+          list="model-list"
         />
-        <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="model" />
+        <datalist id="model-list">
+          {models.map((m) => (
+            <option key={m} value={m} />
+          ))}
+        </datalist>
+        {modelsError && <p className="error">models: {modelsError}</p>}
+        <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+          <option value="ollama">ollama (local)</option>
+          <option value="gemini">gemini (free tier)</option>
+        </select>
         <button onClick={handleStart}>Start agent</button>
         {activeId && <button onClick={handleStop}>Stop</button>}
+        {startError && <p className="error">{startError}</p>}
       </section>
+      {showPicker && browse && (
+        <section className="picker">
+          <h2>Choose workspace</h2>
+          <p>{browse.path}</p>
+          <button onClick={() => navigatePicker(browse.parent)}>Up</button>
+          <ul>
+            {browse.directories.map((d) => (
+              <li key={d} onClick={() => navigatePicker(browse.path + browse.sep + d)}>
+                {d}/
+              </li>
+            ))}
+          </ul>
+          <button onClick={() => { setWorkspace(browse.path); setShowPicker(false); }}>
+            Use this folder
+          </button>
+          <button onClick={() => setShowPicker(false)}>Cancel</button>
+        </section>
+      )}
       {active && (
         <section className="session">
           <h2>
@@ -139,6 +220,11 @@ export default function App() {
             iterations: {active.iterations} | files changed:{" "}
             {active.files_changed.join(", ") || "none"}
           </p>
+          <p>
+            workspace: {active.workspace || "(temp)"} | model:{" "}
+            {active.model ?? "default"}
+          </p>
+          {active.error && <p className="error">{active.error}</p>}
           {active.verification_results.length > 0 && (
             <ul>
               {active.verification_results.map((v, i) => (
@@ -159,6 +245,10 @@ export default function App() {
               <span className="type">{event.event_type}</span>{" "}
               {event.event_type === "tool_requested" &&
                 ` ${(event.payload as { tool?: string }).tool ?? ""}`}
+              {event.event_type === "tool_failed" &&
+                ` ${(event.payload as { tool?: string }).tool ?? ""}: ${(event.payload as { error?: string }).error ?? ""}`}
+              {event.event_type === "model_response" &&
+                ` ${(event.payload as { text?: string }).text ?? ""}`}
               {event.event_type === "file_changed" &&
                 ` ${(event.payload as { path?: string }).path ?? ""}`}
               {event.event_type === "failure_detected" &&

@@ -1539,6 +1539,20 @@ session, S95 spec, human "proceed" 2026-09-27.
 
 Status: Adopted 2026-09-27. Spec: docs/s95-spec.md.
 
+### S96 dashboard usefulness (deferred backlog, now unblocked)
+
+**Decision:** The S82-deferred polish lands now that the model
+justifies the front end: model chooser fed by `ollama list`
+(9B slides in with no model-specific code), per-session provider
+override (factory already resolved per-call), folder picker over
+a browse endpoint (local-only; workspace was already arbitrary),
+feed payload rendering (the exact tested complaint), verdict
+decoding flags. Electron, thinking toggles, and dashboard
+training stay deferred. Provenance: human-tested backlog
+2026-09-24 + human "proceed" 2026-09-27.
+
+Status: Adopted 2026-09-27. Spec: docs/s96-spec.md.
+
 ### S94.3 9B exploration verdict: 4b out, think off, 9B queued
 
 **Decision:** (1) qwen3.5:4b RULED OUT as an agent base: 0/15

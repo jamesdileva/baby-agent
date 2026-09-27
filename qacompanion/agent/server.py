@@ -46,14 +46,19 @@ from .verification import VerificationPlan, VerificationStep, plan_verifier
 from .workspace import Workspace
 
 
-def default_provider_factory(model: Optional[str] = None):
+def default_provider_factory(model: Optional[str] = None,
+                             provider: Optional[str] = None):
     """Default model backend: local Ollama. QA_AGENT_PROVIDER=gemini
     selects the free-tier cloud brain (S64 slice 3) — dashboard
     sessions then show a working brain instead of the latency-bound
-    locals. Any other value is an honest startup error."""
+    locals. Any other value is an honest startup error. S96: an
+    explicit per-session provider overrides the env (model choice
+    already traveled per-session); unset keeps every old call
+    working."""
     import os as _os
 
-    selected = (_os.environ.get("QA_AGENT_PROVIDER") or "ollama").lower()
+    selected = ((provider or _os.environ.get("QA_AGENT_PROVIDER")
+                 or "ollama").lower())
     if selected == "ollama":
         from .providers import OllamaProvider
         return OllamaProvider(model=model)
@@ -61,8 +66,56 @@ def default_provider_factory(model: Optional[str] = None):
         from .providers import GeminiModelProvider
         return GeminiModelProvider()
     raise ValueError(
-        f"unknown QA_AGENT_PROVIDER {selected!r} "
+        f"unknown provider {selected!r} "
         "(expected 'ollama' or 'gemini')")
+
+
+def list_ollama_models() -> List[str]:
+    """S96: model names for the dashboard chooser (stdlib subprocess
+    over `ollama list`; first column past the header). Structured
+    failure when ollama is absent — the UI shows it, never hangs."""
+    import subprocess as _subprocess
+
+    try:
+        proc = _subprocess.run(
+            ["ollama", "list"], capture_output=True, text=True,
+            timeout=15)
+    except FileNotFoundError as exc:
+        raise ValueError("ollama binary not found on PATH") from exc
+    except Exception as exc:
+        raise ValueError(f"ollama list failed: {exc}") from exc
+    if proc.returncode != 0:
+        raise ValueError(
+            f"ollama list failed: {(proc.stderr or '').strip()[:200]}")
+    names = []
+    for line in (proc.stdout or "").splitlines()[1:]:
+        parts = line.split()
+        if parts:
+            names.append(parts[0])
+    return names
+
+
+def browse_directory(path: str = "") -> Dict[str, Any]:
+    """S96: subdirectory listing for the dashboard folder picker.
+    Local-only server; the workspace param already accepts any path,
+    so this adds convenience, not authority. Missing -> KeyError,
+    not-a-dir -> ValueError, both rendered as structured HTTP."""
+    import os as _os
+
+    root = Path(path).expanduser() if path else Path.cwd()
+    if not root.exists():
+        raise KeyError(f"no such directory: {root}")
+    if not root.is_dir():
+        raise ValueError(f"not a directory: {root}")
+    try:
+        entries = sorted(p.name for p in root.iterdir() if p.is_dir()
+                         and not p.name.startswith("."))
+    except OSError as exc:
+        raise ValueError(f"cannot list directory: {exc}") from exc
+    return {"path": str(root.resolve()),
+            "parent": str(root.resolve().parent),
+            "directories": entries,
+            "sep": _os.sep}
 
 
 @dataclass
@@ -137,11 +190,15 @@ class AgentServerApp:
                 f" | calls={report.tool_calls}")
 
     def _default_verdict_runner(self, models: List[str],
-                                tasks: int) -> str:
+                                 tasks: int,
+                                 temperature=None,
+                                 seed=None) -> str:
         from .ep1 import format_verdict, run_verdict
         from .providers import OllamaProvider
         providers = {model: OllamaProvider(model=model,
-                                           native_tools=False)
+                                           native_tools=False,
+                                           temperature=temperature,
+                                           seed=seed)
                      for model in models}
         verdict = run_verdict(providers, task_count=tasks,
                               store=self.experience_store)
@@ -176,11 +233,13 @@ class AgentServerApp:
     def start_drip(self) -> str:
         return self.start_job("drip", self.drip_runner)
 
-    def start_verdict(self, models: List[str], tasks: int = 3) -> str:
+    def start_verdict(self, models: List[str], tasks: int = 3,
+                      temperature=None, seed=None) -> str:
         if not models:
             raise ValueError("verdict requires at least one model")
         return self.start_job(
-            "verdict", lambda: self.verdict_runner(models, tasks))
+            "verdict", lambda: self.verdict_runner(models, tasks,
+                                                   temperature, seed))
 
     def jobs_summary(self) -> List[Dict[str, Any]]:
         with self._lock:
@@ -190,7 +249,8 @@ class AgentServerApp:
 
     def start_session(self, goal: str, workspace: str = "",
                       model: Optional[str] = None,
-                      verify_command: Optional[str] = None) -> str:
+                      verify_command: Optional[str] = None,
+                      provider: Optional[str] = None) -> str:
         if not goal.strip():
             raise ValueError("goal must be a non-empty string")
         root = Path(workspace) if workspace else Path(
@@ -219,9 +279,10 @@ class AgentServerApp:
 
         def run():
             try:
-                provider = self.provider_factory(model)
+                run_provider = self.provider_factory(model, provider)
                 registry = coding_registry(ws, experience_store=store)
-                loop = AgentLoop(provider, registry, ws, verifier=verifier,
+                loop = AgentLoop(run_provider, registry, ws,
+                                 verifier=verifier,
                                  cancel_event=cancel_event, events=events)
                 session = loop.run(goal, session=pre_session)
                 managed.session = session
@@ -356,6 +417,19 @@ def make_handler(app: AgentServerApp):
                 self._json({**collect_os(), **collect_runtimes()})
             elif path == "/api/jobs":
                 self._json({"jobs": app.jobs_summary()})
+            elif path == "/api/models":
+                try:
+                    self._json({"models": list_ollama_models()})
+                except ValueError as exc:
+                    self._json({"error": f"{type(exc).__name__}: {exc}"},
+                               503)
+            elif path == "/api/browse":
+                try:
+                    self._json(browse_directory(params.get("path", "")))
+                except KeyError as exc:
+                    self._json({"error": f"KeyError: {exc}"}, 404)
+                except ValueError as exc:
+                    self._json({"error": f"ValueError: {exc}"}, 400)
             else:
                 self._json({"error": f"unknown path {path}"}, 404)
 
@@ -397,7 +471,8 @@ def make_handler(app: AgentServerApp):
                         goal=body.get("goal", ""),
                         workspace=body.get("workspace", ""),
                         model=body.get("model"),
-                        verify_command=body.get("verify_command"))
+                        verify_command=body.get("verify_command"),
+                        provider=body.get("provider"))
                     self._json({"session_id": session_id})
                 except Exception as exc:
                     # value/workspace errors are client-visible; anything
@@ -418,8 +493,27 @@ def make_handler(app: AgentServerApp):
                     models = [m.strip() for m in
                               str(body.get("models", "")).split(",")
                               if m.strip()]
+
+                    def _opt_float(value):
+                        if value is None or value == "":
+                            return None
+                        try:
+                            return float(value)
+                        except (TypeError, ValueError):
+                            return None
+
+                    def _opt_int(value):
+                        if value is None or value == "":
+                            return None
+                        try:
+                            return int(value)
+                        except (TypeError, ValueError):
+                            return None
+
                     job_id = app.start_verdict(
-                        models, tasks=int(body.get("tasks", 3)))
+                        models, tasks=int(body.get("tasks", 3)),
+                        temperature=_opt_float(body.get("temperature")),
+                        seed=_opt_int(body.get("seed")))
                     self._json({"job_id": job_id})
                 except Exception as exc:
                     self._json({"error": f"{type(exc).__name__}: {exc}"}, 400)
