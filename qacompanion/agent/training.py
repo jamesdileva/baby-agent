@@ -42,6 +42,12 @@ CLASS_MAP = {
 
 MAX_STEPS = 50
 MAX_TEXT_CHARS = 500
+# S95 success-hygiene: verified successes carrying more failed tool
+# steps than this teach thrash, not diagnosis (measured 0.28/run on
+# clean wins vs ~1.0 on verdict thrash with guessed paths, tracking
+# inference failures 3 vs 44-64). Scripted recovery demos carry
+# exactly one deliberate failed read and pass.
+MAX_FAILED_TOOL_STEPS = 2
 
 
 class TrainingError(ValueError):
@@ -192,6 +198,12 @@ def _eligibility(record: TrajectoryRecord,
         isinstance(a, dict) and a.get("ok") for a in attempts)
     if record.trajectory_class in verified_classes and not has_evidence:
         reasons.append("no verification evidence recorded")
+    failed_steps = sum(1 for s in (record.steps or [])
+                       if isinstance(s, dict) and s.get("ok") is False)
+    if failed_steps > MAX_FAILED_TOOL_STEPS:
+        reasons.append(f"{failed_steps} failed tool steps (max "
+                       f"{MAX_FAILED_TOOL_STEPS}) — thrashy successes "
+                       "teach guessing, not diagnosis")
     return (not reasons, reasons)
 
 

@@ -80,6 +80,19 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-27 — **S95 — Rung-3 demos + success-hygiene filter
+  (ep11-beats-ep14 explained)** — forensics: verdict successes
+  at ~1 fail/run with uncorrected wrong turns taught ep12–14 to
+  thrash (0.28 vs ~1.0 tracks inference 3 vs 44–64); ep11 won on
+  pre-wave hygiene. Rung-3: invoice/checkout/basket import demos
+  (plain reads only — no codeintel in lean catalog; fresh
+  modules). Hygiene: >2 failed steps excluded (82 cut live, all
+  demos survive). Lane idempotency fixed (was doubling demos per
+  rebuild). Live: lane 16/16, curate 1435/2/1, export 365 = 360
+  + 5 SRFT. Kit untouched (s92). Colab: fresh 365-row
+  training.jsonl + s92 kit → ep15 → pinned vs ep11. Suite 1698
+  OK, pyflakes clean. Spec: docs/s95-spec.md.
+
 - 2026-09-26 — **S94.3 9B exploration close-out — 4b ruled out,
   think adds nothing, 9B queued** — think-on cascade probes:
   9b 3/3 (identical to think-off — thinking buys latency, not

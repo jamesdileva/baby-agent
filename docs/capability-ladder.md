@@ -64,7 +64,10 @@ tool-calling at 4B, yet insufficient).
   beat. Exist: agent-authored (S94: greeting, word_ops,
   text_utils).
 - Rung 3: import-following demos — failing test → module B →
-  code_imports/code_references → module A → fix A. To author.
+  read A via the import edge → fix A (plain reads only: lean
+  catalog has no codeintel tools — S72 lesson). Fresh modules,
+  never taxcalc/cart. Exist: agent-authored (S95: invoice,
+  checkout, basket).
 - Rung 4: write-test → mutation-check demos (the test must FAIL on
   the known defect). To author.
 

@@ -54,15 +54,17 @@ def _write_curated(tmp: Path, rows) -> Path:
 
 
 def _eligible_row(**kw):
+    steps = kw.pop("steps", [
+        {"tool": "read_file", "args": {"path": "w.py"},
+         "ok": True, "result_head": "def add(a, b):"},
+        {"tool": "edit_file",
+         "args": {"path": "w.py", "old_string": "a - b",
+                  "new_string": "a + b"},
+         "ok": True, "result_head": "edit applied"}])
     return _curated_row(
         outcome="success", classification="SUCCESS",
         verification={"attempts": [{"ok": True}]},
-        steps=[{"tool": "read_file", "args": {"path": "w.py"},
-                "ok": True, "result_head": "def add(a, b):"},
-               {"tool": "edit_file",
-                "args": {"path": "w.py", "old_string": "a - b",
-                         "new_string": "a + b"},
-                "ok": True, "result_head": "edit applied"}],
+        steps=steps,
         actions=["read_file", "edit_file"],
         final_answer="Fixed and verified.", **kw)
 
@@ -116,6 +118,48 @@ class EligibilityGateTests(unittest.TestCase):
         self.assertFalse(record.eligible)
         self.assertTrue(any("REVIEW" in r
                             for r in record.eligibility_reasons))
+
+    def test_thrashy_success_excluded_with_reason(self):
+        # S95 success-hygiene: a verified win with 3 failed tool
+        # steps (the verdict-thrash shape) must not teach guessing
+        steps = [
+            {"tool": "read_file", "args": {"path": "nope.py"},
+             "ok": False, "result_head": "file not found"},
+            {"tool": "read_file", "args": {"path": "alsono.py"},
+             "ok": False, "result_head": "file not found"},
+            {"tool": "edit_file",
+             "args": {"path": "w.py", "old_string": "a",
+                      "new_string": "b"},
+             "ok": False, "result_head": "no unique match"},
+            {"tool": "read_file", "args": {"path": "w.py"},
+             "ok": True, "result_head": "def add(a, b):"},
+            {"tool": "edit_file",
+             "args": {"path": "w.py", "old_string": "a - b",
+                      "new_string": "a + b"},
+             "ok": True, "result_head": "edit applied"},
+        ]
+        record = self._build([_eligible_row(steps=steps)])[0]
+        self.assertFalse(record.eligible)
+        self.assertTrue(any("failed tool steps" in r
+                            for r in record.eligibility_reasons))
+        self.assertIsNone(record.chat)
+
+    def test_single_recovery_beat_kept(self):
+        # scripted recovery demos carry exactly one deliberate failed
+        # read plus its correction — the designed shape, not thrash
+        steps = [
+            {"tool": "read_file", "args": {"path": "src/w.py"},
+             "ok": False, "result_head": "file not found"},
+            {"tool": "read_file", "args": {"path": "w.py"},
+             "ok": True, "result_head": "def add(a, b):"},
+            {"tool": "edit_file",
+             "args": {"path": "w.py", "old_string": "a - b",
+                      "new_string": "a + b"},
+             "ok": True, "result_head": "edit applied"},
+        ]
+        record = self._build([_eligible_row(steps=steps)])[0]
+        self.assertTrue(record.eligible, record.eligibility_reasons)
+        self.assertIsNotNone(record.chat)
 
     def test_invalid_classification_skipped_entirely(self):
         records = self._build([_curated_row(classification="INVALID",

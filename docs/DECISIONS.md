@@ -1524,6 +1524,21 @@ never single n=3) stands for ep14. Provenance: S94 ep13 verdict
 
 Status: Adopted 2026-09-26. Spec: docs/s94-spec.md.
 
+### S95 rung-3 demos + success-hygiene (ep11-beats-ep14 explained)
+
+**Decision:** (1) Forensics closed the ep11/ep14 gap: verdict
+trajectories at ~1 fail/run with uncorrected wrong turns taught
+ep12–14 to thrash (inference failures track corpus failure
+density); ep11 won on pre-wave data hygiene. (2) Rung-3 demos
+authored (gate open): 3 import-following demos, lean tools only,
+fresh modules. (3) Success-hygiene gate: >2 failed tool steps
+excluded with reasons (82 cut live; scripted recovery shape
+passes by design). (4) Lane idempotency fixed (was re-recording
+every demo per rebuild). Kit untouched (s92). Provenance: this
+session, S95 spec, human "proceed" 2026-09-27.
+
+Status: Adopted 2026-09-27. Spec: docs/s95-spec.md.
+
 ### S94.3 9B exploration verdict: 4b out, think off, 9B queued
 
 **Decision:** (1) qwen3.5:4b RULED OUT as an agent base: 0/15

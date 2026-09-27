@@ -998,6 +998,104 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
             script = [_list()] + core + [_final(diagnosis)]
         files = {path: module_code, test_path: test_code}
         demos.append({"script": script, "files": files, "goal": goal})
+
+    # --- S95 rung-3 demos (gate OPEN: 3 pinned cascade points) ---
+    # Import-following via PLAIN READS (code_imports/code_references
+    # are NOT in the lean benchmark catalog, and demos must use only
+    # tools the model is offered at inference — the S72 catalog
+    # lesson). Fresh modules, never taxcalc/cart (S91 eval-module
+    # lesson): failing test → read B (sees the import) → read A →
+    # fix A → rerun → final walks the import chain.
+    indirects = [
+        # (b_mod, a_mod, full A module, A old anchor, A new anchor,
+        #  full B module, test file, goal, diagnosis, recovery?)
+        ("invoice", "prices",
+         "def with_tax(amount):\n    return amount * 1.5\n",
+         "    return amount * 1.5\n",
+         "    return amount * 1.2\n",
+         "from prices import with_tax\n\n\n"
+         "def bill(items):\n"
+         "    return sum(with_tax(p) for p in items)\n",
+         "import unittest\n\nfrom invoice import bill\n\n\n"
+         "class TestInvoice(unittest.TestCase):\n"
+         "    def test_bill(self):\n"
+         "        self.assertEqual(bill([10, 20]), 36)\n\n\n"
+         'if __name__ == "__main__":\n    unittest.main()\n',
+         "The invoice totals are wrong but the invoice code looks "
+         "clean. Follow the import to the source module, fix it "
+         "there, and run the tests to verify they pass.",
+         "The failing test covers bill in invoice.py, but reading "
+         "invoice.py showed it only sums with_tax over the items — "
+         "the arithmetic lives elsewhere. Following the import led "
+         "to prices.py, where with_tax multiplied by 1.5 instead "
+         "of 1.2. I fixed prices.py and the suite passes: the bug "
+         "was across the import boundary, not where the test "
+         "pointed.",
+         False),
+        ("checkout", "rates",
+         "def discount(price):\n    return price * 0.95\n",
+         "    return price * 0.95\n",
+         "    return price * 0.8\n",
+         "from rates import discount\n\n\n"
+         "def checkout(cart):\n"
+         "    return sum(discount(p) for p in cart)\n",
+         "import unittest\n\nfrom checkout import checkout\n\n\n"
+         "class TestCheckout(unittest.TestCase):\n"
+         "    def test_checkout(self):\n"
+         "        self.assertEqual(checkout([100, 50]), 120)\n\n\n"
+         'if __name__ == "__main__":\n    unittest.main()\n',
+         "The checkout totals are off though the checkout code is "
+         "correct. Trace the dependency to its origin, repair it, "
+         "and prove the suite green.",
+         "The failing test covers checkout in checkout.py, but "
+         "reading checkout.py showed a clean pass-through over "
+         "discount. Tracing the dependency to rates.py revealed "
+         "discount shaving only 5% instead of 20%. I fixed "
+         "rates.py and the suite passes: read the importer, then "
+         "read what it imports.",
+         False),
+        ("basket", "fees",
+         "def add_fee(x):\n    return x + 10\n",
+         "    return x + 10\n",
+         "    return x + 2\n",
+         "from fees import add_fee\n\n\n"
+         "def checkout(items):\n"
+         "    return sum(add_fee(p) for p in items)\n",
+         "import unittest\n\nfrom basket import checkout\n\n\n"
+         "class TestBasket(unittest.TestCase):\n"
+         "    def test_checkout(self):\n"
+         "        self.assertEqual(checkout([5, 5]), 14)\n\n\n"
+         'if __name__ == "__main__":\n    unittest.main()\n',
+         "The basket checkout overcharges while the basket module "
+         "reads clean. Diagnose across the import boundary and "
+         "verify the fix.",
+         "My first guess was the src/ layout — reading "
+         "src/basket.py failed, so that hypothesis was wrong. The "
+         "failing test covers checkout in basket.py, which read "
+         "clean — a correct-looking importer with a wrong total "
+         "means the defect is upstream. Following the import to "
+         "fees.py showed add_fee adding 10 instead of 2. I fixed "
+         "fees.py and the suite passes.",
+         True),
+    ]
+    for (b_mod, a_mod, a_code, old, new,
+            b_code, test_code, goal, diagnosis,
+            recovery) in indirects:
+        b_path = f"{b_mod}.py"
+        a_path = f"{a_mod}.py"
+        test_path = f"test_{b_mod}.py"
+        core = [_tests(python), _read(test_path), _read(b_path),
+                _read(a_path),
+                _edit(a_path, old, new),
+                _tests(python)]
+        if recovery:
+            script = ([_list(), _read(f"src/{b_path}")] + core
+                      + [_final(diagnosis)])
+        else:
+            script = [_list()] + core + [_final(diagnosis)]
+        files = {a_path: a_code, b_path: b_code,
+                 test_path: test_code}
+        demos.append({"script": script, "files": files, "goal": goal})
     return demos
 
 
@@ -1074,17 +1172,35 @@ def build_agent_corpus(experience_store: ExperienceStore,
     with the quality validator AND the verification gate. The author
     is untrusted-by-design: the validator + gate are what make
     external authoring (this session, muse-spark, a future epN) safe.
-    Returns honest stats; failures are recorded, never hidden."""
+    Returns honest stats; failures are recorded, never hidden.
+    S95: idempotent like build_corpus — demos whose normalized goal
+    already has a successful agent-authored record are skipped
+    (re-running the lane used to re-record every demo under a fresh
+    session suffix, doubling the authored share on every rebuild)."""
     import sys
+
+    from .experience import _normalize_goal
 
     python = python or sys.executable
     if demos is None:
         demos = agent_authored_demos(python)
+    covered = set()
+    for record in experience_store.load():
+        tags = record.tags or []
+        if (AGENT_AUTHORED_TAG in tags
+                and "superseded-pattern" not in tags
+                and record.outcome in ("success", "recovered")):
+            base_goal = record.goal.split(" (benchmark run")[0]
+            covered.add(_normalize_goal(base_goal))
     stats: Dict[str, Any] = {"runs": 0, "passed": 0, "failed": 0,
-                             "rejected": 0, "durations_s": 0.0,
+                             "rejected": 0, "skipped_existing": 0,
+                             "durations_s": 0.0,
                              "tasks": []}
     for demo in demos:
         script, files, goal = demo["script"], demo["files"], demo["goal"]
+        if _normalize_goal(goal) in covered:
+            stats["skipped_existing"] += 1
+            continue
         ok, reasons = validate_demonstration(script, files, goal)
         if not ok:
             stats["rejected"] += 1
