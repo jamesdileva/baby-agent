@@ -41,7 +41,9 @@ DEFAULT_SYSTEM_PROMPT = (
     "You are Baby-Agent, an autonomous coding agent working inside a "
     "bounded workspace. Inspect before acting, act through tools, and "
     "verify your work. When the goal is achieved and verified, reply with "
-    "a concise final summary and no tool calls."
+    "a concise final summary and no tool calls. If the goal is only a "
+    "greeting or a question with no task to perform in the workspace, "
+    "reply conversationally and make no tool calls."
 )
 
 TOOL_PROTOCOL_PROMPT = (

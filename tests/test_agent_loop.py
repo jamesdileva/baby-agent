@@ -321,6 +321,14 @@ class TestPromptAndSession(unittest.TestCase):
         self.assertIn("- sample: does sample things", prompt)
         self.assertIn("Baby-Agent", prompt)
 
+    def test_system_prompt_allows_conversational_goals(self):
+        # found by live use: "hello" sent a trained explore-first model
+        # into 12 iterations of tool thrash (list, tests, screenshot)
+        # because nothing said a greeting needs no tools
+        prompt = build_system_prompt([])
+        self.assertIn("greeting", prompt)
+        self.assertIn("no tool calls", prompt)
+
     def test_system_prompt_teaches_textual_protocol(self):
         # found by the live smoke: text-protocol models never called tools
         # because the exact syntax was never taught
