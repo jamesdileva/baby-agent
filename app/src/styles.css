@@ -38,6 +38,8 @@ li.empty { color: #6b7684; font-style: italic; border-bottom: none; }
 .jobs .job.failed .status { color: #f87e7e; }
 .jobs .job .when { color: #6b7684; font-size: 0.78rem; }
 .jobs .job .summary { font-family: ui-monospace, monospace; font-size: 0.78rem; color: #9aa7b5; white-space: pre-wrap; }
+.picker-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(5, 8, 12, 0.72); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 1rem 1rem; }
+.picker-overlay .picker { width: min(580px, 94vw); max-height: 84vh; overflow-y: auto; margin: 0; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55); }
 .picker { border: 1px solid #2c3440; }
 .picker ul { max-height: 14rem; overflow-y: auto; }
 .picker li { cursor: pointer; }
@@ -46,6 +48,9 @@ li.empty { color: #6b7684; font-style: italic; border-bottom: none; }
 .picker li.file-row { cursor: default; color: #6b7684; }
 .picker li.file-row:hover { background: transparent; }
 .picker li.file-row .file-name { font-family: ui-monospace, monospace; font-size: 0.78rem; }
+.picker li.picker-more { cursor: default; color: #6b7684; font-style: italic; }
+.picker li.picker-more:hover { background: transparent; }
+.picker-actions { display: flex; gap: 0.4rem; }
 .recent-row { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin-bottom: 0.75rem; }
 .recent-row .recent { background: #0d1117; border: 1px solid #2c3440; color: #9aa7b5; padding: 0.25rem 0.6rem; font-size: 0.78rem; }
 .recent-row .recent:hover { background: #212933; }

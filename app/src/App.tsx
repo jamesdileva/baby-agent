@@ -124,6 +124,15 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!showPicker) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowPicker(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showPicker]);
+
   function rememberWorkspace(path: string) {
     if (!path.trim()) return;
     const next = [path, ...recentWorkspaces.filter((w) => w !== path)].slice(0, 5);
@@ -186,6 +195,17 @@ export default function App() {
   }
 
   const active = sessions.find((s) => s.session_id === activeId);
+  const pickerDirs = browse
+    ? browse.directories.filter((d) =>
+        d.toLowerCase().includes(pickerFilter.toLowerCase())
+      )
+    : [];
+  const pickerFiles = browse
+    ? browse.files.filter((f) =>
+        f.toLowerCase().includes(pickerFilter.toLowerCase())
+      )
+    : [];
+  const pickerTruncated = Math.max(0, pickerFiles.length - 20);
   const dripRunning = jobs.some(
     (j) => j.kind === "drip" && j.status === "running"
   );
@@ -218,7 +238,18 @@ export default function App() {
         <div className="col">
           <section className="new-task">
             <h2>New task</h2>
-            <textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={3} />
+            <textarea
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              rows={3}
+              placeholder="describe the task — Enter starts the agent, Shift+Enter for a new line"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  if (goal.trim()) handleStart();
+                }
+              }}
+            />
             <div className="workspace-row">
               <input
                 value={workspace}
@@ -227,6 +258,16 @@ export default function App() {
               />
               <button onClick={openPicker}>Browse…</button>
             </div>
+            {recentWorkspaces.length > 0 && (
+              <div className="recent-row">
+                <span className="meta">recent: </span>
+                {recentWorkspaces.map((w) => (
+                  <button key={w} className="recent" onClick={() => setWorkspace(w)} title={w}>
+                    {w.split(/[\\/]/).filter(Boolean).pop() || w}
+                  </button>
+                ))}
+              </div>
+            )}
             <input
               value={model}
               onChange={(e) => setModel(e.target.value)}
@@ -248,7 +289,7 @@ export default function App() {
               onChange={(e) => setVerifyCommand(e.target.value)}
               placeholder="verify command (optional, e.g. python -m unittest)"
             />
-            <button onClick={handleStart}>Start agent</button>
+            <button onClick={handleStart} disabled={!goal.trim()}>Start agent</button>
             {activeId && <button className="stop" onClick={handleStop}>Stop</button>}
             {startError && <p className="error">{startError}</p>}
           </section>
@@ -313,63 +354,6 @@ export default function App() {
           </section>
         </div>
         <div className="col">
-          {showPicker && browse && (
-            <section className="picker">
-              <h2>Choose workspace</h2>
-              <p className="path">{browse.path}</p>
-              <div className="workspace-row">
-                <input
-                  value={pickerPathEntry}
-                  onChange={(e) => setPickerPathEntry(e.target.value)}
-                  placeholder="type a path and press Go"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && pickerPathEntry.trim()) navigatePicker(pickerPathEntry.trim());
-                  }}
-                />
-                <button onClick={() => { if (pickerPathEntry.trim()) navigatePicker(pickerPathEntry.trim()); }}>Go</button>
-              </div>
-              <input
-                value={pickerFilter}
-                onChange={(e) => setPickerFilter(e.target.value)}
-                placeholder="filter entries…"
-              />
-              <button onClick={() => navigatePicker(browse.parent)}>Up</button>
-              <ul>
-                {browse.directories
-                  .filter((d) => d.toLowerCase().includes(pickerFilter.toLowerCase()))
-                  .map((d) => (
-                    <li key={d} onClick={() => navigatePicker(browse.path + browse.sep + d)}>
-                      {d}/
-                    </li>
-                  ))}
-                {browse.files
-                  .filter((f) => f.toLowerCase().includes(pickerFilter.toLowerCase()))
-                  .slice(0, 20)
-                  .map((f) => (
-                    <li key={f} className="file-row">
-                      <span className="file-name">{f}</span>
-                    </li>
-                  ))}
-              </ul>
-              {browse.directories.length === 0 && browse.files.length === 0 && (
-                <p className="empty">empty directory</p>
-              )}
-              <button onClick={() => { setWorkspace(browse.path); rememberWorkspace(browse.path); setShowPicker(false); }}>
-                Use this folder
-              </button>
-              <button onClick={() => setShowPicker(false)}>Cancel</button>
-            </section>
-          )}
-          {recentWorkspaces.length > 0 && !showPicker && (
-            <div className="recent-row">
-              <span className="meta">recent: </span>
-              {recentWorkspaces.map((w) => (
-                <button key={w} className="recent" onClick={() => setWorkspace(w)} title={w}>
-                  {w.split(/[\\/]/).filter(Boolean).pop() || w}
-                </button>
-              ))}
-            </div>
-          )}
           {active && (
             <section className="session">
               <h2>
@@ -445,6 +429,68 @@ export default function App() {
           </section>
         </div>
       </div>
+      {showPicker && browse && (
+        <div className="picker-overlay" onClick={() => setShowPicker(false)}>
+          <section className="picker" onClick={(e) => e.stopPropagation()}>
+            <h2>Choose workspace</h2>
+            <p className="path">{browse.path}</p>
+            <div className="workspace-row">
+              <input
+                value={pickerPathEntry}
+                onChange={(e) => setPickerPathEntry(e.target.value)}
+                placeholder="type a path and press Go"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && pickerPathEntry.trim()) navigatePicker(pickerPathEntry.trim());
+                }}
+              />
+              <button onClick={() => { if (pickerPathEntry.trim()) navigatePicker(pickerPathEntry.trim()); }}>Go</button>
+            </div>
+            <input
+              value={pickerFilter}
+              onChange={(e) => setPickerFilter(e.target.value)}
+              placeholder="filter entries…"
+            />
+            <button onClick={() => navigatePicker(browse.parent)}>Up</button>
+            <ul>
+              {pickerDirs.map((d) => (
+                <li key={d} onClick={() => navigatePicker(browse.path + browse.sep + d)}>
+                  {d}/
+                </li>
+              ))}
+              {pickerFiles.slice(0, 20).map((f) => (
+                <li key={f} className="file-row">
+                  <span className="file-name">{f}</span>
+                </li>
+              ))}
+              {pickerTruncated > 0 && (
+                <li className="picker-more">
+                  …and {pickerTruncated} more files (narrow the filter)
+                </li>
+              )}
+            </ul>
+            {browse.directories.length === 0 && browse.files.length === 0 ? (
+              <p className="empty">empty directory</p>
+            ) : (
+              pickerDirs.length === 0 &&
+              pickerFiles.length === 0 && (
+                <p className="empty">no matches for "{pickerFilter}"</p>
+              )
+            )}
+            <div className="picker-actions">
+              <button
+                onClick={() => {
+                  setWorkspace(browse.path);
+                  rememberWorkspace(browse.path);
+                  setShowPicker(false);
+                }}
+              >
+                Use this folder
+              </button>
+              <button onClick={() => setShowPicker(false)}>Cancel</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
