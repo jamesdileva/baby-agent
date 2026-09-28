@@ -1551,6 +1551,22 @@ demo-vs-transfer unisolated (ep13 did it with none). ep15 NOT
 shipped; ep11-q4 REMAINS champion. Provenance: S95.1 pinned
 5-task verdict 2026-09-27.
 
+### S100 recovery demos + thrash-turn surgery (the ep16 prescription)
+
+**Decision:** stop teaching accidental thrash, start teaching
+recovery, rebalance toward clean. (1) R1–R3 failed-edit-recovery
+demos: replay ep15's exact failure prefix (real args) then recover
+from a fresh read; the stale miss is declared and the validator
+simulates file state to demand it be genuine, consumed, and
+corrected. (2) Training renders drop failed tool turns from
+undeliberate records only (deliberate beats kept; S72 interleave
+remapped; full truth kept in trajectories.jsonl) and cap the real
+share 1:1 cleanest-first (live: capped 13, stripped 97, export
+380). Colab order: fresh 380-row training.jsonl + s92 kit → ep16
+→ pinned 5-task verdict vs ep11-q4; ep16 ships only on a strings
+reading that moves with cleaner hygiene. Provenance: S100 audit
+(traj forensics + probes A/B + dilution/research review).
+
 ### S96 dashboard usefulness (deferred backlog, now unblocked)
 
 **Decision:** The S82-deferred polish lands now that the model

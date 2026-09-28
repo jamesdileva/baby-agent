@@ -549,3 +549,143 @@ class SrftLaneTests(unittest.TestCase):
         chats, candidates = _srft_lane(rows)
         self.assertEqual(0, len(chats))
         self.assertEqual(0, candidates)
+
+
+class S100SurgeryTests(unittest.TestCase):
+    """S100: thrash-turn surgery — accidental failed turns are
+    stripped from undeliberate chats, designed recovery beats are
+    kept, and the undeliberate share is capped cleanest-first."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+
+    def _thrashy_row(self, failed=1, **kw):
+        steps = [
+            {"tool": "list_directory", "args": {"path": "."},
+             "ok": True, "result_head": "files"},
+            {"tool": "read_file", "args": {"path": "w.py"},
+             "ok": True, "result_head": "def add(a, b):"},
+        ]
+        for i in range(failed):
+            steps.insert(
+                1 + i,
+                {"tool": "read_file",
+                 "args": {"path": f"ghost{i}.py"},
+                 "ok": False,
+                 "result_head": f"file not found: ghost{i}.py"})
+        steps.append(
+            {"tool": "edit_file",
+             "args": {"path": "w.py", "old_string": "a - b",
+                      "new_string": "a + b"},
+             "ok": True, "result_head": "edit applied"})
+        kw.setdefault("session_id", "s-thrash")
+        passthrough = {}
+        for key in ("outcome", "classification", "verification",
+                    "verification_failures", "final_answer", "actions"):
+            if key in kw:
+                passthrough[key] = kw.pop(key)
+        row = _eligible_row(steps=steps, **kw)
+        row.update(passthrough)
+        return row
+
+    def _chat_contents(self, record):
+        return [m["content"] for m in record.chat["messages"]]
+
+    def test_failed_turns_stripped_from_undeliberate_chat(self):
+        record = build_records(curated_dir=_write_curated(
+            self.tmp, [self._thrashy_row(failed=1)]))[0]
+        self.assertTrue(record.eligible, record.eligibility_reasons)
+        contents = self._chat_contents(record)
+        self.assertFalse(any("ghost0" in c for c in contents))
+        self.assertTrue(any("[TOOL: edit_file(" in c for c in contents))
+        self.assertEqual(
+            1, record.chat["metadata"]["failed_turns_stripped"])
+        self.assertEqual(3, record.chat["metadata"]["steps"])
+
+    def test_deliberate_recovery_keeps_failed_beat(self):
+        record = build_records(curated_dir=_write_curated(
+            self.tmp, [self._thrashy_row(
+                failed=1, tags=["scripted-demo", "recovery-demo"],
+                session_id="s-delib")]))[0]
+        self.assertTrue(record.eligible, record.eligibility_reasons)
+        contents = self._chat_contents(record)
+        self.assertTrue(any("ghost0" in c for c in contents))
+        self.assertEqual(
+            0, record.chat["metadata"]["failed_turns_stripped"])
+
+    def test_interleave_cuts_remap_over_stripped_steps(self):
+        # S72 interleave survives the strip: the premature claim
+        # still lands between the productive turns, and the failed
+        # turn is gone from the taught chat
+        row = self._thrashy_row(
+            failed=1, outcome="recovered", classification="RECOVERED",
+            verification={"attempts": [{"ok": False, "after_step": 3},
+                                        {"ok": True}]},
+            verification_failures=[{
+                "premature_final": "Done early.",
+                "detail": "Verification failed: unit-tests=FAIL.",
+                "after_step": 3}],
+            final_answer="Fixed and verified.", session_id="s-remap")
+        record = build_records(
+            curated_dir=_write_curated(self.tmp, [row]))[0]
+        self.assertTrue(record.eligible, record.eligibility_reasons)
+        contents = self._chat_contents(record)
+        self.assertFalse(any("ghost0" in c for c in contents))
+        premature_at = contents.index("Done early.")
+        self.assertIn("[TOOL: read_file(",
+                      contents[premature_at - 2])
+        self.assertIn("[TOOL: edit_file(",
+                      contents[premature_at + 2])
+
+    def test_real_share_capped_cleanest_first(self):
+        rows = [
+            _eligible_row(session_id="d1", tags=["scripted-demo"]),
+            _eligible_row(session_id="d2",
+                          tags=["agent-authored", "edit-recovery"]),
+            _eligible_row(session_id="r0"),
+            self._thrashy_row(failed=1, session_id="r1"),
+            self._thrashy_row(failed=2, session_id="r2"),
+        ]
+        out = self.tmp / "training"
+        report = build_training(
+            curated_dir=_write_curated(self.tmp, rows), out_dir=out)
+        self.assertEqual(2, report["deliberate"])
+        self.assertEqual(2, report["real_kept"])
+        self.assertEqual(1, report["real_capped"])
+        self.assertTrue(report["real_capped_reason"])
+        chats = [json.loads(line) for line in
+                 (out / "training.jsonl").read_text(
+                     encoding="utf-8").splitlines() if line]
+        kept = {c["metadata"]["session_id"] for c in chats}
+        self.assertEqual({"d1", "d2", "r0", "r1"}, kept)
+
+    def test_cap_vacuous_without_deliberate_baseline(self):
+        rows = [self._thrashy_row(failed=1, session_id="r1"),
+                _eligible_row(session_id="r0")]
+        out = self.tmp / "training"
+        report = build_training(
+            curated_dir=_write_curated(self.tmp, rows), out_dir=out)
+        self.assertEqual(0, report["real_capped"])
+        chats = [json.loads(line) for line in
+                 (out / "training.jsonl").read_text(
+                     encoding="utf-8").splitlines() if line]
+        self.assertEqual(2, len(chats))
+        stripped = {c["metadata"]["session_id"]:
+                    c["metadata"]["failed_turns_stripped"]
+                    for c in chats}
+        self.assertEqual({"r1": 1, "r0": 0}, stripped)
+
+    def test_trajectories_export_keeps_full_truth(self):
+        out = self.tmp / "training"
+        build_training(
+            curated_dir=_write_curated(
+                self.tmp, [self._thrashy_row(failed=1)]),
+            out_dir=out)
+        rows = [json.loads(line) for line in
+                (out / "trajectories.jsonl").read_text(
+                    encoding="utf-8").splitlines() if line]
+        self.assertEqual(4, len(rows[0]["steps"]))
+        self.assertTrue(any(s.get("ok") is False
+                            for s in rows[0]["steps"]))

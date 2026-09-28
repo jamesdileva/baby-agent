@@ -677,11 +677,12 @@ class AgentAuthoredTests(unittest.TestCase):
 
     def test_batches_pass_the_quality_validator(self):
         demos = agent_authored_demos(sys.executable)
-        self.assertEqual(16, len(demos))
+        self.assertEqual(19, len(demos))
         for demo in demos:
             with self.subTest(goal=demo["goal"][:40]):
                 ok, reasons = validate_demonstration(
-                    demo["script"], demo["files"], demo["goal"])
+                    demo["script"], demo["files"], demo["goal"],
+                    recovery_anchors=demo.get("recovery_anchors"))
                 self.assertTrue(ok, reasons)
 
     def test_validator_rejects_missing_discovery(self):
@@ -712,19 +713,125 @@ class AgentAuthoredTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("2 times" in r for r in reasons))
 
+    def test_validator_accepts_declared_genuine_miss_and_correction(self):
+        # S100: the failed-edit-recovery shape — whole-file fumble,
+        # genuine stale miss, fresh-anchor correction
+        files = {"m.py": "def a():\n    return 1\n\n\n"
+                         "def b():\n    return 2\n"}
+        script = [
+            _list(),
+            _TC(name="read_file", arguments={"path": "m.py"}),
+            _TC(name="edit_file", arguments={
+                "path": "m.py",
+                "old_string": "def a():\n    return 1\n\n\n"
+                              "def b():\n    return 2",
+                "new_string": "def a():\n    return 10\n\n\n"
+                              "def b():\n    return 2"}),
+            _TC(name="edit_file", arguments={
+                "path": "m.py",
+                "old_string": "def b():\n    return 3\n",
+                "new_string": "def b():\n    return 2\n"}),
+            _TC(name="read_file", arguments={"path": "m.py"}),
+            _TC(name="edit_file", arguments={
+                "path": "m.py", "old_string": "    return 2\n",
+                "new_string": "    return 20\n"}),
+            _MR(text="fixed a in m.py, recovered the b slip",
+                finish_reason="stop"),
+        ]
+        stale = "def b():\n    return 3\n"
+        ok, reasons = validate_demonstration(
+            script, files, "recover the widget m sibling repair",
+            recovery_anchors=[stale])
+        self.assertTrue(ok, reasons)
+
+    def test_validator_rejects_undeclared_miss(self):
+        # S100: a stale anchor with no declaration is an ordinary
+        # anchor failure (0 matches), not a recovery beat
+        files = {"m.py": "def a():\n    return 10\n"}
+        script = [
+            _list(),
+            _TC(name="read_file", arguments={"path": "m.py"}),
+            _TC(name="edit_file", arguments={
+                "path": "m.py", "old_string": "def a():\n    return 7",
+                "new_string": "def a():\n    return 10"}),
+            _MR(text="fixed m.py", finish_reason="stop"),
+        ]
+        ok, reasons = validate_demonstration(
+            script, files, "recover the widget m sibling repair")
+        self.assertFalse(ok)
+        self.assertTrue(any("0 times" in r for r in reasons))
+
+    def test_validator_rejects_staged_miss(self):
+        # S100: a declared anchor that actually MATCHES is staged,
+        # not genuine — authors cannot smuggle unverified edits
+        files = {"m.py": "def a():\n    return 1\n"}
+        script = [
+            _list(),
+            _TC(name="read_file", arguments={"path": "m.py"}),
+            _TC(name="edit_file", arguments={
+                "path": "m.py", "old_string": "    return 1\n",
+                "new_string": "    return 10\n"}),
+            _MR(text="fixed m.py", finish_reason="stop"),
+        ]
+        ok, reasons = validate_demonstration(
+            script, files, "recover the widget m sibling repair",
+            recovery_anchors=["    return 1\n"])
+        self.assertFalse(ok)
+        self.assertTrue(any("genuine" in r for r in reasons))
+
+    def test_validator_rejects_unconsumed_declaration(self):
+        # S100: every declaration must be consumed by a real miss
+        files = {"m.py": "def a():\n    return 1\n"}
+        script = [
+            _list(),
+            _TC(name="read_file", arguments={"path": "m.py"}),
+            _TC(name="edit_file", arguments={
+                "path": "m.py", "old_string": "    return 1\n",
+                "new_string": "    return 10\n"}),
+            _MR(text="fixed m.py", finish_reason="stop"),
+        ]
+        ok, reasons = validate_demonstration(
+            script, files, "recover the widget m sibling repair",
+            recovery_anchors=["def z():\n    pass\n"])
+        self.assertFalse(ok)
+        self.assertTrue(any("never missed" in r for r in reasons))
+
+    def test_validator_rejects_miss_without_correction(self):
+        # S100: a genuine miss with no later corrective edit on the
+        # same path teaches giving up — rejected
+        files = {"m.py": "def a():\n    return 10\n"}
+        script = [
+            _list(),
+            _TC(name="read_file", arguments={"path": "m.py"}),
+            _TC(name="edit_file", arguments={
+                "path": "m.py", "old_string": "def a():\n    return 7",
+                "new_string": "def a():\n    return 10"}),
+            _TC(name="read_file", arguments={"path": "m.py"}),
+            _MR(text="gave up on m.py", finish_reason="stop"),
+        ]
+        ok, reasons = validate_demonstration(
+            script, files, "recover the widget m sibling repair",
+            recovery_anchors=["def a():\n    return 7"])
+        self.assertFalse(ok)
+        self.assertTrue(any("without a later corrective edit" in r
+                            for r in reasons))
+
     def test_agent_lane_runs_verifies_and_tags(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             stats = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(16, stats["runs"])
-            self.assertEqual(16, stats["passed"], stats)
+            self.assertEqual(19, stats["runs"])
+            self.assertEqual(19, stats["passed"], stats)
             self.assertEqual(0, stats["rejected"])
             records = store.load()
             tagged = [r for r in records
                       if "agent-authored" in r.tags]
-            self.assertEqual(16, len(tagged))
-            self.assertEqual(16, len({r.goal.split(" (benchmark")[0]
+            self.assertEqual(19, len(tagged))
+            self.assertEqual(19, len({r.goal.split(" (benchmark")[0]
                                      for r in tagged}))
+            recovered = [r for r in records
+                         if "edit-recovery" in r.tags]
+            self.assertEqual(3, len(recovered))
 
     def test_agent_lane_is_idempotent(self):
         # S95: re-running the lane must not re-record covered goals
@@ -732,11 +839,11 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             first = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(16, first["passed"])
+            self.assertEqual(19, first["passed"])
             second = build_agent_corpus(store, python=sys.executable)
             self.assertEqual(0, second["runs"])
-            self.assertEqual(16, second["skipped_existing"])
-            self.assertEqual(16, len(store.load()))
+            self.assertEqual(19, second["skipped_existing"])
+            self.assertEqual(19, len(store.load()))
 
 
 if __name__ == "__main__":

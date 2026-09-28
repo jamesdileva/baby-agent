@@ -49,6 +49,15 @@ MAX_TEXT_CHARS = 500
 # exactly one deliberate failed read and pass.
 MAX_FAILED_TOOL_STEPS = 2
 
+# S100: records whose failed turns teach BY DESIGN (authored
+# recovery beats) vs accidental thrash from real trajectories. Only
+# deliberate records keep their failed turns in the taught chat; the
+# rest train the productive path only (STaSC selectivity:
+# unselective correction traces are noise). Tag names mirror
+# qacompanion.agent.ep1 (kept local to avoid an import cycle).
+DELIBERATE_TAGS = frozenset({"scripted-demo", "agent-authored",
+                             "recovery-demo", "edit-recovery"})
+
 
 class TrainingError(ValueError):
     """Structured training-pipeline failure (missing curated export)."""
@@ -80,6 +89,10 @@ class TrajectoryRecord:
     eligible: bool = False
     eligibility_reasons: List[str] = field(default_factory=list)
     chat: Optional[Dict[str, Any]] = None
+    # S100: curation tags ride along so the chat render can tell
+    # designed recovery beats (kept) from accidental thrash
+    # (stripped from undeliberate records).
+    tags: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -105,6 +118,7 @@ class TrajectoryRecord:
             "eligible": self.eligible,
             "eligibility_reasons": self.eligibility_reasons,
             "chat": self.chat,
+            "tags": self.tags,
         }
 
 
@@ -155,6 +169,8 @@ def _record_from_trajectory(traj: Dict[str, Any]) -> TrajectoryRecord:
                    or len(traj.get("verification_failures") or []) > 3),
         outcome=traj.get("outcome") or "",
         final_answer=traj.get("final_answer"),
+        tags=[str(t) for t in (traj.get("tags") or [])
+              if isinstance(t, str)],
         inefficient=any(p.get("dimension") == "efficiency"
                         for p in penalties if isinstance(p, dict)),
         provenance={
@@ -268,6 +284,17 @@ def _runtime_catalog() -> List[Any]:
     return _RUNTIME_CATALOG
 
 
+def _deliberate(record: TrajectoryRecord) -> bool:
+    """S100: designed recovery beats (authored/curated tags) vs
+    accidental thrash from real trajectories."""
+    return bool(set(record.tags or []) & DELIBERATE_TAGS)
+
+
+def _failed_step_count(record: TrajectoryRecord) -> int:
+    return sum(1 for s in (record.steps or [])
+               if isinstance(s, dict) and s.get("ok") is False)
+
+
 def _chat_record(record: TrajectoryRecord) -> Dict[str, Any]:
     """SFT messages teaching the runtime's own tool protocol. S72
     catalog alignment: the system prompt renders the runtime's ACTUAL
@@ -275,7 +302,16 @@ def _chat_record(record: TrajectoryRecord) -> Dict[str, Any]:
     12-tool catalog at inference; that distribution gap closes by
     construction. S69: the store's provenance suffix is stripped from
     the goal — it is not task semantics, and gen-3's models parroted
-    it back."""
+    it back.
+    S100 thrash-turn surgery: undeliberate records train the
+    productive path only — failed tool turns (the call AND its error
+    observation) are dropped from the taught chat. Deliberate
+    recovery beats keep theirs (the miss IS the lesson, per the
+    retry-data literature). trajectories.jsonl keeps full truth;
+    only the chat is cleaned, and the strip count rides in metadata.
+    S72 premature-final interleaves are kept in both cases
+    (deliberate failure-state teaching), with cuts remapped onto the
+    cleaned step list."""
     system = (build_system_prompt(tools=_runtime_catalog(),
                                   native_tools=False)
               + TOOL_PROTOCOL_PROMPT)
@@ -299,14 +335,31 @@ def _chat_record(record: TrajectoryRecord) -> Dict[str, Any]:
     # S72: interleave the captured verification-failed recovery states
     # faithfully — each failure renders the steps up to its recorded
     # position, then the premature claim, then the rejection, and the
-    # pointer advances so the continuation follows
+    # pointer advances so the continuation follows. S100: positions
+    # were recorded against the FULL step list, so cuts remap onto
+    # the cleaned list via the kept-index map.
+    full_steps = record.steps or []
+    if _deliberate(record):
+        steps = list(full_steps)
+        kept = list(range(len(full_steps)))
+    else:
+        steps = []
+        kept = []
+        for i, step in enumerate(full_steps):
+            if isinstance(step, dict) and step.get("ok") is False:
+                continue
+            kept.append(i)
+            steps.append(step)
+    stripped = len(full_steps) - len(steps)
     rendered = 0
     for failure in failures:
         cut = failure.get("after_step")
-        if not isinstance(cut, int) or not rendered < cut \
-                <= len(record.steps):
+        if not isinstance(cut, int) or not 0 < cut <= len(full_steps):
             continue
-        for step in record.steps[rendered:cut]:
+        cut = sum(1 for i in kept if i < cut)
+        if not rendered < cut <= len(steps):
+            continue
+        for step in steps[rendered:cut]:
             _render_step(step)
         premature = str(failure.get("premature_final") or "")
         if premature:
@@ -316,7 +369,7 @@ def _chat_record(record: TrajectoryRecord) -> Dict[str, Any]:
         messages.append({"role": "user",
                          "content": detail[:MAX_TEXT_CHARS]})
         rendered = cut
-    for step in record.steps[rendered:]:
+    for step in steps[rendered:]:
         _render_step(step)
     final = record.final_answer or (
         f"Completed: {record.goal[:MAX_TEXT_CHARS]}")
@@ -325,9 +378,10 @@ def _chat_record(record: TrajectoryRecord) -> Dict[str, Any]:
             "metadata": {"session_id": record.session_id,
                          "source": record.source,
                          "model": record.context.get("model"),
-                         "steps": len(record.steps),
+                         "steps": len(steps),
                          "capture_tier": record.capture_tier,
-                         "truncated": record.truncated}}
+                         "truncated": record.truncated,
+                         "failed_turns_stripped": stripped}}
 
 
 def build_records(curated_dir=None) -> List[TrajectoryRecord]:
@@ -415,6 +469,7 @@ def _srft_chat_record(traj: Dict[str, Any]) -> "tuple[Optional[Dict[str, Any]], 
                          "steps": len(prefix),
                          "capture_tier": "behavior-trace",
                          "truncated": False,
+                         "failed_turns_stripped": 0,
                          "srft-prefix": True}}
     return chat, len(prefix)
 
@@ -451,6 +506,25 @@ def build_training(curated_dir=None, out_dir=None,
     eligible = [r for r in records if r.eligible]
     step_trainable = [r for r in eligible if r.chat is not None]
 
+    # S100: cap the undeliberate (real-trajectory) share of the taught
+    # chats — cleanest first (fewest failed steps; session id breaks
+    # ties deterministically). Deliberate records (authored/curated
+    # recovery beats) always ride; the cap only ever cuts accidental
+    # thrash, and every cut is counted with its reason in the report.
+    # With no deliberate baseline the ratio is undefined, so the cap
+    # stays vacuous (eligibility + turn-stripping still apply).
+    deliberate = [r for r in step_trainable if _deliberate(r)]
+    real = [r for r in step_trainable if not _deliberate(r)]
+    if deliberate:
+        # kept_real <= deliberate  <=>  real share of taught <= 1/2
+        real_sorted = sorted(real, key=lambda r: (
+            _failed_step_count(r), r.session_id or ""))
+        kept_real = real_sorted[:len(deliberate)]
+    else:
+        kept_real = list(real)
+    real_capped = len(real) - len(kept_real)
+    taught = deliberate + kept_real
+
     # S77 SRFT lane: prefix records mined from the FAILED trajectories
     # of the SAME curated export (never raw experience)
     directory = Path(curated_dir or os.environ.get("QA_CURATED_DIR")
@@ -469,6 +543,15 @@ def build_training(curated_dir=None, out_dir=None,
         "classes": _tally(r.trajectory_class for r in records),
         "eligible": len(eligible),
         "step_trainable": len(step_trainable),
+        "deliberate": len(deliberate),
+        "real_kept": len(kept_real),
+        "real_capped": real_capped,
+        "real_capped_reason": ("undeliberate share capped at the "
+                               "deliberate count, cleanest first "
+                               "(S100)") if real_capped else "",
+        "failed_turns_stripped": sum(
+            (r.chat or {}).get("metadata", {}).get(
+                "failed_turns_stripped", 0) for r in taught),
         "invalid_skipped": getattr(build_records, "last_invalid_count", 0),
         "truncated": sum(1 for r in records if r.truncated),
         "srft_prefix_records": len(srft_chats),
@@ -487,7 +570,7 @@ def build_training(curated_dir=None, out_dir=None,
     _write_jsonl(out_path / "trajectories.jsonl",
                  [r.to_dict() for r in records])
     _write_jsonl(out_path / "training.jsonl",
-                 [r.chat for r in step_trainable] + srft_chats)
+                 [r.chat for r in taught] + srft_chats)
     _write_json(out_path / "report.json", report)
     report["out_dir"] = str(out_path)
     return report
@@ -550,6 +633,11 @@ def format_report(report: Dict[str, Any]) -> str:
         f"(classes: {report['classes']})",
         f"  eligible (verified success): {report['eligible']}, "
         f"step-trainable: {report['step_trainable']}",
+        f"  deliberate: {report.get('deliberate', '?')}, "
+        f"real kept: {report.get('real_kept', '?')}, "
+        f"capped: {report.get('real_capped', '?')}",
+        f"  failed turns stripped: "
+        f"{report.get('failed_turns_stripped', '?')}",
     ]
     if report.get("dry_run"):
         lines.append("  dry run: no exports written")

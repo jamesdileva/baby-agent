@@ -80,6 +80,25 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-27 — **S100 — Failed-edit-recovery demos + thrash-turn
+  surgery (the ep15 strings prescription)** — audit proved the
+  mechanism (whole-file rewrite breaks sibling, stale retry
+  misses, never re-edits) and the vector (training 50% real
+  verdict-successes with ~1 fail/run of accidental thrash).
+  Probes: minimal-edit prompt 0/3 (not steerable — weights fix
+  required), single-function 2/2 (skill exists, load breaks it).
+  R1 replays ep15's exact failure args then recovers from a fresh
+  read; R2/R3 generalize to fresh modules; validator simulates
+  file state and demands declared misses be genuine, consumed,
+  and corrected (authoring stays untrusted). Training renders
+  drop failed turns from undeliberate records only (deliberate
+  beats kept; S72 interleave remapped; full truth kept in
+  trajectories.jsonl) and caps the real share 1:1 cleanest-first.
+  Live: lane 3/3 + 16 skipped, export 380 = 187 + 187 + 6
+  (capped 13, stripped 97). Suite 1738 OK, pyflakes clean.
+  Colab order: fresh 380-row training.jsonl + s92 kit → ep16 →
+  pinned 5-task verdict vs ep11-q4. Spec: docs/s100-spec.md.
+
 - 2026-09-27 — **S95.1 Gen-15 verdict — 12/15 TIE with ep11,
   strings batch failed, indirect solved** — pinned 5-task, ep15
   trained on the 365-row S95 export (confirmed): ep15-q4 12/15

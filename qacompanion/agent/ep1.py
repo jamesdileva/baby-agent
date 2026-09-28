@@ -569,6 +569,12 @@ def mark_superseded_demos(store: ExperienceStore) -> Dict[str, Any]:
 
 AGENT_AUTHORED_TAG = "agent-authored"
 
+# S100: deliberate failed-edit-recovery beat (declared stale-memory
+# miss + genuine corrective edit). Records carrying this tag teach
+# recovery BY DESIGN, so the thrash-turn surgery in training.py
+# keeps their failed turns instead of stripping them.
+EDIT_RECOVERY_TAG = "edit-recovery"
+
 
 def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
     """S80: the first agent-authored batches — json synthesis drills
@@ -592,7 +598,13 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
     (0,3,0 / 1,0) while ep11 holds 3s. Three string drills on fresh
     modules with fixture-inference narratives (the test's expected
     value teaches the shape, as in the json drills), one with a
-    genuine wrong-turn read."""
+    genuine wrong-turn read.
+    S100 failed-edit-recovery drills (the ep15 lesson): R1 replays
+    ep15's exact strings failure prefix (whole-file rewrite breaking
+    the sibling + stale-memory retry missing) then recovers from a
+    fresh read; R2/R3 generalize the shape to fresh two-function
+    modules. The stale miss rides recovery_anchors so the validator
+    can demand it be genuine, consumed, and corrected."""
     demos: List[Dict[str, Any]] = []
 
     # --- json synthesis drills (the 3B wall, taught directly) ---
@@ -999,6 +1011,170 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
         files = {path: module_code, test_path: test_code}
         demos.append({"script": script, "files": files, "goal": goal})
 
+    # --- S100 failed-edit-recovery drills (the ep15 strings lesson) ---
+    # New shape: the script BREAKS a working sibling with a
+    # whole-file rewrite, the stale-memory retry genuinely fails
+    # (old_string not found — the exact ep15 failure, replayed with
+    # its real args in R1), then re-reads and lands a minimal
+    # corrective anchor from the FRESH observation. The stale miss is
+    # declared in recovery_anchors so the validator can demand it be
+    # genuine, consumed, and corrected. R1 replays ep15's saved
+    # trajectory (on-policy error states); R2/R3 generalize the shape
+    # to fresh two-function modules.
+    recovery_drills = [
+        {
+            "module": "string_utils",
+            "test_module": "test_string_utils",
+            "module_code":
+                'def reverse(text):\n    return text\n\n\n'
+                'def shout(text):\n    return text.upper() + "!"\n',
+            "test_code":
+                "import unittest\n\n"
+                "from string_utils import reverse, shout\n\n\n"
+                "class TestRecovery(unittest.TestCase):\n"
+                "    def test_reverse(self):\n"
+                '        self.assertEqual(reverse("abc"), "cba")\n\n'
+                "    def test_shout(self):\n"
+                '        self.assertEqual(shout("hey"), "HEY!")\n\n\n'
+                'if __name__ == "__main__":\n    unittest.main()\n',
+            # ep15's real step-6 args: whole-file rewrite fixing
+            # reverse while dropping the shout bang
+            "fumble_old":
+                'def reverse(text):\n    return text\n\n\n'
+                'def shout(text):\n    return text.upper() + "!"',
+            "fumble_new":
+                'def reverse(text):\n    return text[::-1]\n\n\n'
+                'def shout(text):\n    return text.upper()',
+            # ep15's real step-8 args: stale-memory retry, misses
+            "stale_old":
+                'def shout(text):\n    return text.upper() + "!"',
+            "stale_new":
+                'def shout(text):\n    return text.upper()',
+            # the correction, anchored on the FRESH file content
+            "fix_old": '    return text.upper()\n',
+            "fix_new": '    return text.upper() + "!"\n',
+            "goal":
+                "The string_utils repair broke its sibling: reverse "
+                "is fixed but shout lost its bang in a whole-file "
+                "rewrite. Re-anchor from the fresh file content and "
+                "finish the repair.",
+            "diagnosis":
+                "My first edit fixed reverse in string_utils.py but "
+                "rewrote the file from memory and dropped the bang "
+                "from shout — test_string_utils.py caught it. My "
+                "retry anchored on the file I remembered instead of "
+                "the file I made, so old_string was not found. "
+                "Re-reading string_utils.py showed shout returning "
+                "text.upper() with no bang; anchoring that fresh "
+                "line and restoring the bang passed the suite. "
+                "Anchor on what you just read, not what you "
+                "remember.",
+        },
+        {
+            "module": "whisper",
+            "test_module": "test_whisper",
+            "module_code":
+                'def whisper(text):\n    return text\n\n\n'
+                'def exclaim(text):\n    return text + "!"\n',
+            "test_code":
+                "import unittest\n\n"
+                "from whisper import whisper, exclaim\n\n\n"
+                "class TestRecovery(unittest.TestCase):\n"
+                "    def test_whisper(self):\n"
+                '        self.assertEqual(whisper("HEY"), "hey")\n\n'
+                "    def test_exclaim(self):\n"
+                '        self.assertEqual(exclaim("hey"), "hey!")\n\n\n'
+                'if __name__ == "__main__":\n    unittest.main()\n',
+            "fumble_old":
+                'def whisper(text):\n    return text\n\n\n'
+                'def exclaim(text):\n    return text + "!"',
+            "fumble_new":
+                'def whisper(text):\n    return text.lower()\n\n\n'
+                'def exclaim(text):\n    return text',
+            "stale_old":
+                'def exclaim(text):\n    return text + "!"',
+            "stale_new":
+                'def exclaim(text):\n    return text',
+            "fix_old":
+                'def exclaim(text):\n    return text',
+            "fix_new":
+                'def exclaim(text):\n    return text + "!"',
+            "goal":
+                "The whisper repair dropped exclaim's bang the same "
+                "way: a stale-memory retry failed, so re-read "
+                "whisper.py and land the fix from what the file "
+                "actually says.",
+            "diagnosis":
+                "My first edit fixed whisper in whisper.py but "
+                "rewrote the file from memory and dropped the bang "
+                "from exclaim — test_whisper.py caught it. My retry "
+                "anchored on the remembered file, so old_string was "
+                "not found. Re-reading whisper.py showed exclaim "
+                "returning bare text; anchoring the fresh def lines "
+                "and restoring the bang passed the suite. Anchor on "
+                "what you just read, not what you remember.",
+        },
+        {
+            "module": "label",
+            "test_module": "test_label",
+            "module_code":
+                'def shouty(text):\n    return text\n\n\n'
+                'def quiet(text):\n    return text.lower()\n',
+            "test_code":
+                "import unittest\n\n"
+                "from label import shouty, quiet\n\n\n"
+                "class TestRecovery(unittest.TestCase):\n"
+                "    def test_shouty(self):\n"
+                '        self.assertEqual(shouty("hey"), "HEY")\n\n'
+                "    def test_quiet(self):\n"
+                '        self.assertEqual(quiet("HEY"), "hey")\n\n\n'
+                'if __name__ == "__main__":\n    unittest.main()\n',
+            "fumble_old":
+                'def shouty(text):\n    return text\n\n\n'
+                'def quiet(text):\n    return text.lower()',
+            "fumble_new":
+                'def shouty(text):\n    return text.upper()\n\n\n'
+                'def quiet(text):\n    return text',
+            "stale_old":
+                'def quiet(text):\n    return text.lower()',
+            "stale_new":
+                'def quiet(text):\n    return text',
+            "fix_old": '    return text\n',
+            "fix_new": '    return text.lower()\n',
+            "goal":
+                "A whole-file rewrite fixed shouty but mangled quiet "
+                "in label.py, and the stale retry missed. Diagnose "
+                "from the failing test, re-read, and correct from "
+                "fresh observation.",
+            "diagnosis":
+                "My first edit fixed shouty in label.py but rewrote "
+                "the file from memory and dropped the lowering from "
+                "quiet — test_label.py caught it. My retry anchored "
+                "on the remembered file, so old_string was not "
+                "found. Re-reading label.py showed quiet returning "
+                "bare text; anchoring that fresh line and restoring "
+                "the lowering passed the suite. Anchor on what you "
+                "just read, not what you remember.",
+        },
+    ]
+    for drill in recovery_drills:
+        path = f"{drill['module']}.py"
+        test_path = f"{drill['test_module']}.py"
+        script = [_list(), _tests(python), _read(test_path),
+                  _read(path),
+                  _edit(path, drill["fumble_old"], drill["fumble_new"]),
+                  _tests(python),   # sibling broken: suite still fails
+                  _edit(path, drill["stale_old"], drill["stale_new"]),
+                  _read(path),   # re-anchor from FRESH observation
+                  _edit(path, drill["fix_old"], drill["fix_new"]),
+                  _tests(python),
+                  _final(drill["diagnosis"])]
+        demos.append({"script": script,
+                      "files": {path: drill["module_code"],
+                                test_path: drill["test_code"]},
+                      "goal": drill["goal"],
+                      "recovery_anchors": [drill["stale_old"]]})
+
     # --- S95 rung-3 demos (gate OPEN: 3 pinned cascade points) ---
     # Import-following via PLAIN READS (code_imports/code_references
     # are NOT in the lean benchmark catalog, and demos must use only
@@ -1100,13 +1276,22 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
 
 
 def validate_demonstration(script: List[Any], files: Dict[str, str],
-                           goal: str) -> "tuple[bool, List[str]]":
+                            goal: str,
+                            recovery_anchors: Optional[List[str]] = None
+                            ) -> "tuple[bool, List[str]]":
     """S80 demo quality validator — the anti-flakiness bar every
     demonstration must clear BEFORE it can enter the corpus
     (deterministic; the verification gate stays the separate real-world
     check). The validator makes authoring untrusted-by-design: any
     author (this session, muse-spark, a future epN) can write demos,
-    and the bar enforces quality."""
+    and the bar enforces quality.
+    S100: recovery_anchors declares the script's deliberate
+    stale-memory misses (the failed-edit-recovery shape). File state
+    is simulated through the script in order, so a declared miss must
+    genuinely MISS (count 0) against current content, be followed by
+    a successful corrective edit on the same path, and every
+    declaration must be consumed — a declared anchor that actually
+    matches is rejected, so authors cannot smuggle unverified edits."""
     reasons: List[str] = []
     tool_calls = [t for t in script if isinstance(t, ToolCall)]
     finals = [t for t in script if isinstance(t, ModelResponse)]
@@ -1136,20 +1321,49 @@ def validate_demonstration(script: List[Any], files: Dict[str, str],
             reasons.append("final answer references none of the files "
                            f"actually read/edited ({sorted(touched)})")
 
-    # 5. unique anchors (the S78 cascade lesson): every edit's
-    # old_string must appear exactly once in its target fixture
+    # 5. unique anchors (the S78 cascade lesson), simulated through
+    # the script in order (S100: file state evolves as edits land).
+    # Undeclared edits must match exactly once in CURRENT content. A
+    # declared recovery anchor must genuinely miss (count 0 — the
+    # stale-memory beat changes nothing, matching the runtime) and be
+    # followed by a successful corrective edit on the same path.
+    state = dict(files)
+    pending = list(recovery_anchors or [])
+    awaiting_correction: Dict[str, int] = {}
     for t in tool_calls:
         if t.name != "edit_file":
             continue
         target = t.arguments.get("path")
-        content = files.get(target)
+        content = state.get(target)
         if content is None:
             reasons.append(f"edit targets unwritten file: {target}")
             continue
         old = t.arguments.get("old_string") or ""
-        if content.count(old) != 1:
+        new = t.arguments.get("new_string") or ""
+        hits = content.count(old)
+        if old in pending and hits == 0:
+            pending.remove(old)
+            awaiting_correction[target] = awaiting_correction.get(
+                target, 0) + 1
+            continue
+        if old in pending:
+            reasons.append(f"declared recovery anchor for {target} "
+                           f"matches ({hits}x) — the miss must be "
+                           f"genuine, not staged")
+            continue
+        if hits != 1:
             reasons.append(f"edit anchor for {target} matches "
-                           f"{content.count(old)} times (must be 1)")
+                           f"{hits} times (must be 1)")
+            continue
+        state[target] = content.replace(old, new, 1)
+        if awaiting_correction.get(target):
+            awaiting_correction[target] -= 1
+    if pending:
+        reasons.append(f"{len(pending)} declared recovery anchor(s) "
+                       f"never missed their target")
+    if any(awaiting_correction.values()):
+        reasons.append("recovery miss without a later corrective edit "
+                       "on the same path")
 
     # 6. goal identity (the S78 goal-dedupe lesson): no placeholder or
     # generic-only goals
@@ -1201,7 +1415,9 @@ def build_agent_corpus(experience_store: ExperienceStore,
         if _normalize_goal(goal) in covered:
             stats["skipped_existing"] += 1
             continue
-        ok, reasons = validate_demonstration(script, files, goal)
+        ok, reasons = validate_demonstration(
+            script, files, goal,
+            recovery_anchors=demo.get("recovery_anchors"))
         if not ok:
             stats["rejected"] += 1
             stats["tasks"].append({"goal": goal, "success": False,
@@ -1227,6 +1443,9 @@ def build_agent_corpus(experience_store: ExperienceStore,
                 last = records[-1]
                 if AGENT_AUTHORED_TAG not in last.tags:
                     last.tags.append(AGENT_AUTHORED_TAG)
+                if (demo.get("recovery_anchors")
+                        and EDIT_RECOVERY_TAG not in last.tags):
+                    last.tags.append(EDIT_RECOVERY_TAG)
                 experience_store.save(records)
         else:
             stats["failed"] += 1
