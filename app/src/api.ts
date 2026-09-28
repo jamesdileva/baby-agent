@@ -8,6 +8,7 @@ export interface SessionSummary {
   files_changed: string[];
   verification_results: { ok: boolean; detail: string }[];
   termination_reason: string | null;
+  final_result: string | null;
   done: boolean;
   error: string | null;
   pending_confirmation: {

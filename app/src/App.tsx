@@ -16,6 +16,24 @@ import {
   stopSession,
 } from "./api";
 
+function timeAgo(iso: string | null): string {
+  if (!iso) return "";
+  const then = new Date(iso).getTime();
+  const secs = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  return `${Math.floor(secs / 86400)}d ago`;
+}
+
+function clock(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
 export default function App() {
   const [goal, setGoal] = useState("The tests in this project are failing. Find the bug, fix it, and run the tests to verify they pass.");
   const [workspace, setWorkspace] = useState("");
@@ -32,11 +50,12 @@ export default function App() {
   const [feed, setFeed] = useState<AgentEvent[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [verdictModels, setVerdictModels] = useState(
-    "baby-agent:ep12-q4,baby-agent:ep11-q4"
+    "baby-agent:ep16-q4,baby-agent:ep11-q4"
   );
   const [verdictTemp, setVerdictTemp] = useState("");
   const [verdictSeed, setVerdictSeed] = useState("");
   const sourceRef = useRef<EventSource | null>(null);
+  const feedEndRef = useRef<HTMLDivElement | null>(null);
 
   async function refreshSessions() {
     setSessions(await listSessions());
@@ -72,6 +91,10 @@ export default function App() {
     sourceRef.current = source;
     return () => source.close();
   }, [activeId]);
+
+  useEffect(() => {
+    feedEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [feed]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -129,173 +152,232 @@ export default function App() {
   }
 
   async function handleVerdict() {
-    await startVerdict(verdictModels, 3, verdictTemp, verdictSeed);
+    await startVerdict(verdictModels, 4, verdictTemp, verdictSeed);
     refreshJobs();
   }
 
   const active = sessions.find((s) => s.session_id === activeId);
+  const dripRunning = jobs.some(
+    (j) => j.kind === "drip" && j.status === "running"
+  );
+  const verdictRunning = jobs.some(
+    (j) => j.kind === "verdict" && j.status === "running"
+  );
+
+  function renderEvent(event: AgentEvent) {
+    const p = event.payload as Record<string, unknown>;
+    switch (event.event_type) {
+      case "tool_requested":
+        return `${p.tool ?? ""} ${JSON.stringify(p.arguments ?? {})}`;
+      case "tool_failed":
+        return `${p.tool ?? ""}: ${p.error ?? ""}`;
+      case "model_response":
+        return (p.text as string) ?? "";
+      case "file_changed":
+        return (p.path as string) ?? "";
+      case "failure_detected":
+        return (p.message as string) ?? "";
+      default:
+        return "";
+    }
+  }
 
   return (
     <div className="app">
       <h1>Baby-Agent</h1>
-      <section className="operations">
-        <h2>Operations</h2>
-        <button onClick={handleDrip}>Run drip (one real pass, ~7-9 quota)</button>
-        <div className="verdict-row">
-          <input
-            value={verdictModels}
-            onChange={(e) => setVerdictModels(e.target.value)}
-            placeholder="models, comma-separated (newest first)"
-          />
-          <input
-            value={verdictTemp}
-            onChange={(e) => setVerdictTemp(e.target.value)}
-            placeholder="temp (unset)"
-          />
-          <input
-            value={verdictSeed}
-            onChange={(e) => setVerdictSeed(e.target.value)}
-            placeholder="seed (unset)"
-          />
-          <button onClick={handleVerdict}>Run verdict</button>
-        </div>
-        <ul className="jobs">
-          {jobs.map((job) => (
-            <li key={job.id} className={`job ${job.status}`}>
-              <span className="kind">[{job.kind}]</span>{" "}
-              <span className="status">{job.status}</span>
-              {job.summary && <div className="summary">{job.summary}</div>}
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section className="new-task">
-        <textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={3} />
-        <div className="workspace-row">
-          <input
-            value={workspace}
-            onChange={(e) => setWorkspace(e.target.value)}
-            placeholder="workspace path (optional)"
-          />
-          <button onClick={openPicker}>Browse…</button>
-        </div>
-        <input
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          placeholder="model"
-          list="model-list"
-        />
-        <datalist id="model-list">
-          {models.map((m) => (
-            <option key={m} value={m} />
-          ))}
-        </datalist>
-        {modelsError && <p className="error">models: {modelsError}</p>}
-        <select value={provider} onChange={(e) => setProvider(e.target.value)}>
-          <option value="ollama">ollama (local)</option>
-          <option value="gemini">gemini (free tier)</option>
-        </select>
-        <input
-          value={verifyCommand}
-          onChange={(e) => setVerifyCommand(e.target.value)}
-          placeholder="verify command (optional, e.g. python -m unittest)"
-        />
-        <button onClick={handleStart}>Start agent</button>
-        {activeId && <button onClick={handleStop}>Stop</button>}
-        {startError && <p className="error">{startError}</p>}
-      </section>
-      {showPicker && browse && (
-        <section className="picker">
-          <h2>Choose workspace</h2>
-          <p className="path">{browse.path}</p>
-          <button onClick={() => navigatePicker(browse.parent)}>Up</button>
-          <ul>
-            {browse.directories.map((d) => (
-              <li key={d} onClick={() => navigatePicker(browse.path + browse.sep + d)}>
-                {d}/
-              </li>
-            ))}
-          </ul>
-          {browse.directories.length === 0 && <p>No subdirectories here.</p>}
-          <button onClick={() => { setWorkspace(browse.path); setShowPicker(false); }}>
-            Use this folder
-          </button>
-          <button onClick={() => setShowPicker(false)}>Cancel</button>
-        </section>
-      )}
-      {active && (
-        <section className="session">
-          <h2>
-            {active.state} — {active.goal.slice(0, 60)}
-          </h2>
-          <p>
-            iterations: {active.iterations} | files changed:{" "}
-            {active.files_changed.join(", ") || "none"}
-          </p>
-          <p>
-            workspace: {active.workspace || "(temp)"} | model:{" "}
-            {active.model ?? "default"}
-          </p>
-          {active.error && <p className="error">{active.error}</p>}
-          {active.pending_confirmation && (
-            <div className="confirm">
-              <p>
-                Approval needed: {active.pending_confirmation.tool}{" "}
-                {JSON.stringify(active.pending_confirmation.arguments)}
-              </p>
-              <button onClick={() => handleConfirm(true)}>Approve</button>
-              <button onClick={() => handleConfirm(false)}>Deny</button>
+      <div className="columns">
+        <div className="col">
+          <section className="new-task">
+            <h2>New task</h2>
+            <textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={3} />
+            <div className="workspace-row">
+              <input
+                value={workspace}
+                onChange={(e) => setWorkspace(e.target.value)}
+                placeholder="workspace path (optional)"
+              />
+              <button onClick={openPicker}>Browse…</button>
             </div>
-          )}
-          {active.verification_results.length > 0 && (
-            <ul>
-              {active.verification_results.map((v, i) => (
-                <li key={i}>
-                  verification #{i + 1}: {v.ok ? "PASS" : "FAIL"} — {v.detail}
+            <input
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder="model"
+              list="model-list"
+            />
+            <datalist id="model-list">
+              {models.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
+            {modelsError && <p className="error">models: {modelsError}</p>}
+            <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+              <option value="ollama">ollama (local)</option>
+              <option value="gemini">gemini (free tier)</option>
+            </select>
+            <input
+              value={verifyCommand}
+              onChange={(e) => setVerifyCommand(e.target.value)}
+              placeholder="verify command (optional, e.g. python -m unittest)"
+            />
+            <button onClick={handleStart}>Start agent</button>
+            {activeId && <button className="stop" onClick={handleStop}>Stop</button>}
+            {startError && <p className="error">{startError}</p>}
+          </section>
+          <section className="operations">
+            <h2>Operations</h2>
+            <button onClick={handleDrip} disabled={dripRunning}>
+              {dripRunning ? "Drip running…" : "Run drip (one real pass)"}
+            </button>
+            <div className="verdict-row">
+              <input
+                value={verdictModels}
+                onChange={(e) => setVerdictModels(e.target.value)}
+                placeholder="models, comma-separated (newest first)"
+              />
+            </div>
+            <div className="verdict-row">
+              <input
+                value={verdictTemp}
+                onChange={(e) => setVerdictTemp(e.target.value)}
+                placeholder="temp (unset)"
+              />
+              <input
+                value={verdictSeed}
+                onChange={(e) => setVerdictSeed(e.target.value)}
+                placeholder="seed (unset)"
+              />
+              <button onClick={handleVerdict} disabled={verdictRunning}>
+                {verdictRunning ? "Running…" : "Run verdict"}
+              </button>
+            </div>
+            <ul className="jobs">
+              {jobs.length === 0 && <li className="empty">no operations yet</li>}
+              {jobs.map((job) => (
+                <li key={job.id} className={`job ${job.status}`}>
+                  <span className="kind">[{job.kind}]</span>{" "}
+                  <span className="status">{job.status}</span>{" "}
+                  <span className="when">{timeAgo(job.started_at)}</span>
+                  {job.summary && <div className="summary">{job.summary}</div>}
                 </li>
               ))}
             </ul>
+          </section>
+          <section className="history">
+            <h2>Sessions ({sessions.length})</h2>
+            <ul>
+              {sessions.length === 0 && <li className="empty">none yet</li>}
+              {sessions.map((s) => (
+                <li
+                  key={s.session_id}
+                  className={s.session_id === activeId ? "active-session" : ""}
+                  onClick={() => setActiveId(s.session_id)}
+                >
+                  [{s.state}] {s.goal.slice(0, 44)}
+                  <span className="meta">
+                    {" "}
+                    {s.model ?? "default"} · {s.files_changed.length} file
+                    {s.files_changed.length === 1 ? "" : "s"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+        <div className="col">
+          {showPicker && browse && (
+            <section className="picker">
+              <h2>Choose workspace</h2>
+              <p className="path">{browse.path}</p>
+              <button onClick={() => navigatePicker(browse.parent)}>Up</button>
+              <ul>
+                {browse.directories.map((d) => (
+                  <li key={d} onClick={() => navigatePicker(browse.path + browse.sep + d)}>
+                    {d}/
+                  </li>
+                ))}
+              </ul>
+              {browse.directories.length === 0 && <p>No subdirectories here.</p>}
+              <button onClick={() => { setWorkspace(browse.path); setShowPicker(false); }}>
+                Use this folder
+              </button>
+              <button onClick={() => setShowPicker(false)}>Cancel</button>
+            </section>
           )}
-          {active.done && <p className="done">done: {active.termination_reason}</p>}
-          {active.done && active.verification_results.length === 0 && (
-            <p className="unverified">
-              unverified — no verify command was set, so completion means the model
-              stopped, not that anything was proven. Add a verify command (e.g.
-              python -m unittest) next run for a real gate.
-            </p>
+          {active && (
+            <section className="session">
+              <h2>
+                {active.state} — {active.goal.slice(0, 60)}
+              </h2>
+              <p>
+                iterations: {active.iterations} | workspace:{" "}
+                {active.workspace || "(temp)"} | model: {active.model ?? "default"}
+              </p>
+              {active.files_changed.length > 0 && (
+                <p>
+                  files changed:{" "}
+                  {active.files_changed.map((f) => (
+                    <span key={f} className="chip">{f}</span>
+                  ))}
+                </p>
+              )}
+              {active.error && <p className="error">{active.error}</p>}
+              {active.pending_confirmation && (
+                <div className="confirm">
+                  <p>
+                    Approval needed: {active.pending_confirmation.tool}{" "}
+                    {JSON.stringify(active.pending_confirmation.arguments)}
+                  </p>
+                  <button onClick={() => handleConfirm(true)}>Approve</button>
+                  <button onClick={() => handleConfirm(false)}>Deny</button>
+                </div>
+              )}
+              {active.verification_results.length > 0 && (
+                <ul>
+                  {active.verification_results.map((v, i) => (
+                    <li key={i}>
+                      verification #{i + 1}:{" "}
+                      <span className={v.ok ? "done" : "error"}>
+                        {v.ok ? "PASS" : "FAIL"}
+                      </span>{" "}
+                      — {v.detail}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {active.done && <p className="done">done: {active.termination_reason}</p>}
+              {active.done && active.final_result && (
+                <div className="final-answer">
+                  <h2>Final answer</h2>
+                  <p>{active.final_result}</p>
+                </div>
+              )}
+              {active.done && active.verification_results.length === 0 && (
+                <p className="unverified">
+                  unverified — no verify command was set, so completion means the model
+                  stopped, not that anything was proven. Add a verify command (e.g.
+                  python -m unittest) next run for a real gate.
+                </p>
+              )}
+            </section>
           )}
-        </section>
-      )}
-      <section className="feed">
-        <h2>Live activity</h2>
-        <ul>
-          {feed.slice(-50).map((event) => (
-            <li key={event.event_id}>
-              <span className="type">{event.event_type}</span>{" "}
-              {event.event_type === "tool_requested" &&
-                ` ${(event.payload as { tool?: string }).tool ?? ""}`}
-              {event.event_type === "tool_failed" &&
-                ` ${(event.payload as { tool?: string }).tool ?? ""}: ${(event.payload as { error?: string }).error ?? ""}`}
-              {event.event_type === "model_response" &&
-                ` ${(event.payload as { text?: string }).text ?? ""}`}
-              {event.event_type === "file_changed" &&
-                ` ${(event.payload as { path?: string }).path ?? ""}`}
-              {event.event_type === "failure_detected" &&
-                ` ${(event.payload as { message?: string }).message ?? ""}`}
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section className="history">
-        <h2>Sessions</h2>
-        <ul>
-          {sessions.map((s) => (
-            <li key={s.session_id} onClick={() => setActiveId(s.session_id)}>
-              [{s.state}] {s.goal.slice(0, 50)}
-            </li>
-          ))}
-        </ul>
-      </section>
+          <section className="feed">
+            <h2>Live activity</h2>
+            {!activeId && <p className="empty">start or select a session to watch it work</p>}
+            <div className="feed-scroll">
+              <ul>
+                {feed.slice(-80).map((event) => (
+                  <li key={event.event_id}>
+                    <span className="time">[{clock(event.timestamp)}]</span>{" "}
+                    <span className="type">{event.event_type}</span>{" "}
+                    {renderEvent(event)}
+                  </li>
+                ))}
+              </ul>
+              <div ref={feedEndRef} />
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

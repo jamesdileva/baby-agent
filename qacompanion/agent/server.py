@@ -156,6 +156,8 @@ class ManagedSession:
                 list(session.verification_results) if session else []),
             "termination_reason": session.termination_reason if session
             else None,
+            "final_result": (
+                session.final_result if session else None),
             "done": self.done,
             "error": self.error,
             "pending_confirmation": self.pending_confirmation,
