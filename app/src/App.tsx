@@ -212,6 +212,7 @@ export default function App() {
   const verdictRunning = jobs.some(
     (j) => j.kind === "verdict" && j.status === "running"
   );
+  const agentBusy = active != null && !active.done;
 
   function renderEvent(event: AgentEvent) {
     const p = event.payload as Record<string, unknown>;
@@ -237,19 +238,7 @@ export default function App() {
       <div className="columns">
         <div className="col">
           <section className="new-task">
-            <h2>New task</h2>
-            <textarea
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              rows={3}
-              placeholder="describe the task — Enter starts the agent, Shift+Enter for a new line"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  if (goal.trim()) handleStart();
-                }
-              }}
-            />
+            <h2>Session settings</h2>
             <div className="workspace-row">
               <input
                 value={workspace}
@@ -289,9 +278,6 @@ export default function App() {
               onChange={(e) => setVerifyCommand(e.target.value)}
               placeholder="verify command (optional, e.g. python -m unittest)"
             />
-            <button onClick={handleStart} disabled={!goal.trim()}>Start agent</button>
-            {activeId && <button className="stop" onClick={handleStop}>Stop</button>}
-            {startError && <p className="error">{startError}</p>}
           </section>
           <section className="operations">
             <h2>Operations</h2>
@@ -396,12 +382,6 @@ export default function App() {
                 </ul>
               )}
               {active.done && <p className="done">done: {active.termination_reason}</p>}
-              {active.done && active.final_result && (
-                <div className="final-answer">
-                  <h2>Final answer</h2>
-                  <p>{active.final_result}</p>
-                </div>
-              )}
               {active.done && active.verification_results.length === 0 && (
                 <p className="unverified">
                   unverified — no verify command was set, so completion means the model
@@ -426,6 +406,35 @@ export default function App() {
               </ul>
               <div ref={feedEndRef} />
             </div>
+          </section>
+          {active?.done && active.final_result && (
+            <section className="final-answer">
+              <h2>Final response</h2>
+              <p>{active.final_result}</p>
+            </section>
+          )}
+          <section className="chat">
+            <textarea
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              rows={3}
+              placeholder="type a task — Enter sends, Shift+Enter for a new line"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  if (goal.trim() && !agentBusy) handleStart();
+                }
+              }}
+            />
+            <div className="chat-actions">
+              <button onClick={handleStart} disabled={!goal.trim() || agentBusy}>
+                {agentBusy ? "Agent working…" : "Send"}
+              </button>
+              {agentBusy && (
+                <button className="stop" onClick={handleStop}>Stop</button>
+              )}
+            </div>
+            {startError && <p className="error">{startError}</p>}
           </section>
         </div>
       </div>
