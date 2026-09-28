@@ -39,6 +39,8 @@ ep14.gguf
 ep14-q4.gguf
 ep15.gguf
 ep15-q4.gguf
+ep16.gguf
+ep16-q4.gguf
 
 # Colab notebooks live locally only, never committed
 *.ipynb

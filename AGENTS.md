@@ -80,6 +80,23 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-27 — **S100.1 Gen-16 verdict — strings FIXED 3/3
+  (first minimal anchor at inference), 12/15 tie, indirect
+  wobbles** — pinned 5-task, ep16 trained on the 380-row S100
+  export: ep16-q4 12/15 (calc 3/3, **strings 3/3** (was 0/3),
+  json 3/3, cascade 3/3, indirect 0/3 (was 3/3)) vs ep11-q4
+  12/15 (3/3,3/3,3/3,3/3,0/3). Mechanism, not luck: ep16's
+  strings edit is the MINIMAL single-line anchor (`return text`
+  → `return text[::-1]`) — first time any generation emits the
+  demo shape instead of a whole-file rewrite. Hygiene partial
+  (failures 18 → 11, guessed 0.2 → 0.0; residual is
+  codeintel-probing, not path-guessing). Indirect 0/3 is
+  wrong-value (1.5 → 1.4, needs 1.2) + no recovery — same shape
+  as the old collapse, new instance; per the n=3 rule it is
+  UNCONFIRMED volatility, flagged for re-probe, not convicted.
+  ep16 NOT shipped (tie + 11 vs 3 failures); ep11-q4 REMAINS
+  champion. Suite untouched (docs-only slice).
+
 - 2026-09-27 — **S100 — Failed-edit-recovery demos + thrash-turn
   surgery (the ep15 strings prescription)** — audit proved the
   mechanism (whole-file rewrite breaks sibling, stale retry

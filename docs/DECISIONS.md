@@ -1567,6 +1567,19 @@ share 1:1 cleanest-first (live: capped 13, stripped 97, export
 reading that moves with cleaner hygiene. Provenance: S100 audit
 (traj forensics + probes A/B + dilution/research review).
 
+### S100.1 gen-16 verdict: strings fixed by mechanism, tie, champion holds
+
+**Decision:** ep16 (380-row S100 export) ties ep11 12/15 with the
+SAME task profile (strings 3/3 FIXED via the first minimal anchor
+ever emitted at inference — mechanism, not luck; indirect 0/3 both).
+Hygiene improved (18 → 11 failures, guessed 0.2 → 0.0) but not to
+ep11's 3; ep16's indirect 0/3 (wrong value + no recovery) is
+unconfirmed single-n=3 volatility per the S91.1 rule — flagged for
+re-probe, not convicted. ep16 NOT shipped; ep11-q4 REMAINS
+champion. Next: re-probe indirect (confirm or clear), then judge
+whether the recovery lesson generalizes or needs a wrong-value
+instance. Provenance: S100.1 pinned 5-task verdict 2026-09-27.
+
 ### S96 dashboard usefulness (deferred backlog, now unblocked)
 
 **Decision:** The S82-deferred polish lands now that the model
