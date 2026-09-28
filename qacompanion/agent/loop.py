@@ -363,7 +363,8 @@ class AgentLoop:
                 else:
                     self._emit("tool_completed", session, tool=call.name,
                                duration_ms=result.duration_ms,
-                               changed_path=changed)
+                               changed_path=changed,
+                               output=(result.output or "")[:240])
                 if changed:
                     self._emit("file_changed", session, path=changed)
                 session.messages.append(ModelMessage(

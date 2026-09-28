@@ -286,6 +286,12 @@ class TestLoopEventSequence(EventTestBase):
         self.assertEqual(completed.payload["tool"], "write_file")
         self.assertIsInstance(completed.payload["duration_ms"], int)
         self.assertEqual(completed.payload["changed_path"], "a.txt")
+        # S102.4: the feed renders what the model saw — a bounded
+        # observation head must ride the event (live session forensics:
+        # without it, tool results were invisible in the dashboard)
+        self.assertIn("output", completed.payload)
+        self.assertIsInstance(completed.payload["output"], str)
+        self.assertLessEqual(len(completed.payload["output"]), 240)
 
 
 if __name__ == "__main__":
