@@ -80,6 +80,31 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **S102.4 — Session forensics made visible + the
+  interleaved-thrash blind spot named (live user finding)** — the
+  user's docs-question session ('how do I start this app? it should be
+  in /docs') thrashed and the feed showed 'model started' after every
+  step. INVESTIGATION: (1) model_started-per-step is BY DESIGN (the
+  agentic loop consults the model after every observation; one call
+  per iteration) — the raw name misread as a reload; (2) the user's
+  context-loss hypothesis DISPROVEN with code: loop.py:369 appends
+  every ToolResult to session.messages before the next model call —
+  the listing WAS in context; the feed just never rendered
+  tool_completed, so results were invisible. Fixed: tool_completed
+  now carries a bounded observation head (output[:240]) and the feed
+  renders 'tool → result' with human event labels (model_started →
+  'thinking'). (3) The thrash anatomy: '/' boundary fail → README read
+  (which had NO run instructions — README now has a 'Running the agent
+  dashboard' section) → root listing seen but ignored → generic
+  entry-path guesses cycling (src/main.py ×3, app/__init__.py ×2,
+  list src) → cancelled at 10. (4) WHY RECOVERY NEVER FIRED — the
+  named gap: FailureTracker.no_progress requires the SAME signature
+  CONSECUTIVE ×3, but the model cycled 3-4 DIFFERENT failing paths, so
+  the streak always reset; 7 failures/10 iterations with no
+  session-level non-progress signal. Follow-up slice queued:
+  session-level failure-rate detection in the recovery ladder (S58
+  territory, needs its own tests). Suite 1740 OK, pyflakes clean.
+
 - 2026-09-28 — **S102.3 — Chat layout + the hello-thrash fix (live
   user finding)** — INVESTIGATION: two live 'hello' sessions on
   ep11-q4 thrashed (12 iters incl. a screenshot; 5 iters) with no
