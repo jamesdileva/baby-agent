@@ -80,6 +80,26 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **S102.3 — Chat layout + the hello-thrash fix (live
+  user finding)** — INVESTIGATION: two live 'hello' sessions on
+  ep11-q4 thrashed (12 iters incl. a screenshot; 5 iters) with no
+  final answer — the system prompt taught 'inspect before acting, act
+  through tools' with NO conversational escape, and the corpus trains
+  discovery-first on every goal, so a greeting got the full explore-
+  first treatment. Fix: one additive DEFAULT_SYSTEM_PROMPT line
+  (greetings/questions with no workspace task → reply directly, no
+  tool calls); text-only, loop/protocol untouched; regression test
+  added. training.py renders build_system_prompt so the export was
+  rebuilt the same cycle — all 382 records carry the new line
+  (188 deliberate + 188 real + 6 SRFT; cap unchanged; curation picked
+  up the S102.2 flash-lite drip pass into the real pool). **The fresh
+  training/training.jsonl is the one to upload for ep17** (user had
+  not started Colab — prompt now trains in, zero mismatch). UI: the
+  right column is a chat panel — session status, live activity, Final
+  response card, chat input with Send (disables to 'Agent working…'
+  while running, Stop beside it); settings moved left. Suite 1740 OK
+  (1740th = the prompt test), pyflakes clean.
+
 - 2026-09-28 — **S102.2 — Picker modal + chat-style start (user
   feedback, same-day)** — the picker is now a real popup: fixed
   backdrop overlay, centered dialog card, click-outside AND Escape
