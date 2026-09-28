@@ -80,6 +80,26 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **S102.2 — Picker modal + chat-style start (user
+  feedback, same-day)** — the picker is now a real popup: fixed
+  backdrop overlay, centered dialog card, click-outside AND Escape
+  close, '>N more files' truncation note, no-matches state distinct
+  from empty-directory. The goal box is now chat-shaped: Enter starts
+  the agent (Shift+Enter newlines, IME-safe), Start disabled while the
+  goal is empty, recents moved under the workspace row. Drip triage
+  (user-reported timeouts, fully diagnosed): (1) the 'timed out' drips
+  were READ timeouts, not quota — flash-latest's thinking turns exceed
+  the 120s GEMINI_TIMEOUT default on the full agent-shape request;
+  (2) at 300s the drip PROGRESSED (3 iters, 2 real calls) then died on
+  an honest HTTP 429 — the flash-latest free-tier bucket (20 req/day)
+  was drained by the user's two runs + the probe, confirming the
+  user's out-of-quota guess for THAT bucket; (3) pinning
+  GEMINI_MODEL=gemini-3.1-flash-lite (its own bucket) +
+  GEMINI_TIMEOUT=300 produced a clean **drip SUCCESS — goal completed,
+  6 iters, 5 calls, 0 failures** (verified pass feeding the corpus).
+  Standing recipe for live drips: pin flash-lite + 300s timeout.
+  npm build green, suite 1739 OK.
+
 - 2026-09-28 — **S102 + S102.1 — Dashboard polish + file picker
   (user-tested feedback addressed)** — S102: the "no output" complaint
   root-caused — the agent's FINAL ANSWER (session.final_result) was
