@@ -80,6 +80,25 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **S102 + S102.1 — Dashboard polish + file picker
+  (user-tested feedback addressed)** — S102: the "no output" complaint
+  root-caused — the agent's FINAL ANSWER (session.final_result) was
+  never serialized to the UI; server summary now exposes it, rendered
+  as a green final-answer block. Two-column responsive layout (controls
+  left, live session right); feed gains timestamps + auto-scroll +
+  tool-arguments rendering + empty states; jobs show relative start
+  time; drip/verdict buttons disable while running (no double-fires);
+  session history shows model + file count; verification PASS/FAIL
+  colored; files changed as chips. S102.1: the file picker upgraded —
+  server browse_directory returns top-level files (sorted, hidden
+  excluded) alongside directories; picker gains a filter box over
+  entries, manual path entry with Go (Enter works), read-only file
+  listing (capped 20, dim mono), empty-directory state, and
+  Use-this-folder now remembers the choice; recent workspaces (up to 5,
+  localStorage) render as one-click buttons under the workspace row.
+  npm build green. Suite 1739 OK, pyflakes clean. Spec: none (UI
+  polish; behavior additive, no spec'd surface changed).
+
 - 2026-09-27 — **S101 — Wrong-value recovery drill (the ep16
   indirect answer)** — seed-43 re-probe: 1/3 (one clean 1.2
   success, two identical 1.4-guess + cart-compensation +
