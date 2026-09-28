@@ -111,13 +111,18 @@ def browse_directory(path: str = "") -> Dict[str, Any]:
     if not root.is_dir():
         raise ValueError(f"not a directory: {root}")
     try:
-        entries = sorted(p.name for p in root.iterdir() if p.is_dir()
-                         and not p.name.startswith("."))
+        directories = sorted(p.name for p in root.iterdir() if p.is_dir()
+                             and not p.name.startswith("."))
+        # S102: files visible too — choosing a workspace benefits from
+        # seeing what the project contains (README, tests, configs)
+        files = sorted(p.name for p in root.iterdir() if p.is_file()
+                       and not p.name.startswith("."))
     except OSError as exc:
         raise ValueError(f"cannot list directory: {exc}") from exc
     return {"path": str(root.resolve()),
             "parent": str(root.resolve().parent),
-            "directories": entries,
+            "directories": directories,
+            "files": files,
             "sep": _os.sep}
 
 

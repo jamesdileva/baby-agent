@@ -115,6 +115,7 @@ export interface BrowseResult {
   path: string;
   parent: string;
   directories: string[];
+  files: string[];
   sep: string;
 }
 

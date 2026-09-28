@@ -45,6 +45,9 @@ export default function App() {
   const [startError, setStartError] = useState<string | null>(null);
   const [browse, setBrowse] = useState<BrowseResult | null>(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [pickerFilter, setPickerFilter] = useState("");
+  const [pickerPathEntry, setPickerPathEntry] = useState("");
+  const [recentWorkspaces, setRecentWorkspaces] = useState<string[]>([]);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [feed, setFeed] = useState<AgentEvent[]>([]);
@@ -110,10 +113,33 @@ export default function App() {
     return () => clearInterval(timer);
   }, [activeId]);
 
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem("ba-recent-workspaces") ?? "[]"
+      ) as string[];
+      if (Array.isArray(saved)) setRecentWorkspaces(saved.slice(0, 5));
+    } catch {
+      // corrupt storage: start empty
+    }
+  }, []);
+
+  function rememberWorkspace(path: string) {
+    if (!path.trim()) return;
+    const next = [path, ...recentWorkspaces.filter((w) => w !== path)].slice(0, 5);
+    setRecentWorkspaces(next);
+    try {
+      localStorage.setItem("ba-recent-workspaces", JSON.stringify(next));
+    } catch {
+      // private mode: memory-only is fine
+    }
+  }
+
   async function handleStart() {
     setStartError(null);
     try {
       const { session_id } = await startSession(goal, workspace, model, provider, verifyCommand);
+      rememberWorkspace(workspace);
       setActiveId(session_id);
       refreshSessions();
     } catch (e) {
@@ -132,6 +158,8 @@ export default function App() {
   async function openPicker() {
     try {
       setBrowse(await browseDirectory(workspace));
+      setPickerPathEntry(workspace);
+      setPickerFilter("");
       setShowPicker(true);
     } catch (e) {
       setStartError(e instanceof Error ? e.message : String(e));
@@ -141,6 +169,7 @@ export default function App() {
   async function navigatePicker(path: string) {
     try {
       setBrowse(await browseDirectory(path));
+      setPickerPathEntry(path);
     } catch (e) {
       setStartError(e instanceof Error ? e.message : String(e));
     }
@@ -288,20 +317,58 @@ export default function App() {
             <section className="picker">
               <h2>Choose workspace</h2>
               <p className="path">{browse.path}</p>
+              <div className="workspace-row">
+                <input
+                  value={pickerPathEntry}
+                  onChange={(e) => setPickerPathEntry(e.target.value)}
+                  placeholder="type a path and press Go"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && pickerPathEntry.trim()) navigatePicker(pickerPathEntry.trim());
+                  }}
+                />
+                <button onClick={() => { if (pickerPathEntry.trim()) navigatePicker(pickerPathEntry.trim()); }}>Go</button>
+              </div>
+              <input
+                value={pickerFilter}
+                onChange={(e) => setPickerFilter(e.target.value)}
+                placeholder="filter entries…"
+              />
               <button onClick={() => navigatePicker(browse.parent)}>Up</button>
               <ul>
-                {browse.directories.map((d) => (
-                  <li key={d} onClick={() => navigatePicker(browse.path + browse.sep + d)}>
-                    {d}/
-                  </li>
-                ))}
+                {browse.directories
+                  .filter((d) => d.toLowerCase().includes(pickerFilter.toLowerCase()))
+                  .map((d) => (
+                    <li key={d} onClick={() => navigatePicker(browse.path + browse.sep + d)}>
+                      {d}/
+                    </li>
+                  ))}
+                {browse.files
+                  .filter((f) => f.toLowerCase().includes(pickerFilter.toLowerCase()))
+                  .slice(0, 20)
+                  .map((f) => (
+                    <li key={f} className="file-row">
+                      <span className="file-name">{f}</span>
+                    </li>
+                  ))}
               </ul>
-              {browse.directories.length === 0 && <p>No subdirectories here.</p>}
-              <button onClick={() => { setWorkspace(browse.path); setShowPicker(false); }}>
+              {browse.directories.length === 0 && browse.files.length === 0 && (
+                <p className="empty">empty directory</p>
+              )}
+              <button onClick={() => { setWorkspace(browse.path); rememberWorkspace(browse.path); setShowPicker(false); }}>
                 Use this folder
               </button>
               <button onClick={() => setShowPicker(false)}>Cancel</button>
             </section>
+          )}
+          {recentWorkspaces.length > 0 && !showPicker && (
+            <div className="recent-row">
+              <span className="meta">recent: </span>
+              {recentWorkspaces.map((w) => (
+                <button key={w} className="recent" onClick={() => setWorkspace(w)} title={w}>
+                  {w.split(/[\\/]/).filter(Boolean).pop() || w}
+                </button>
+              ))}
+            </div>
           )}
           {active && (
             <section className="session">
