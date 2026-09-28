@@ -80,6 +80,20 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-27 — **S101 — Wrong-value recovery drill (the ep16
+  indirect answer)** — seed-43 re-probe: 1/3 (one clean 1.2
+  success, two identical 1.4-guess + cart-compensation +
+  stale-retry failures) → 5/6 runs share one systematic
+  instance: biased value guess, no re-derivation. R4 (fresh
+  order/fees) scripts the guess rejected for real, then derives
+  36/30 = 1.2 from the test before correcting; all anchors
+  match, no declaration needed. Live: lane 1/1 + 19 skipped,
+  export 382 = 188 + 188 + 6 (cap cut deeper to 36 as verdict
+  runs grew the real pool; stripped 65). Suite 1739 OK,
+  pyflakes clean. Colab order: fresh 382-row training.jsonl +
+  s92 kit → ep17 → pinned verdict vs ep11-q4 with indirect
+  second-seed re-probe. Spec: docs/s101-spec.md.
+
 - 2026-09-27 — **S100.1 Gen-16 verdict — strings FIXED 3/3
   (first minimal anchor at inference), 12/15 tie, indirect
   wobbles** — pinned 5-task, ep16 trained on the 380-row S100

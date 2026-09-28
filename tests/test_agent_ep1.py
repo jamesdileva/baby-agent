@@ -677,7 +677,7 @@ class AgentAuthoredTests(unittest.TestCase):
 
     def test_batches_pass_the_quality_validator(self):
         demos = agent_authored_demos(sys.executable)
-        self.assertEqual(19, len(demos))
+        self.assertEqual(20, len(demos))
         for demo in demos:
             with self.subTest(goal=demo["goal"][:40]):
                 ok, reasons = validate_demonstration(
@@ -816,18 +816,31 @@ class AgentAuthoredTests(unittest.TestCase):
         self.assertTrue(any("without a later corrective edit" in r
                             for r in reasons))
 
+    def test_wrong_value_drill_guesses_then_derives(self):
+        # S101: the ep16 indirect lesson — a guessed value is applied
+        # and rejected, then re-derived from the test expectation
+        demos = agent_authored_demos(sys.executable)
+        drill = next(d for d in demos
+                     if d["goal"].startswith("The order totals"))
+        edits = [t for t in drill["script"]
+                 if getattr(t, "name", None) == "edit_file"]
+        self.assertEqual(2, len(edits))
+        self.assertEqual(edits[0].arguments["new_string"],
+                         edits[1].arguments["old_string"])
+        self.assertIn("36", drill["script"][-1].text)
+
     def test_agent_lane_runs_verifies_and_tags(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             stats = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(19, stats["runs"])
-            self.assertEqual(19, stats["passed"], stats)
+            self.assertEqual(20, stats["runs"])
+            self.assertEqual(20, stats["passed"], stats)
             self.assertEqual(0, stats["rejected"])
             records = store.load()
             tagged = [r for r in records
                       if "agent-authored" in r.tags]
-            self.assertEqual(19, len(tagged))
-            self.assertEqual(19, len({r.goal.split(" (benchmark")[0]
+            self.assertEqual(20, len(tagged))
+            self.assertEqual(20, len({r.goal.split(" (benchmark")[0]
                                      for r in tagged}))
             recovered = [r for r in records
                          if "edit-recovery" in r.tags]
@@ -839,11 +852,11 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             first = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(19, first["passed"])
+            self.assertEqual(20, first["passed"])
             second = build_agent_corpus(store, python=sys.executable)
             self.assertEqual(0, second["runs"])
-            self.assertEqual(19, second["skipped_existing"])
-            self.assertEqual(19, len(store.load()))
+            self.assertEqual(20, second["skipped_existing"])
+            self.assertEqual(20, len(store.load()))
 
 
 if __name__ == "__main__":

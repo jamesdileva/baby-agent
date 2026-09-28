@@ -604,7 +604,12 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
     the sibling + stale-memory retry missing) then recovers from a
     fresh read; R2/R3 generalize the shape to fresh two-function
     modules. The stale miss rides recovery_anchors so the validator
-    can demand it be genuine, consumed, and corrected."""
+    can demand it be genuine, consumed, and corrected.
+    S101 wrong-value recovery drill (the ep16 indirect lesson): the
+    first edit guesses a rate (1.4) instead of deriving it (36/30 =
+    1.2 from the test's own expectation); the suite rejects the
+    guess and the script re-derives before correcting. Fresh
+    order/fees modules; all anchors match, so no declaration needed."""
     demos: List[Dict[str, Any]] = []
 
     # --- json synthesis drills (the 3B wall, taught directly) ---
@@ -1174,6 +1179,60 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
                                 test_path: drill["test_code"]},
                       "goal": drill["goal"],
                       "recovery_anchors": [drill["stale_old"]]})
+
+    # --- S101 wrong-value recovery drill (the ep16 indirect lesson) ---
+    # Same recovery shape as R1–R3, new instance: the first edit
+    # GUESSES a value (1.4) instead of deriving it, the suite rejects
+    # it, and the script re-derives the rate from the test's own
+    # expectation (36 from [10, 20]: 10 + 20 = 30, 36 / 30 = 1.2)
+    # before landing the corrective edit. All anchors match — no
+    # recovery_anchors declaration needed (nothing goes stale; the
+    # defect is arithmetic, not anchoring). Fresh modules, never
+    # taxcalc/cart (S91) nor invoice/prices/checkout/register/
+    # basket/discount (S95).
+    order_files = {
+        "fees.py": "def with_fee(amount):\n    return amount * 1.5\n",
+        "order.py": "from fees import with_fee\n\n\n"
+                    "def bill(items):\n"
+                    "    return sum(with_fee(p) for p in items)\n",
+        "test_order.py":
+            "import unittest\n\nfrom order import bill\n\n\n"
+            "class TestOrder(unittest.TestCase):\n"
+            "    def test_bill(self):\n"
+            "        self.assertEqual(bill([10, 20]), 36)\n\n\n"
+            'if __name__ == "__main__":\n    unittest.main()\n',
+    }
+    order_script = [
+        _list(),
+        _tests(python),
+        _read("test_order.py"),
+        _read("order.py"),
+        _read("fees.py"),
+        _edit("fees.py",
+              "    return amount * 1.5\n",
+              "    return amount * 1.4\n"),
+        _tests(python),   # guessed rate rejected: suite still fails
+        _read("test_order.py"),   # re-derive from the expectation
+        _edit("fees.py",
+              "    return amount * 1.4\n",
+              "    return amount * 1.2\n"),
+        _tests(python),
+        _final("The bill test covers order.py, but order.py only "
+               "sums with_fee over the items — following the import "
+               "led to fees.py, where the rate was 1.5. My first "
+               "edit guessed 1.4 and the suite rejected it. "
+               "Re-reading test_order.py gave the derivation: the "
+               "test expects 36 from [10, 20], 10 + 20 is 30, and "
+               "36 / 30 is 1.2. Anchoring the guessed line and "
+               "setting the derived rate passed the suite. Derive "
+               "the value from the test's expectation — never guess "
+               "it."),
+    ]
+    demos.append({"script": order_script, "files": order_files,
+                  "goal": "The order totals guess the fee rate wrong: "
+                          "bill applies 1.4 but the test expects 36. "
+                          "Derive the rate from the test expectation "
+                          "and correct it in the source module."})
 
     # --- S95 rung-3 demos (gate OPEN: 3 pinned cascade points) ---
     # Import-following via PLAIN READS (code_imports/code_references

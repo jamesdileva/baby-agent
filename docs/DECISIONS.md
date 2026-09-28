@@ -1580,6 +1580,17 @@ champion. Next: re-probe indirect (confirm or clear), then judge
 whether the recovery lesson generalizes or needs a wrong-value
 instance. Provenance: S100.1 pinned 5-task verdict 2026-09-27.
 
+### S101 R4 wrong-value drill (re-probe confirmed the instance)
+
+**Decision:** seed-43 re-probe went 1/3 with the two failures
+byte-identical to the seed-42 instance (1.4 guess +
+cart-compensation + stale retry) — 5/6 systematic, not noise — so
+the recovery lesson gets its wrong-value instance: R4 scripts the
+guess rejected for real, then derives 36/30 = 1.2 from the test
+before correcting (fresh order/fees modules; all anchors match).
+No validator/training changes (existing rules cover the shape).
+Provenance: S101 re-probe + trajectory forensics 2026-09-27.
+
 ### S96 dashboard usefulness (deferred backlog, now unblocked)
 
 **Decision:** The S82-deferred polish lands now that the model
