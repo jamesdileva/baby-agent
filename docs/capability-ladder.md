@@ -110,3 +110,10 @@ Pinned verdict S93.1: cascade 3/3 BOTH (capability real — rung-2
 first pinned point, 2 more needed); ep12 strings 0/3 deterministic
 (real deficit vs ep11's 3/3 ×4 — flicker pattern 0,3,0);
 indirect baseline ep12 0/3, ep11 1/3 (no demos, as designed).
+
+Re-verification (2026-09-28, this session's audit): full 5-task n=3
+verdict ep16-q4 vs ep11-q4 — calculator 3/3 vs 3/3, strings 2/3 vs
+2/3, json 2/3 vs 3/3, cascade 1/3 vs 1/3, indirect 1/3 vs 1/3 →
+ep16 9/15 vs ep11 10/15. Both inside their recorded bands; champion
+ep11 holds. Session audit clean: suite 1739 OK, pyflakes clean,
+preflight clean, export 382 consistent with S101.
