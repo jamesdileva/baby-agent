@@ -26,6 +26,20 @@ and the `run` auto-capture skill. Run brief that produced the spec:
 [docs/qa-companion-run.md](../../../Agents/docs/qa-companion-run.md) in the
 Antfarm repo.
 
+## Running the agent dashboard
+
+1. Build the UI once: `cd app && npm install && npm run build`.
+2. Start the server: `qa serve` (or `python -m qacompanion serve` from the
+   repo root). It serves the dashboard at http://127.0.0.1:8765/ — enter a
+   goal and a workspace, click Send, and watch the session live.
+3. `qa` is the `qa.bat` shim in the repo root: add its directory to your
+   PATH, or run `python -m qacompanion` directly with the repo on
+   PYTHONPATH.
+4. Optional, for the drip/verdict buttons on the free Gemini tier: set
+   `GEMINI_MODEL=gemini-3.1-flash-lite` and `GEMINI_TIMEOUT=300` in the
+   shell you start the server from (the flash-lite bucket is separate from
+   flash-latest's 20 requests/day, and 300s covers slow thinking turns).
+
 ## Usage
 
 ```powershell

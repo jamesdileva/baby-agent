@@ -34,6 +34,23 @@ function clock(iso: string): string {
   });
 }
 
+const EVENT_LABELS: Record<string, string> = {
+  session_started: "started",
+  session_state_changed: "state",
+  session_cancelled: "cancelled",
+  model_started: "thinking",
+  model_response: "model",
+  tool_requested: "call",
+  tool_completed: "result",
+  tool_failed: "failed",
+  file_changed: "file",
+  verification_started: "verifying",
+  verification_completed: "verified",
+  recovery_started: "recovery",
+  failure_detected: "failure",
+  memory_advice: "advice",
+};
+
 export default function App() {
   const [goal, setGoal] = useState("The tests in this project are failing. Find the bug, fix it, and run the tests to verify they pass.");
   const [workspace, setWorkspace] = useState("");
@@ -221,6 +238,10 @@ export default function App() {
         return `${p.tool ?? ""} ${JSON.stringify(p.arguments ?? {})}`;
       case "tool_failed":
         return `${p.tool ?? ""}: ${p.error ?? ""}`;
+      case "tool_completed": {
+        const head = String(p.output ?? "").replace(/\s+/g, " ").trim();
+        return `${p.tool ?? ""} → ${head || "(empty result)"}`;
+      }
       case "model_response":
         return (p.text as string) ?? "";
       case "file_changed":
@@ -399,7 +420,7 @@ export default function App() {
                 {feed.slice(-80).map((event) => (
                   <li key={event.event_id}>
                     <span className="time">[{clock(event.timestamp)}]</span>{" "}
-                    <span className="type">{event.event_type}</span>{" "}
+                    <span className="type">{EVENT_LABELS[event.event_type] ?? event.event_type}</span>{" "}
                     {renderEvent(event)}
                   </li>
                 ))}
