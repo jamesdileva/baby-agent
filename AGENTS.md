@@ -80,6 +80,34 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **S104 + S105 — Cascade re-anchor drills (ep18's
+  variable) + rung-7 explore-qa eval (measurement-first), and an
+  export-oscillation finding that GATES ep18** — **S104**
+  (docs/s104-spec.md): from the gen-17 forensics, two walls — W1 the
+  schema-error loop, W2 the self-ambiguating fixture. Two re-anchor
+  drills on fresh modules (metrics, scale) whose fixtures FORCE the
+  collision: the naive anchor is genuinely rejected (matches 2x), the
+  corrective edit re-anchors on the def line from a fresh read; each
+  carries the W1 schema-fallback beat (invented-arg code_diagnostics
+  → honest rejection → read instead). Validator gains the third
+  anchor class ambiguous_anchors (genuine >= 2 hits, consumed,
+  corrective edit required). Live: both drills passed the real gate,
+  agent-authored. **S105** (docs/s105-spec.md): rung 7 as
+  measurement — explore-qa appends sixth (the pinned 5-task set stays
+  byte-stable), the answer lives only in docs/running.md, the fact
+  gate demands both planted facts in the final answer (run_benchmark
+  verifier= passthrough; AgentSession.pending_answer — the loop now
+  exposes the answer under test before the gate). Zero-shot baseline
+  running (ep17/ep11, n=3); first result: ep17 FAILED — the predicted
+  live-sessions weakness. **THE FINDING: the export's deliberate pool
+  oscillates across rebuilds (188 at S102.3 → 122 → 144 tonight) with
+  hygiene code unchanged; 66 v8+recovery-demo records flipped to
+  superseded.** Root cause not isolated (S68's read-first hygiene rule
+  is in tension with S71's deliberate wrong-turn-first ordering;
+  reinforcement merges may rewrite first steps). **ep18 is GATED on
+  S104.1 forensics — no training on any export until the oscillation
+  is root-caused.** Suite 1764 OK, pyflakes clean.
+
 - 2026-09-28 — **Gen-17 re-verdict (seed 43, user-directed) —
   json loss confirmed environmental, ep17 WINS the two-reading
   ledger 23/30 vs 22/30, indirect 6/6; ep17-q4 SHIPPED as champion**
