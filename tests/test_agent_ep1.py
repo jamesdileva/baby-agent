@@ -426,12 +426,13 @@ class SupersedeTests(unittest.TestCase):
     """S68 corpus hygiene: stale-policy demos are tagged and excluded."""
 
     def _record(self, store, first_tool="read_file", tag_model=True,
-                goal="demo task"):
+                goal="demo task", extra_tags=None):
         from qacompanion.agent.experience import Experience
         steps = [{"tool": first_tool, "args": {"path": "x"},
                   "ok": True, "result_head": "ok"}]
         tags = ["autonomous-session", "scripted-demo"] if tag_model \
             else ["autonomous-session"]
+        tags = tags + list(extra_tags or [])
         store.record(Experience(
             goal=goal, outcome="success", tags=tags,
             actions=[first_tool],
@@ -462,6 +463,34 @@ class SupersedeTests(unittest.TestCase):
                           if "superseded-pattern" in r.tags]
             self.assertEqual({"task one", "task two"},
                              {r.goal for r in superseded})
+
+    def test_deliberate_recovery_demos_survive_read_first_hygiene(self):
+        # S104.1: S71 puts the wrong-turn read FIRST by design; the S68
+        # read-first rule was convicting every recovery variant, so each
+        # rebuild killed the previous wave (the demo treadmill - the
+        # deliberate pool oscillated 188 -> 122 -> 144). Deliberate
+        # recovery tags are exempt from the read-first rule; format
+        # staleness still applies.
+        from qacompanion.agent.ep1 import VERSION_TAG, mark_superseded_demos
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ExperienceStore(Path(tmp) / "e.jsonl")
+            # read-first WITH a deliberate-recovery tag: survives
+            self._record(store, first_tool="read_file", goal="recovery one",
+                         extra_tags=["recovery-demo", VERSION_TAG])
+            # edit-recovery (the S100 tag): survives too
+            self._record(store, first_tool="read_file", goal="recovery two",
+                         extra_tags=["edit-recovery", VERSION_TAG])
+            # plain read-first scripted demo: still the stale pattern
+            self._record(store, first_tool="read_file", goal="stale read")
+            # recovery-tagged but wrong FORMAT: still superseded
+            self._record(store, first_tool="read_file", goal="old format",
+                         extra_tags=["recovery-demo"])
+            stats = mark_superseded_demos(store)
+            self.assertEqual(4, stats["scanned"])
+            self.assertEqual(2, stats["superseded"])
+            kept = {r.goal for r in store.load()
+                    if "superseded-pattern" not in r.tags}
+            self.assertEqual({"recovery one", "recovery two"}, kept)
 
     def test_training_excludes_superseded_with_reason(self):
         with tempfile.TemporaryDirectory() as tmp:

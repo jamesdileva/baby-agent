@@ -546,20 +546,32 @@ def build_demo(category: str, strategy: str, variant: int, level: int,
 def mark_superseded_demos(store: ExperienceStore) -> Dict[str, Any]:
     """S68/S69 corpus hygiene: scripted-demo records are superseded
     when their FIRST captured step is read_file (the pre-S66
-    answer-reading policy — precise identifier: no current script
-    starts with a read) OR when they lack the current corpus version
+    answer-reading policy) OR when they lack the current corpus version
     tag (their FORMAT is stale for training). Kept in the store for
-    provenance; the idempotent rebuild re-demos their tasks."""
+    provenance; the idempotent rebuild re-demos their tasks.
+    S104.1: records carrying a deliberate-recovery tag (recovery-demo,
+    edit-recovery) are EXEMPT from the read-first rule — S71's rational
+    recovery ordering puts the wrong-turn read FIRST by design, so the
+    read-first identifier was convicting every recovery variant and
+    each rebuild superseded the previous wave (the demo treadmill: the
+    deliberate pool oscillated 188 -> 122 -> 144 across rebuilds as
+    waves were killed and re-demoed). Format staleness (the version
+    tag) still applies to them."""
     records = store.load()
     superseded = 0
+    deliberate_recovery = {"recovery-demo", "edit-recovery"}
     for record in records:
         tags = record.tags or []
         if "scripted-demo" not in tags or "superseded-pattern" in tags:
             continue
+        if VERSION_TAG not in tags:
+            record.tags.append("superseded-pattern")
+            superseded += 1
+            continue
         steps = record.context.get("tool_calls") or []
         stale_first_step = bool(steps) and \
             steps[0].get("tool") == "read_file"
-        if stale_first_step or VERSION_TAG not in tags:
+        if stale_first_step and not (deliberate_recovery & set(tags)):
             record.tags.append("superseded-pattern")
             superseded += 1
     if superseded:
