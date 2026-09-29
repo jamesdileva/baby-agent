@@ -51,6 +51,7 @@ human with this note as the record.
 | 16 | ep16-q4 (S100 corpus) | 3/3 | 3/3 | 3/3 |
 | 17 | ep17-q4 (S101 drill + conversational prompt) | 3/3 | 3/3 | 2/3* |
 | 17 | ep17-q4 re-verdict (seed 43) | 3/3 | 3/3 | 3/3 |
+| 18 | ep18-q4 (treadmill-cleaned corpus + S104 drills, 96 steps) | 0/3† | 1/3 | 3/3 |
 | 11 | ep11-q4 re-verdict (pinned 5-task) | 3/3 | 3/3 | 3/3 |
 | 11 | ep11-q4 re-verdict (S95.1 tie day) | 3/3 | 3/3 | 3/3 |
 | 9b | qwen3.5:9b RAW (scout, think-disabled) | 3/3 | 3/3 | 1/3* |
@@ -64,6 +65,14 @@ indirect 6/6 vs 0/6 deterministic; **cascade 0/6 CONFIRMED deficit**
 (identical schema-error loop both readings) → S104 ep18 target;
 **ep17-q4 SHIPPED as champion 2026-09-28** (thrash tax 82 vs 15
 tool failures recorded honestly); ep11-q4 fallback.
+Gen-18 (2026-09-28): cascade SOLVED-band for the first time
+(2/3 — the S104 re-anchor drills transferred) but everything else
+regressed on the smaller corpus (6/15; calc 0/3 with 10-failure
+thrash = undertraining fingerprint; the 1:1 real cap cut the real
+share 188 -> 122). ep18 NOT SHIPPED; ep19 lever = restore the real
+share (298 available, floored at 122) on the same drills.
+† calculator: the solved-since-gen-8 task's first 0/3 — under-
+training signature, not skill loss.
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).

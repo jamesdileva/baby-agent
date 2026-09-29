@@ -80,6 +80,31 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **Gen-18 verdict — RECORDED AS REGRESSED (not
+  shipped); the drills WORKED (cascade 0/6 → 2/3, first cascade gain
+  from demos ever) but the smaller corpus undertrained everything
+  else; ep17-q4 REMAINS champion** — pinned 5-task, temp 0/seed 42,
+  ep18-q4 (252-record treadmill-cleaned corpus + the S104 re-anchor
+  drills; 96 steps vs ep17's 144): **ep18 6/15** (calc 0/3 — the
+  solved-since-gen-8 task COLLAPSED with deterministic 10-failure
+  max-iter thrash ×3, strings 1/3, json 3/3, **cascade 2/3 — the
+  exact S104 target MOVED**, indirect 0/3 — the S101 capability
+  given back) vs ep17-q4 11/15 same-day (3/3, 3/3, 2/3*, 0/3, 3/3 —
+  *json loss again a provider timeout). Metrics: ep18 tool_failures
+  100 vs 28, diagnosis_chaining 0.0 vs 0.53, discovery 1.0 both.
+  Honest reading (pre-framed before the run): the package change
+  (drills + treadmill-cleaned corpus) makes this NOT a clean
+  single-variable test — the broad collapse with a thrash signature
+  is the undertraining fingerprint (96 steps + the 1:1 cap cut the
+  real share 188 → 122), while the isolated cascade gain shows the
+  drills transferred. Per S91.1 no single-verdict conviction — but
+  ep18 cannot ship at 6/15 regardless, so a confirmation re-verdict
+  buys nothing; ep19's lever is already named: restore the real
+  share (298 real available, floored at 122 by the 1:1 cap) on the
+  SAME drills — that isolates training scale with the drills kept.
+  ep17-q4 REMAINS champion; dashboard default unchanged. Ladder
+  ledger updated. Suite untouched (verdict + docs slice).
+
 - 2026-09-28 — **S104.1 — The demo treadmill root-caused and fixed;
   the ep18 gate is LIFTED** — the export oscillation (deliberate pool
   188 → 122 → 144 → 122 across rebuilds) is a structural conflict,
