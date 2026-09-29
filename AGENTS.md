@@ -80,6 +80,24 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **S103.1 — Same-failure ladder outranks the
+  environment branch (live retest finding)** — the user retried the
+  docs question after S103: recovery FIRED VISIBLY (D1 working —
+  environment_check events in the feed) and the model switched
+  behavior each time (guessed doc → list → README → started
+  synthesizing), but it re-read the same missing file
+  (docs/running.md) 3x with successes interleaved and each failure
+  re-earned ENVIRONMENT_CHECK — successes reset environment_repeat,
+  so the env branch short-circuited the repeat ladder forever. Fix:
+  the repeat ladder (repeat_count >= 3) evaluates BEFORE the
+  environment branch; first/second occurrences keep the S98
+  inspection (test amended with rationale), a 3rd identical failure
+  reaches ALTERNATE_APPROACH. The session still died at iter 6 on an
+  Ollama CPU timeout, and — the rung-7 evidence hardened — the README
+  it read CONTAINED the answer (the S102.4 run section); the 7B
+  anchored on the old Usage block instead. Spec amended
+  (docs/s103-spec.md S103.1). Suite 1756 OK, preflight clean.
+
 - 2026-09-28 — **S103 + S102.5 — Recovery ladder upgrade (cycling
   detection) + verify auto-detect (user-directed scope)** — **S103**
   (docs/s103-spec.md): the live docs-question thrash had THREE stacked
