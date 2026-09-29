@@ -15,7 +15,21 @@ band). Rates are per-task success rates (n=3, S74 harness).
 | 3 | cross-file dependency tracing | defect-fix-indirect | BUILT S93 (eval-only) | ep15 3/3 (S95.1, WITH demos) vs ep13 3/3 (no demos) vs ep11 0/3 ×2 — lineage gap real, demo-vs-transfer unisolated; **ep16 0/3 (wrong value 1.4 for 1.2 + no recovery) is UNCONFIRMED single-n=3 volatility — re-probe before convicting (S91.1 rule)** |
 | 4 | test authorship with mutation proof | test-authoring | specified, not built | gated on rung 3 |
 | 5 | runtime-behavior debugging | observe-reproduce | specified, not built | gated on rung 4 |
-| 6 | multi-file feature with contract | spec'd, not built | gated on rung 5 |
+| 6 | multi-file feature with contract | task spec pending | specified, not built | gated on rung 5 |
+| 7 | observation-grounded exploration: answer a question about a codebase from what it READS (listing → targeted reads → grounded answer), never path guesses | explore-qa (proposed S103) | proposed S103 — motivating evidence: the live docs-question session thrashed 6/10 iterations guessing entry paths while the root listing sat unread in its context | proposed; gated on rung 6 (see note) |
+
+Rung 7 note (S103): the rung exercises a DIFFERENT axis than rungs
+1-6 — information extraction with zero edits — and the S103 recovery
+work makes its failure mode (guess-cycling) honest and visible. Eval
+shape: fixture workspace with planted facts; a question answerable
+ONLY by reading them; the deterministic verifier requires the final
+answer to CONTAIN the planted fact and name the file it came from
+(no LLM judge — S41-compatible). Demos teach: list first, read the
+LISTING, open the doc the listing names, quote the fact with its
+source. Because the axis is orthogonal to the repair rungs, authoring
+MAY open in parallel once rung 3 graduates (3 consecutive pinned
+in-band readings) rather than waiting on rungs 4-6 — flagged for the
+human with this note as the record.
 
 ## Rate ledger (per generation, per rung-1 task)
 
