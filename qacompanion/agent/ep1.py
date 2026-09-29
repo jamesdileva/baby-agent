@@ -1331,12 +1331,131 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
         files = {a_path: a_code, b_path: b_code,
                  test_path: test_code}
         demos.append({"script": script, "files": files, "goal": goal})
+
+    # --- S104 cascade re-anchor drills (the gen-17 forensics) ---
+    # W1: the schema-error loop — one deliberate code_diagnostics call
+    # with an invented argument is rejected and the script falls back
+    # to read_file (teach: an invalid-args error means switch to
+    # reading, never retry the same call). W2: the self-ambiguating
+    # fixture — fixing defect 1 creates a second copy of defect 2's
+    # body line, the naive anchor matches 2x and edit_file rejects it,
+    # and the corrective edit re-anchors on the def line from a FRESH
+    # read. The ambiguous anchor rides ambiguous_anchors so the
+    # validator can demand the collision be genuine (>= 2) and
+    # consumed. Fresh modules: never calc_ops (S91/S95) nor the
+    # S100/S101 fixtures.
+    reanchor_drills = [
+        {
+            "module": "metrics",
+            "module_code":
+                'def total(a, b):\n    return a - b\n\n\n'
+                'def difference(a, b):\n    return a + b\n',
+            "test_code":
+                "import unittest\n\n"
+                "from metrics import total, difference\n\n\n"
+                "class TestMetrics(unittest.TestCase):\n"
+                "    def test_total(self):\n"
+                "        self.assertEqual(total(2, 3), 5)\n\n"
+                "    def test_difference(self):\n"
+                "        self.assertEqual(difference(5, 2), 3)\n\n\n"
+                'if __name__ == "__main__":\n    unittest.main()\n',
+            "fix1_old": '    return a - b',
+            "fix1_new": '    return a + b',
+            "amb_old": '    return a + b',
+            "amb_new": '    return a - b',
+            "wide_old": 'def difference(a, b):\n    return a + b',
+            "wide_new": 'def difference(a, b):\n    return a - b',
+            "goal":
+                "The metrics suite fails twice and fixing total makes "
+                "difference's edit anchor match twice: when edit_file "
+                "rejects the anchor in metrics.py, re-read and "
+                "re-anchor with the def line.",
+            "diagnosis":
+                "test_metrics.py failed on both total and difference "
+                "in metrics.py. A code_diagnostics call with a path "
+                "argument was rejected as invalid — the tool takes no "
+                "arguments — so I read the module instead. Fixing "
+                "total to return a + b landed, but the same-shaped "
+                "anchor for difference then matched twice and "
+                "edit_file refused it. Re-reading metrics.py showed "
+                "the collision: total now equals difference's broken "
+                "line. Anchoring on the def difference line made the "
+                "edit unique and the suite passes. When an anchor "
+                "matches twice, widen it with context instead of "
+                "retrying.",
+        },
+        {
+            "module": "scale",
+            "module_code":
+                'def grow(n):\n    return n - 1\n\n\n'
+                'def shrink(n):\n    return n + 1\n',
+            "test_code":
+                "import unittest\n\n"
+                "from scale import grow, shrink\n\n\n"
+                "class TestScale(unittest.TestCase):\n"
+                "    def test_grow(self):\n"
+                "        self.assertEqual(grow(5), 6)\n\n"
+                "    def test_shrink(self):\n"
+                "        self.assertEqual(shrink(5), 4)\n\n\n"
+                'if __name__ == "__main__":\n    unittest.main()\n',
+            "fix1_old": '    return n - 1',
+            "fix1_new": '    return n + 1',
+            "amb_old": '    return n + 1',
+            "amb_new": '    return n - 1',
+            "wide_old": 'def shrink(n):\n    return n + 1',
+            "wide_new": 'def shrink(n):\n    return n - 1',
+            "goal":
+                "The scale tests fail on both functions and the first "
+                "fix in scale.py makes the second anchor ambiguous: "
+                "on the matches-twice rejection, re-read and widen "
+                "the anchor with the def line.",
+            "diagnosis":
+                "test_scale.py failed on grow and shrink in scale.py. "
+                "code_diagnostics rejects arguments, so I read the "
+                "module directly. Fixing grow landed, but shrink's "
+                "anchor return n + 1 then matched twice — grow's fix "
+                "created the collision — and edit_file rejected it. "
+                "Re-reading scale.py and anchoring on the def shrink "
+                "line made the edit unique and both tests pass. A "
+                "matches-twice rejection means widen the anchor, not "
+                "retry it.",
+        },
+    ]
+    for drill in reanchor_drills:
+        path = f"{drill['module']}.py"
+        test_path = f"test_{drill['module']}.py"
+        script = [
+            _list(),
+            _tests(python),
+            # S104/W1: the schema-fallback beat — an invented argument
+            # is honestly rejected; the script reads instead of
+            # retrying the call
+            ToolCall(name="code_diagnostics",
+                     arguments={"path": path}),
+            _read(test_path),
+            _read(path),
+            _edit(path, drill["fix1_old"], drill["fix1_new"]),
+            _tests(python),
+            # S104/W2: the ambiguous anchor is genuinely rejected at
+            # runtime (matches 2x after fix 1)
+            _edit(path, drill["amb_old"], drill["amb_new"]),
+            _read(path),   # re-anchor from FRESH observation
+            _edit(path, drill["wide_old"], drill["wide_new"]),
+            _tests(python),
+            _final(drill["diagnosis"]),
+        ]
+        demos.append({"script": script,
+                      "files": {path: drill["module_code"],
+                                test_path: drill["test_code"]},
+                      "goal": drill["goal"],
+                      "ambiguous_anchors": [drill["amb_old"]]})
     return demos
 
 
 def validate_demonstration(script: List[Any], files: Dict[str, str],
                             goal: str,
-                            recovery_anchors: Optional[List[str]] = None
+                            recovery_anchors: Optional[List[str]] = None,
+                            ambiguous_anchors: Optional[List[str]] = None
                             ) -> "tuple[bool, List[str]]":
     """S80 demo quality validator — the anti-flakiness bar every
     demonstration must clear BEFORE it can enter the corpus
@@ -1350,7 +1469,13 @@ def validate_demonstration(script: List[Any], files: Dict[str, str],
     genuinely MISS (count 0) against current content, be followed by
     a successful corrective edit on the same path, and every
     declaration must be consumed — a declared anchor that actually
-    matches is rejected, so authors cannot smuggle unverified edits."""
+    matches is rejected, so authors cannot smuggle unverified edits.
+    S104: ambiguous_anchors declares the deliberate AMBIGUOUS anchors
+    (the cascade re-anchor shape — an anchor that matches >= 2 in
+    current content and is rejected by the runtime edit_file). The
+    same consumption rules apply: the collision must be genuine (a
+    0- or 1-hit "ambiguity" is staged and rejected), and a corrective
+    edit with a unique anchor must follow on the same path."""
     reasons: List[str] = []
     tool_calls = [t for t in script if isinstance(t, ToolCall)]
     finals = [t for t in script if isinstance(t, ModelResponse)]
@@ -1388,6 +1513,7 @@ def validate_demonstration(script: List[Any], files: Dict[str, str],
     # followed by a successful corrective edit on the same path.
     state = dict(files)
     pending = list(recovery_anchors or [])
+    ambiguous = list(ambiguous_anchors or [])
     awaiting_correction: Dict[str, int] = {}
     for t in tool_calls:
         if t.name != "edit_file":
@@ -1410,6 +1536,19 @@ def validate_demonstration(script: List[Any], files: Dict[str, str],
                            f"matches ({hits}x) — the miss must be "
                            f"genuine, not staged")
             continue
+        if old in ambiguous:
+            # S104: the collision must be genuine — 0 or 1 hits means
+            # the "ambiguity" is staged (0 is the stale shape, 1 would
+            # simply have succeeded)
+            if hits < 2:
+                reasons.append(f"declared ambiguous anchor for {target} "
+                               f"matches {hits}x — the collision must "
+                               f"be genuine (>= 2)")
+            else:
+                ambiguous.remove(old)
+                awaiting_correction[target] = awaiting_correction.get(
+                    target, 0) + 1
+            continue
         if hits != 1:
             reasons.append(f"edit anchor for {target} matches "
                            f"{hits} times (must be 1)")
@@ -1420,6 +1559,9 @@ def validate_demonstration(script: List[Any], files: Dict[str, str],
     if pending:
         reasons.append(f"{len(pending)} declared recovery anchor(s) "
                        f"never missed their target")
+    if ambiguous:
+        reasons.append(f"{len(ambiguous)} declared ambiguous anchor(s) "
+                       f"never collided with their target")
     if any(awaiting_correction.values()):
         reasons.append("recovery miss without a later corrective edit "
                        "on the same path")
@@ -1476,7 +1618,8 @@ def build_agent_corpus(experience_store: ExperienceStore,
             continue
         ok, reasons = validate_demonstration(
             script, files, goal,
-            recovery_anchors=demo.get("recovery_anchors"))
+            recovery_anchors=demo.get("recovery_anchors"),
+            ambiguous_anchors=demo.get("ambiguous_anchors"))
         if not ok:
             stats["rejected"] += 1
             stats["tasks"].append({"goal": goal, "success": False,

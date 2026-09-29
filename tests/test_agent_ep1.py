@@ -677,12 +677,13 @@ class AgentAuthoredTests(unittest.TestCase):
 
     def test_batches_pass_the_quality_validator(self):
         demos = agent_authored_demos(sys.executable)
-        self.assertEqual(20, len(demos))
+        self.assertEqual(22, len(demos))
         for demo in demos:
             with self.subTest(goal=demo["goal"][:40]):
                 ok, reasons = validate_demonstration(
                     demo["script"], demo["files"], demo["goal"],
-                    recovery_anchors=demo.get("recovery_anchors"))
+                    recovery_anchors=demo.get("recovery_anchors"),
+                    ambiguous_anchors=demo.get("ambiguous_anchors"))
                 self.assertTrue(ok, reasons)
 
     def test_validator_rejects_missing_discovery(self):
@@ -833,14 +834,14 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             stats = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(20, stats["runs"])
-            self.assertEqual(20, stats["passed"], stats)
+            self.assertEqual(22, stats["runs"])
+            self.assertEqual(22, stats["passed"], stats)
             self.assertEqual(0, stats["rejected"])
             records = store.load()
             tagged = [r for r in records
                       if "agent-authored" in r.tags]
-            self.assertEqual(20, len(tagged))
-            self.assertEqual(20, len({r.goal.split(" (benchmark")[0]
+            self.assertEqual(22, len(tagged))
+            self.assertEqual(22, len({r.goal.split(" (benchmark")[0]
                                      for r in tagged}))
             recovered = [r for r in records
                          if "edit-recovery" in r.tags]
@@ -852,12 +853,82 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             first = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(20, first["passed"])
+            self.assertEqual(22, first["passed"])
             second = build_agent_corpus(store, python=sys.executable)
             self.assertEqual(0, second["runs"])
-            self.assertEqual(20, second["skipped_existing"])
-            self.assertEqual(20, len(store.load()))
+            self.assertEqual(22, second["skipped_existing"])
+            self.assertEqual(22, len(store.load()))
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AmbiguousAnchorValidation(unittest.TestCase):
+    """S104: the third anchor class — a declared AMBIGUOUS anchor must
+    genuinely match >= 2 in current content and be followed by a
+    corrective unique-anchor edit on the same path (the cascade
+    re-anchor shape from the gen-17 forensics)."""
+
+    FIXTURE = ("def total(a, b):\n    return a - b\n\n\n"
+               "def difference(a, b):\n    return a + b\n")
+
+    def _script(self):
+        from qacompanion.agent import ToolCall, ModelResponse
+        return [
+            ToolCall(name="list_directory", arguments={"path": "."}),
+            ToolCall(name="read_file", arguments={"path": "metrics.py"}),
+            ToolCall(name="edit_file", arguments={
+                "path": "metrics.py", "old_string": "    return a - b",
+                "new_string": "    return a + b"}),
+            ToolCall(name="edit_file", arguments={
+                "path": "metrics.py", "old_string": "    return a + b",
+                "new_string": "    return a - b"}),
+            ToolCall(name="edit_file", arguments={
+                "path": "metrics.py",
+                "old_string": "def difference(a, b):\n    return a + b",
+                "new_string": "def difference(a, b):\n    return a - b"}),
+            ModelResponse(text="re-anchored metrics.py",
+                          finish_reason="stop"),
+        ]
+
+    def test_genuine_collision_accepted(self):
+        ok, reasons = validate_demonstration(
+            self._script(), {"metrics.py": self.FIXTURE},
+            "re-anchor the ambiguous anchor in metrics.py",
+            ambiguous_anchors=["    return a + b"])
+        self.assertTrue(ok, reasons)
+
+    def test_staged_single_match_rejected(self):
+        # a declared ambiguity that matches only once is staged — the
+        # edit would simply have succeeded at runtime
+        ok, reasons = validate_demonstration(
+            self._script(), {"metrics.py": self.FIXTURE},
+            "re-anchor the ambiguous anchor in metrics.py",
+            ambiguous_anchors=["def difference(a, b):\n    return a + b"])
+        self.assertFalse(ok)
+        self.assertTrue(any("collision must be genuine" in r
+                            for r in reasons), reasons)
+
+    def test_declared_but_unconsumed_rejected(self):
+        from qacompanion.agent import ModelResponse
+        script = self._script()[:-3] + [
+            ModelResponse(text="done with metrics.py",
+                          finish_reason="stop")]
+        ok, reasons = validate_demonstration(
+            script, {"metrics.py": self.FIXTURE},
+            "re-anchor the ambiguous anchor in metrics.py",
+            ambiguous_anchors=["    return a + b"])
+        self.assertFalse(ok)
+
+    def test_s104_demos_pass_validation(self):
+        python = sys.executable
+        demos = [d for d in agent_authored_demos(python)
+                 if "ambiguous_anchors" in d]
+        self.assertEqual(2, len(demos), "expected the two S104 drills")
+        for demo in demos:
+            ok, reasons = validate_demonstration(
+                demo["script"], demo["files"], demo["goal"],
+                recovery_anchors=demo.get("recovery_anchors"),
+                ambiguous_anchors=demo.get("ambiguous_anchors"))
+            self.assertTrue(ok, (demo["goal"], reasons))
