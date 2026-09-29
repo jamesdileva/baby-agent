@@ -80,6 +80,33 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **Gen-17 verdict — the S101 drill DELIVERED:
+  indirect SOLVED 3/3 clean (first zero-failure indirect in program
+  history), 11/15 tie with ep11; champion stays ep11-q4** — pinned
+  5-task, temp 0/seed 42, ep17-q4 (fresh 382-record S101 export + the
+  new conversational system prompt): **ep17-q4 11/15** (calc 3/3,
+  strings 3/3, json 2/3 — the loss a provider TIMEOUT at iter 11 with
+  runs 2-3 clean 7-iter successes, cascade 0/3, **indirect 3/3 at
+  iters=7/calls=6/failures=0 on ALL THREE runs** — the R4
+  wrong-value-rejection drill transferred exactly as scripted) vs
+  ep16-q4 10/15 (3/3,3/3,3/3,1/3,0/3 — indirect max-iter ×3, the 1.4
+  guess unresolved) vs ep11-q4 11/15 (3/3,3/3,3/3,2/3,0/3). Metrics:
+  ep17 discovery 1.0, guessed_path 0.0 (best possible), but
+  **tool_failures 40 vs ep16 13 vs ep11 9** — the thrash tax, almost
+  all of it cascade (9 failures × 3 max-iter runs, deterministic
+  shape); diagnosis_chaining 0.4 vs 0.8. Honest notes: (1) the
+  conversational prompt line did NOT hurt coding behavior (with_calls
+  1.0, discovery 1.0 — the S102.3 train/inference alignment risk
+  retired); (2) cascade 0/3 is a real deficit SIGNAL but per the n=3
+  rule one verdict does not convict — cascade is the most volatile
+  task (ep11 itself: 0,2,1,2 across readings); (3) ep17 is the third
+  generation with indirect 3/3 (ep13, ep15 before it) — rung-3
+  lineage gap confirmed from a new angle: the DRILL, not luck, moved
+  ep16's 0/3 to ep17's 3/3 clean. **ep17 NOT shipped (tie + thrash
+  tax 40 vs 9 + cascade 0/3); ep11-q4 REMAINS champion.** Next
+  lever: cascade stability for the ep17 lineage. Suite untouched
+  (verdict + docs slice).
+
 - 2026-09-28 — **S103.1 — Same-failure ladder outranks the
   environment branch (live retest finding)** — the user retried the
   docs question after S103: recovery FIRED VISIBLY (D1 working —

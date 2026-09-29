@@ -12,7 +12,7 @@ band). Rates are per-task success rates (n=3, S74 harness).
 |---|---|---|---|---|
 | 1 | single-defect single-file | calculator / strings / json | S57 | calculator solved (3/3 everywhere); strings: ep11 rock-solid (3/3 ×5) vs post-S82 lineage flicker (ep12 0,3,0; ep13 1,0; ep14 2,0; ep15 0/3 deterministic — S94 batch did NOT fix) vs **ep16 3/3 with the first minimal anchor ever emitted at inference** (S100 surgery moved the anchor prior); json SOLVED (3/3 ×5/6 at 7B) |
 | 2 | persistence: two defects | defect-fix-cascade | S78 | **GRADUATED S94.1** — 3 consecutive pinned in-band readings (probe 12/12, S93.1 3/3 both, S94.1 3/3 both across the 7B line) |
-| 3 | cross-file dependency tracing | defect-fix-indirect | BUILT S93 (eval-only) | ep15 3/3 (S95.1, WITH demos) vs ep13 3/3 (no demos) vs ep11 0/3 ×2 — lineage gap real, demo-vs-transfer unisolated; **ep16 0/3 (wrong value 1.4 for 1.2 + no recovery) is UNCONFIRMED single-n=3 volatility — re-probe before convicting (S91.1 rule)** |
+| 3 | cross-file dependency tracing | defect-fix-indirect | BUILT S93 (eval-only) | ep15 3/3 (S95.1, WITH demos) vs ep13 3/3 (no demos) vs ep11 0/3 ×2 — lineage gap real, demo-vs-transfer unisolated; ep16 0/3 (wrong value 1.4 + no recovery); **gen-17: ep17-q4 3/3 with ZERO failures on all three runs (S101 R4 wrong-value-rejection drill transferred exactly — iters 7, calls 6, no guesses) — the drill, not luck, moved ep16's 0/3 to 3/3 clean; third indirect-capable generation (ep13, ep15, ep17)** |
 | 4 | test authorship with mutation proof | test-authoring | specified, not built | gated on rung 3 |
 | 5 | runtime-behavior debugging | observe-reproduce | specified, not built | gated on rung 4 |
 | 6 | multi-file feature with contract | task spec pending | specified, not built | gated on rung 5 |
@@ -49,6 +49,7 @@ human with this note as the record.
 | 14 | ep14-q4 (strings batch) | 2/3 | 2/3 | 2/3 |
 | 15 | ep15-q4 (S95 corpus) | 3/3 | 0/3 | 3/3 |
 | 16 | ep16-q4 (S100 corpus) | 3/3 | 3/3 | 3/3 |
+| 17 | ep17-q4 (S101 drill + conversational prompt) | 3/3 | 3/3 | 2/3* |
 | 11 | ep11-q4 re-verdict (pinned 5-task) | 3/3 | 3/3 | 3/3 |
 | 11 | ep11-q4 re-verdict (S95.1 tie day) | 3/3 | 3/3 | 3/3 |
 | 9b | qwen3.5:9b RAW (scout, think-disabled) | 3/3 | 3/3 | 1/3* |
@@ -56,6 +57,10 @@ human with this note as the record.
 Bands: calculator 1.0 (solved — 3/3 everywhere, every gen); strings
 solid for ep11 (3/3 x3 verdicts), volatile for ep12 (0/3 then 3/3);
 json SOLVED at 7B (3/3 in 5 of last 6 readings across ep11/ep12/ep13).
+Gen-17 (2026-09-28): json 2/3 with the loss a provider TIMEOUT
+(runs 2-3 clean 7-iter successes — in-band); cascade 0/3 deterministic
+thrash (9 failures × 3 runs) = deficit SIGNAL, unconfirmed (one
+verdict never convicts — S91.1 rule); champion ep11-q4 holds.
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).
