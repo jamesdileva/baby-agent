@@ -60,10 +60,19 @@ class FailureTracker:
 
     The loop records (kind, signature) per failure; `no_progress` fires
     when the SAME signature repeats `threshold` consecutive times.
+
+    S103: the tracker is also success-aware. The loop reports every
+    successful tool result via `record_success()`, which resets the
+    failing-streak counter — so `cycling()` can fire on INTERLEAVED
+    thrash (many different failing paths, no success between them),
+    which the consecutive-same rule can never see (live finding: a
+    session cycling src/main.py / app/__init__.py / list src failed 6
+    of 10 iterations with the ladder silent).
     """
 
     threshold: int = 3
     signatures: List[str] = field(default_factory=list)
+    consec_fail_steps: int = 0
 
     def __post_init__(self):
         if self.threshold < 2:
@@ -77,7 +86,12 @@ class FailureTracker:
 
     def record(self, signature: str) -> int:
         self.signatures.append(signature)
+        self.consec_fail_steps += 1
         return len(self.signatures)
+
+    def record_success(self) -> None:
+        """S103: a successful tool result is progress by definition."""
+        self.consec_fail_steps = 0
 
     def consecutive_same(self) -> int:
         if not self.signatures:
@@ -90,12 +104,24 @@ class FailureTracker:
             count += 1
         return count
 
+    def cycling(self, window: int = 5, min_distinct: int = 2) -> bool:
+        """S103: non-progress across DIFFERENT failures — a streak of
+        `window` failing steps with no success between them that spans
+        at least `min_distinct` distinct signatures. Same-signature
+        streaks are the older rule's job; this catches the model that
+        cycles guessing paths."""
+        if self.consec_fail_steps < window:
+            return False
+        recent = self.signatures[-window:]
+        return len(set(recent)) >= min_distinct
+
     def no_progress(self, threshold: Optional[int] = None) -> bool:
         return self.consecutive_same() >= (threshold or self.threshold)
 
     def report(self) -> Dict[str, Any]:
         return {"total": len(self.signatures),
                 "consecutive_same": self.consecutive_same(),
+                "consec_fail_steps": self.consec_fail_steps,
                 "threshold": self.threshold}
 
 
@@ -115,17 +141,25 @@ class RecoveryPolicy:
 
     def decide(self, kind: str, error_text: str, repeat_count: int,
                alternate_count: int, escalation_available: bool,
-               iterations_left: bool = True) -> Decision:
+               iterations_left: bool = True,
+               environment_repeat: int = 0,
+               cycling: bool = False) -> Decision:
         """Pick the strategy for one failure event.
 
         kind: "tool" | "verification" | "provider"
         repeat_count: consecutive same-signature failures
         alternate_count: alternate-approach instructions already issued
+        environment_repeat: S103 — consecutive ENVIRONMENT_CHECK
+            decisions already issued; after 2 the environment summary
+            was requested and more of the same is not a strategy, so
+            the failure falls through to the counted ladder
+        cycling: S103 — the tracker sees a streak of failures across
+            DIFFERENT signatures with no success between them
         """
         if not iterations_left:
             return Decision(Strategy.TERMINATE,
                             "no iterations left for another attempt")
-        if self._is_environment(error_text):
+        if self._is_environment(error_text) and environment_repeat < 2:
             return Decision(Strategy.ENVIRONMENT_CHECK,
                             "failure text matches environment patterns — "
                             "inspect the environment first")
@@ -141,6 +175,19 @@ class RecoveryPolicy:
                                 "escalate to a stronger brain")
             return Decision(Strategy.ASK_USER,
                             "repeated failure after alternates; no "
+                            "escalation available — needs human decision")
+        if cycling:
+            if alternate_count < self.max_alternates:
+                return Decision(
+                    Strategy.ALTERNATE_APPROACH,
+                    "different failures keep coming with no success "
+                    "between them — stop guessing and change approach")
+            if escalation_available:
+                return Decision(Strategy.ESCALATE_MODEL,
+                                "cycling failures after alternates — "
+                                "escalate to a stronger brain")
+            return Decision(Strategy.ASK_USER,
+                            "cycling failures after alternates; no "
                             "escalation available — needs human decision")
         if kind == "verification":
             return Decision(Strategy.ALTERNATE_APPROACH,
@@ -166,7 +213,16 @@ class RecoveryStateMachine:
         self.policy = policy or RecoveryPolicy()
         self.tracker = FailureTracker(threshold=threshold)
         self.alternate_count = 0
+        self.environment_repeat = 0
         self.escalated = False
+
+    def on_success(self) -> None:
+        """S103: a successful tool result is progress by definition.
+        Resets the failing streak AND the environment-decision counter —
+        new progress means new environment context, so a later
+        environment-class failure earns a fresh ENVIRONMENT_CHECK."""
+        self.tracker.record_success()
+        self.environment_repeat = 0
 
     def on_failure(self, kind: str, error_text: str, iteration: int,
                    max_iterations: int,
@@ -174,6 +230,7 @@ class RecoveryStateMachine:
         signature = self.tracker.signature(kind, error_text)
         self.tracker.record(signature)
         repeat_count = self.tracker.consecutive_same()
+        cycling = self.tracker.cycling()
         iterations_left = iteration < max_iterations
         if self.escalated:
             escalation_available = False  # one-way ladder: never re-escalate
@@ -181,9 +238,17 @@ class RecoveryStateMachine:
             kind=kind, error_text=error_text, repeat_count=repeat_count,
             alternate_count=self.alternate_count,
             escalation_available=escalation_available,
-            iterations_left=iterations_left)
+            iterations_left=iterations_left,
+            environment_repeat=self.environment_repeat,
+            cycling=cycling)
         if decision.strategy is Strategy.ALTERNATE_APPROACH:
             self.alternate_count += 1
+        if decision.strategy is Strategy.ENVIRONMENT_CHECK:
+            self.environment_repeat += 1
+        # S103: environment_repeat deliberately does NOT reset on
+        # non-environment decisions — env-class failures interleaved
+        # with other failures must still fall through after 2. Only
+        # on_success() (real progress) starts a fresh count.
         return decision
 
     def mark_escalated(self) -> None:
@@ -192,4 +257,5 @@ class RecoveryStateMachine:
     def report(self) -> Dict[str, Any]:
         return {"tracker": self.tracker.report(),
                 "alternate_count": self.alternate_count,
+                "environment_repeat": self.environment_repeat,
                 "escalated": self.escalated}

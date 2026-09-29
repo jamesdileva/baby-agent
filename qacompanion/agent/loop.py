@@ -307,7 +307,12 @@ class AgentLoop:
                             TERMINATION_VERIFICATION_FAILED.format(attempts),
                         )
                     self._set_state(session, AgentState.RECOVERING)
-                    self._emit("recovery_started", session, attempt=attempt)
+                    recovery_payload = (
+                        {"strategy": decision.strategy.value,
+                         "reason": decision.reason}
+                        if self.recovery is not None else {})
+                    self._emit("recovery_started", session, attempt=attempt,
+                               **recovery_payload)
                     session.messages.append(
                         ModelMessage(role="assistant", content=response.text))
                     session.messages.append(ModelMessage(
@@ -365,6 +370,12 @@ class AgentLoop:
                                duration_ms=result.duration_ms,
                                changed_path=changed,
                                output=(result.output or "")[:240])
+                    if self.recovery is not None:
+                        # S103: a successful tool result is progress —
+                        # reset the failing-streak counter so cycling
+                        # detection only ever sees uninterrupted
+                        # failure runs
+                        self.recovery.on_success()
                 if changed:
                     self._emit("file_changed", session, path=changed)
                 session.messages.append(ModelMessage(
@@ -396,6 +407,14 @@ class AgentLoop:
                         escalation_available=(
                             self.escalation_factory is not None
                             and not self.recovery.escalated))
+                    # S103/D1: tool-path decisions used to be invisible —
+                    # only the verification path emitted recovery_started.
+                    # Emit for every actionable strategy (retry-with-
+                    # advice is the loop's one no-op on this path).
+                    if decision.strategy.value != "retry_with_advice":
+                        self._emit("recovery_started", session,
+                                   strategy=decision.strategy.value,
+                                   reason=decision.reason)
                     self._apply_recovery(session, decision,
                                          (result.error or "")[:200])
                     if session.state in TERMINAL_STATES:
