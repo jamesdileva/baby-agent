@@ -80,6 +80,33 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **S106 — Training scale restored + the SECOND
+  treadmill closed (the lane version-stamp bug); ep19 export is
+  rebuild-stable at 440 records** — ep18's regression named the lever,
+  and scoping the restore caught a bigger bug before it bit ep19.
+  **The finding: build_agent_corpus never stamped the corpus version
+  tag, so every hygiene run superseded the ENTIRE agent-authored
+  corpus (72/72 records dead)** — each generation trained on only
+  that cycle's fresh drills (ep18's export happened to contain its
+  own cycle's, which is why cascade still improved; the export
+  rebuilt after the S104.1 stability run had ALL of them dead —
+  uploading it would have trained ep19 with zero drills). Fixes,
+  three parts: (1) REAL_CAP_RATIO = 2 in training.py (the hardcoded
+  1:1 cap silently halved the real share when the deliberate pool
+  shrank); (2) the lane stamps VERSION_TAG at record time; (3)
+  repair_agent_corpus_tags() — one-time store repair: un-supersede
+  all agent-authored records (the supersession was the missing-stamp
+  artifact; the lane is validator-enforced current-format by
+  construction), stamp the tag, dedupe by normalized goal
+  keep-newest (the treadmill left wave duplicates) — wired into
+  build_corpus before hygiene. Result: deliberate 122 -> 144 (22
+  distinct agent drills restored from 72 wave-duplicates), real kept
+  288, **export 440 records (~165 Colab steps vs ep17's 144)**,
+  both S104 drills verified present, 440/440 records carry the
+  current system prompt. Idempotency proven: a second rebuild
+  supersedes 0, pool holds. Suite 1768 OK, pyflakes clean,
+  preflight clean.
+
 - 2026-09-28 — **Gen-18 verdict — RECORDED AS REGRESSED (not
   shipped); the drills WORKED (cascade 0/6 → 2/3, first cascade gain
   from demos ever) but the smaller corpus undertrained everything
