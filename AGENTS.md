@@ -80,6 +80,33 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **S104.1 — The demo treadmill root-caused and fixed;
+  the ep18 gate is LIFTED** — the export oscillation (deliberate pool
+  188 → 122 → 144 → 122 across rebuilds) is a structural conflict,
+  not data loss: **S71's rational recovery ordering puts the
+  wrong-turn read FIRST by design; S68's hygiene rule supersedes any
+  scripted demo whose first captured step is read_file** (written for
+  pre-S66 answer-reading demos). Every recovery-variant demo
+  therefore lived exactly one rebuild cycle — hygiene killed the
+  previous wave, the goals re-demoed fresh read-first records, and
+  the pool size depended on where in the cycle the rebuild ran
+  (S102.3 read 188 only because that cycle ran build-training alone,
+  no hygiene pass). Exonerations, both empirical: dedupe is innocent
+  (reinforcement never rewrites context, so first steps cannot
+  change; goal normalization keeps the suffix words, so benchmark
+  runs cannot merge into demos), and the S104/S105 changes are
+  innocent (a worktree A/B: pre-S104 code on the IDENTICAL store
+  produces byte-identical numbers — deliberate 144, ACCEPT 1660).
+  THE FIX: mark_superseded_demos exempts records carrying deliberate
+  recovery tags (recovery-demo, edit-recovery) from the read-first
+  rule; version-tag format staleness still applies. 22 plain
+  read-first records correctly caught this pass; STABILITY PROVEN —
+  a second rebuild supersedes 0 and the pool holds at 122. The
+  rebuild is idempotent again; **ep18 may train on the current
+  export** (122 deliberate + 122 real + SRFT). Regression test named
+  after the failure mode. Suite 1765 OK, pyflakes clean, preflight
+  clean.
+
 - 2026-09-28 — **S104 + S105 — Cascade re-anchor drills (ep18's
   variable) + rung-7 explore-qa eval (measurement-first), and an
   export-oscillation finding that GATES ep18** — **S104**
