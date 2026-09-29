@@ -961,3 +961,96 @@ class AmbiguousAnchorValidation(unittest.TestCase):
                 recovery_anchors=demo.get("recovery_anchors"),
                 ambiguous_anchors=demo.get("ambiguous_anchors"))
             self.assertTrue(ok, (demo["goal"], reasons))
+
+
+class AgentVersionStampTests(unittest.TestCase):
+    """S106: the lane never stamped the corpus version tag, so every
+    hygiene run superseded the whole agent-authored corpus (all 72
+    records dead; each generation trained on only that cycle's fresh
+    drills). The stamp is mandatory at record time and the one-time
+    repair restores the dead records, deduped keep-newest."""
+
+    def _exp(self, goal, recorded_at, superseded=False, agent=True):
+        from qacompanion.agent.experience import Experience
+        tags = (["autonomous-session", "scripted-demo"] if agent else
+                ["autonomous-session"])
+        if agent:
+            tags.append("agent-authored")
+        if superseded:
+            tags.append("superseded-pattern")
+        return Experience(
+            goal=goal, outcome="success", tags=tags,
+            actions=["list_directory"],
+            context={"tool_calls": [{"tool": "list_directory",
+                                     "args": {"path": "."}, "ok": True,
+                                     "result_head": "ok"}]},
+            recorded_at=recorded_at)
+
+    def test_repair_unsupersedes_stamps_and_dedupes(self):
+        from qacompanion.agent.ep1 import (VERSION_TAG,
+                                           repair_agent_corpus_tags)
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ExperienceStore(Path(tmp) / "e.jsonl")
+            # the S104 drill, killed by the missing stamp
+            store.record(self._exp("re-anchor the anchor in metrics.py",
+                                   "2026-09-29T10:00:00Z",
+                                   superseded=True))
+            # an older duplicate of the same goal (a previous wave)
+            store.record(self._exp("re-anchor the anchor in metrics.py "
+                                   "(benchmark run deadbeef)",
+                                   "2026-09-28T09:00:00Z",
+                                   superseded=True))
+            # a scripted record: untouched by the agent repair
+            store.record(self._exp("scripted task", "2026-09-28T08:00:00Z",
+                                   superseded=True, agent=False))
+            stats = repair_agent_corpus_tags(store)
+            self.assertEqual(2, stats["agent_records"])
+            records = store.load()
+            agent = [r for r in records
+                     if "agent-authored" in r.tags]
+            current = [r for r in agent
+                       if "superseded-pattern" not in r.tags]
+            self.assertEqual(1, len(current),
+                             "dedupe must keep exactly one per goal")
+            self.assertIn("re-anchor the anchor in metrics.py",
+                          [r.goal for r in current])
+            self.assertTrue(all(VERSION_TAG in r.tags for r in agent))
+            # the scripted record stays as it was
+            scripted = next(r for r in records if not any(
+                "agent-authored" in r.tags for r in [r]))
+            self.assertIn("superseded-pattern", scripted.tags)
+
+    def test_repair_is_idempotent(self):
+        from qacompanion.agent.ep1 import (VERSION_TAG,
+                                           repair_agent_corpus_tags)
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ExperienceStore(Path(tmp) / "e.jsonl")
+            store.record(self._exp("json drill goal",
+                                   "2026-09-29T10:00:00Z"))
+            first = repair_agent_corpus_tags(store)
+            second = repair_agent_corpus_tags(store)
+            self.assertEqual(1, first["current_after"])
+            self.assertEqual(1, second["current_after"])
+            records = store.load()
+            self.assertEqual(1, len(records))
+            self.assertNotIn("superseded-pattern", records[0].tags)
+            self.assertIn(VERSION_TAG, records[0].tags)
+
+    def test_hygiene_spares_version_stamped_agent_records(self):
+        from qacompanion.agent.ep1 import (mark_superseded_demos,
+                                           repair_agent_corpus_tags)
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ExperienceStore(Path(tmp) / "e.jsonl")
+            # read-first drill (S71 ordering): agent-authored, stamped
+            rec = self._exp("wrong turn first in metrics.py",
+                            "2026-09-29T10:00:00Z")
+            store.record(rec)
+            repair_agent_corpus_tags(store)
+            stats = mark_superseded_demos(store)
+            self.assertEqual(0, stats["superseded"])
+            self.assertNotIn("superseded-pattern",
+                             store.load()[0].tags)
+
+
+if __name__ == "__main__":
+    unittest.main()

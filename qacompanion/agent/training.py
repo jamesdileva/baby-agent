@@ -58,6 +58,13 @@ MAX_FAILED_TOOL_STEPS = 2
 DELIBERATE_TAGS = frozenset({"scripted-demo", "agent-authored",
                              "recovery-demo", "edit-recovery"})
 
+# S106: the real-share cap is real <= REAL_CAP_RATIO x deliberate.
+# 1:1 (the S100 default) silently halved the real share when the
+# treadmill cleanup shrank the deliberate pool, and ep18 regressed
+# with the undertraining fingerprint. 2:1 restores scale while
+# deliberate keeps >= 1/3 of the taught set.
+REAL_CAP_RATIO = 2
+
 
 class TrainingError(ValueError):
     """Structured training-pipeline failure (missing curated export)."""
@@ -513,13 +520,18 @@ def build_training(curated_dir=None, out_dir=None,
     # thrash, and every cut is counted with its reason in the report.
     # With no deliberate baseline the ratio is undefined, so the cap
     # stays vacuous (eligibility + turn-stripping still apply).
+    # S106: the ratio is 2 (real <= 2x deliberate) — the 1:1 cap
+    # silently halved the real share when the treadmill cleanup shrank
+    # the deliberate pool (188 -> 122), and ep18's verdict showed the
+    # undertraining fingerprint (broad collapse with thrash; cascade
+    # alone improved). 2:1 restores training scale while deliberate
+    # keeps >= 1/3 of the taught set.
     deliberate = [r for r in step_trainable if _deliberate(r)]
     real = [r for r in step_trainable if not _deliberate(r)]
     if deliberate:
-        # kept_real <= deliberate  <=>  real share of taught <= 1/2
         real_sorted = sorted(real, key=lambda r: (
             _failed_step_count(r), r.session_id or ""))
-        kept_real = real_sorted[:len(deliberate)]
+        kept_real = real_sorted[:REAL_CAP_RATIO * len(deliberate)]
     else:
         kept_real = list(real)
     real_capped = len(real) - len(kept_real)

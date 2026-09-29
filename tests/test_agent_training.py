@@ -640,26 +640,35 @@ class S100SurgeryTests(unittest.TestCase):
                       contents[premature_at + 2])
 
     def test_real_share_capped_cleanest_first(self):
+        # S106: the cap is real <= 2x deliberate (was 1:1 — the 1:1 cap
+        # silently halved the real share when the treadmill cleanup
+        # shrank the deliberate pool, and ep18 regressed with the
+        # undertraining fingerprint). Cleanest-first ordering holds.
         rows = [
             _eligible_row(session_id="d1", tags=["scripted-demo"]),
             _eligible_row(session_id="d2",
                           tags=["agent-authored", "edit-recovery"]),
             _eligible_row(session_id="r0"),
+            # each thrashy row keeps <= 2 failed steps so the S95
+            # hygiene filter doesn't exclude it from the real pool —
+            # the tie-break is session_id (cleanest-first ordering)
             self._thrashy_row(failed=1, session_id="r1"),
-            self._thrashy_row(failed=2, session_id="r2"),
+            self._thrashy_row(failed=1, session_id="r2"),
+            self._thrashy_row(failed=1, session_id="r3"),
+            self._thrashy_row(failed=1, session_id="r4"),
         ]
         out = self.tmp / "training"
         report = build_training(
             curated_dir=_write_curated(self.tmp, rows), out_dir=out)
         self.assertEqual(2, report["deliberate"])
-        self.assertEqual(2, report["real_kept"])
+        self.assertEqual(4, report["real_kept"])
         self.assertEqual(1, report["real_capped"])
         self.assertTrue(report["real_capped_reason"])
         chats = [json.loads(line) for line in
                  (out / "training.jsonl").read_text(
                      encoding="utf-8").splitlines() if line]
         kept = {c["metadata"]["session_id"] for c in chats}
-        self.assertEqual({"d1", "d2", "r0", "r1"}, kept)
+        self.assertEqual({"d1", "d2", "r0", "r1", "r2", "r3"}, kept)
 
     def test_cap_vacuous_without_deliberate_baseline(self):
         rows = [self._thrashy_row(failed=1, session_id="r1"),

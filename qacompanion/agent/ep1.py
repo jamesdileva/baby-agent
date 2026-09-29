@@ -36,7 +36,7 @@ from .curriculum import (_bug_fix_fixture, _build_repair_fixture,
                          _dependency_fixture, _feature_add_fixture,
                          _regression_fixture, _testing_fixture,
                          bug_fix_defect, feature_add_spec)
-from .experience import ExperienceStore
+from .experience import Experience, ExperienceStore
 from .providers import FakeModelProvider
 from .training import format_tool_call
 
@@ -541,6 +541,53 @@ def build_demo(category: str, strategy: str, variant: int, level: int,
     if strategy not in STRATEGIES.get(category, ()):
         raise KeyError(f"unknown strategy {strategy!r} for {category}")
     return _SCRIPT_BUILDERS[category](strategy, variant, level, python)
+
+
+def repair_agent_corpus_tags(store: ExperienceStore) -> Dict[str, Any]:
+    """S106 one-time repair: agent-authored records were recorded
+    WITHOUT the corpus version tag, so every hygiene run superseded
+    the whole lane (72/72 records dead) — each generation trained on
+    only that cycle's fresh drills. The lane is validator-enforced
+    current-format by construction, so the supersession was an
+    artifact of the missing stamp, not a format judgment: un-supersede
+    every agent-authored record, stamp the current version tag, and
+    dedupe by normalized goal keeping the NEWEST record (the treadmill
+    re-recorded drills after each wave died, leaving duplicates);
+    older duplicates stay superseded (same content, one current
+    record). Scripted records are untouched."""
+    from .experience import _normalize_goal
+
+    records = store.load()
+    repaired = 0
+    agent_records = [r for r in records
+                     if AGENT_AUTHORED_TAG in (r.tags or [])]
+    for record in agent_records:
+        tags = record.tags or []
+        if "superseded-pattern" in tags:
+            tags.remove("superseded-pattern")
+            repaired += 1
+        if VERSION_TAG not in tags:
+            tags.append(VERSION_TAG)
+    best: Dict[str, Experience] = {}
+    for record in agent_records:
+        key = _normalize_goal(record.goal.split(" (benchmark run")[0])
+        incumbent = best.get(key)
+        if incumbent is None or (record.recorded_at,
+                                 record.experience_id) > (
+                incumbent.recorded_at, incumbent.experience_id):
+            if incumbent is not None:
+                if "superseded-pattern" not in incumbent.tags:
+                    incumbent.tags.append("superseded-pattern")
+            best[key] = record
+        else:
+            if "superseded-pattern" not in record.tags:
+                record.tags.append("superseded-pattern")
+    deduped = sum(1 for r in agent_records
+                  if "superseded-pattern" in r.tags)
+    store.save(records)
+    return {"scanned": len(records), "agent_records": len(agent_records),
+            "repaired": repaired, "current_after": len(agent_records)
+            - deduped, "deduped": deduped}
 
 
 def mark_superseded_demos(store: ExperienceStore) -> Dict[str, Any]:
@@ -1657,6 +1704,15 @@ def build_agent_corpus(experience_store: ExperienceStore,
                 last = records[-1]
                 if AGENT_AUTHORED_TAG not in last.tags:
                     last.tags.append(AGENT_AUTHORED_TAG)
+                # S106: the lane MUST stamp the corpus version tag — the
+                # hygiene rule supersedes any scripted-demo record
+                # lacking it, so unstamped lane records died on the
+                # NEXT rebuild (the second treadmill: all 72
+                # agent-authored records were superseded wave by wave,
+                # and every generation trained on only that cycle's
+                # fresh drills)
+                if VERSION_TAG not in last.tags:
+                    last.tags.append(VERSION_TAG)
                 if (demo.get("recovery_anchors")
                         and EDIT_RECOVERY_TAG not in last.tags):
                     last.tags.append(EDIT_RECOVERY_TAG)
@@ -1689,6 +1745,10 @@ def build_corpus(experience_store: ExperienceStore,
     # S68: hygiene first, then an IDEMPOTENT rebuild — skip tasks whose
     # normalized goal already has a successful non-superseded scripted
     # demo, which re-demos exactly the stale goals and nothing else
+    # S106: repair the lane's missing version stamps BEFORE hygiene —
+    # the one-time un-supersede + dedupe restores the agent-authored
+    # corpus, then the version-tagged records survive every rebuild
+    repair_agent_corpus_tags(experience_store)
     hygiene = mark_superseded_demos(experience_store)
     covered = set()
     for record in experience_store.load():
