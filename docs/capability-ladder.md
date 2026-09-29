@@ -50,6 +50,7 @@ human with this note as the record.
 | 15 | ep15-q4 (S95 corpus) | 3/3 | 0/3 | 3/3 |
 | 16 | ep16-q4 (S100 corpus) | 3/3 | 3/3 | 3/3 |
 | 17 | ep17-q4 (S101 drill + conversational prompt) | 3/3 | 3/3 | 2/3* |
+| 17 | ep17-q4 re-verdict (seed 43) | 3/3 | 3/3 | 3/3 |
 | 11 | ep11-q4 re-verdict (pinned 5-task) | 3/3 | 3/3 | 3/3 |
 | 11 | ep11-q4 re-verdict (S95.1 tie day) | 3/3 | 3/3 | 3/3 |
 | 9b | qwen3.5:9b RAW (scout, think-disabled) | 3/3 | 3/3 | 1/3* |
@@ -57,10 +58,12 @@ human with this note as the record.
 Bands: calculator 1.0 (solved — 3/3 everywhere, every gen); strings
 solid for ep11 (3/3 x3 verdicts), volatile for ep12 (0/3 then 3/3);
 json SOLVED at 7B (3/3 in 5 of last 6 readings across ep11/ep12/ep13).
-Gen-17 (2026-09-28): json 2/3 with the loss a provider TIMEOUT
-(runs 2-3 clean 7-iter successes — in-band); cascade 0/3 deterministic
-thrash (9 failures × 3 runs) = deficit SIGNAL, unconfirmed (one
-verdict never convicts — S91.1 rule); champion ep11-q4 holds.
+Gen-17 two-reading ledger (seed 42 + seed 43): ep17 23/30 vs ep11
+22/30 — json loss at seed 42 was a provider timeout (3/3 at seed 43);
+indirect 6/6 vs 0/6 deterministic; **cascade 0/6 CONFIRMED deficit**
+(identical schema-error loop both readings) → S104 ep18 target;
+**ep17-q4 SHIPPED as champion 2026-09-28** (thrash tax 82 vs 15
+tool failures recorded honestly); ep11-q4 fallback.
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).

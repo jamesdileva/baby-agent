@@ -80,6 +80,33 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **Gen-17 re-verdict (seed 43, user-directed) —
+  json loss confirmed environmental, ep17 WINS the two-reading
+  ledger 23/30 vs 22/30, indirect 6/6; ep17-q4 SHIPPED as champion**
+  — the user's instinct (ep17 should beat ep11 given indirect 3/3 +
+  the json timeout) drove the confirmation run: **ep17-q4 12/15**
+  (calc 3/3, strings 3/3, **json 3/3 — the seed-42 loss did NOT
+  reproduce**, cascade 0/3 identical shape, **indirect 3/3 clean
+  AGAIN — 6/6 across both readings, iters 7 / 0 failures every
+  run**) vs ep11-q4 11/15 (cascade 2/3, indirect 0/3 — 0/6 across
+  both readings). Combined: ep17 23/30 vs ep11 22/30; json 5/6 vs
+  6/6; the tiebreaker is the deterministic indirect 6/6 vs 0/6.
+  Honest caveats recorded: cascade deficit now CONFIRMED (0/6, two
+  readings, identical failure anatomy — see the cascade forensics);
+  thrash tax 82 tool failures vs ep11's 15; diagnosis_chaining 0.47
+  vs 0.8. Cascade forensics (seed-42 runs, store): ep17's 0/3 is a
+  **schema-error loop** — code_diagnostics(path=)/code_symbols(name=)
+  invented args rejected, then the IDENTICAL invalid call repeated
+  x8 to max-iterations; it never reads calc_ops.py. ep11's failed
+  cascade runs show the DEEPER wall all generations hit: fixing add
+  (a-b → a+b) makes multiply's edit anchor `return a + b` match 2x —
+  the fixture is self-ambiguating — and ep11 re-reads and retries
+  the rejected anchor to exhaustion instead of re-anchoring with
+  context. S104 targets BOTH: re-anchor drill + schema-fallback
+  beat = ep18's single training variable. Dashboard default model
+  switched to ep17-q4. Suite untouched (verdict + one-line UI
+  default).
+
 - 2026-09-28 — **Gen-17 verdict — the S101 drill DELIVERED:
   indirect SOLVED 3/3 clean (first zero-failure indirect in program
   history), 11/15 tie with ep11; champion stays ep11-q4** — pinned
