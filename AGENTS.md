@@ -80,6 +80,35 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **S103 + S102.5 — Recovery ladder upgrade (cycling
+  detection) + verify auto-detect (user-directed scope)** — **S103**
+  (docs/s103-spec.md): the live docs-question thrash had THREE stacked
+  defects, all fixed. D3: FailureTracker is success-aware — the loop
+  reports successful tool results, and new cycling() fires on a
+  streak of 5 failing steps with >=2 distinct signatures and NO
+  success between them (the exact observed pattern, proven silent
+  under the old consecutive-same rule by a regression test named
+  after the failure mode); exploration that interleaves successes
+  never fires (the corpus-taught guessed-path shape is protected).
+  D2 (the S98 follow-up): environment decisions now COUNT — after 2
+  in a failing streak they fall through to the counted ladder; the
+  counter resets only on success (resetting on any non-env decision
+  let env/retry alternate forever — caught by test, fixed). D1:
+  tool-path recovery decisions now EMIT recovery_started with
+  strategy+reason (only the no-op retry_with_advice stays silent) —
+  the ladder is visible in the feed. **S102.5**: verify auto-detect —
+  suggest_verify_command() sniffs top-level project markers
+  (npm/cargo/go/pytest/unittest/make); picker Use-this-folder
+  pre-fills the input, session start falls back to it, summary
+  exposes the in-force gate ('verify: …' / 'no verify gate' in the
+  status line); explicit input always wins. Sidebar: Session
+  settings / **Verdict test** (renamed from Operations) / Sessions
+  are collapsible (persisted). Ladder: **rung 7 proposed —
+  observation-grounded exploration (explore-qa)**, deterministic
+  fact-containment verifier, motivating evidence = the docs-session
+  thrash; parallel-authoring note flagged. Suite 1755 OK (15 new),
+  pyflakes clean, preflight clean.
+
 - 2026-09-28 — **S102.4 — Session forensics made visible + the
   interleaved-thrash blind spot named (live user finding)** — the
   user's docs-question session ('how do I start this app? it should be
