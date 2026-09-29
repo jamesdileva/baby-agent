@@ -104,6 +104,10 @@ class AgentSession:
     updated_at: str = field(default_factory=_utc_now)
     final_result: Optional[str] = None
     termination_reason: Optional[str] = None
+    # S105: the answer awaiting verification. final_result is only
+    # assigned AFTER the verifier passes, so answer-gating verifiers
+    # (the explore-qa fact gate) read this instead.
+    pending_answer: Optional[str] = None
 
     def __post_init__(self):
         _require(isinstance(self.goal, str) and self.goal.strip(), "goal required")

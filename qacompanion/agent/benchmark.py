@@ -164,18 +164,23 @@ def run_benchmark(provider, config=None, workspace_root=None,
                   tool_catalog=LEAN_MODEL_CATALOG,
                   fixture_writer=create_fixture,
                   goal: str = BENCHMARK_GOAL,
-                  context_builder=None) -> BenchmarkReport:
+                  context_builder=None,
+                  verifier=None) -> BenchmarkReport:
     """Run one autonomous defect-fix attempt and return honest metrics.
     fixture_writer defaults to the S48 calculator fixture; the S57
     evaluation passes its per-task fixture writers. goal defaults to
     the S48 natural-language goal. context_builder (S64 slice 2) enables
-    the ep0.5 A/B: demonstration injection vs plain assembly."""
+    the ep0.5 A/B: demonstration injection vs plain assembly.
+    verifier (S105): an optional verifier callable(session) that
+    REPLACES the internal unittest plan — the explore-qa task gates on
+    fact containment in the final answer, not on a test suite."""
     root = Path(workspace_root or tempfile.mkdtemp(prefix="benchmark-"))
     workspace = Workspace(root)
     fixture_writer(workspace)
 
     registry = coding_registry(workspace, experience_store)
-    verifier = plan_verifier(_verification_plan(), workspace)
+    if verifier is None:
+        verifier = plan_verifier(_verification_plan(), workspace)
     events = events or EventStream()
 
     started = time.monotonic()

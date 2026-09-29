@@ -51,3 +51,6 @@ ep16-q4.gguf
 # imported model binaries + per-import ollama Modelfiles (recreated at import time)
 *.gguf
 Modelfile.*
+
+# local baseline driver (S105 measurement, not repo tooling)
+/_s105_baseline.py

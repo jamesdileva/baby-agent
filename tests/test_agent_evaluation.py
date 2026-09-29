@@ -73,6 +73,16 @@ class _ScriptedFactory:
                 super().__init__([])  # stateless: synthesizes per turn
 
             def generate(self, request):
+                goal_text = " ".join(m.content or ""
+                                     for m in request.messages
+                                     if m.role == "user")
+                if "start this project's server" in goal_text:
+                    # S105 explore-qa: the fact gate needs the planted
+                    # command + port in the final answer
+                    return ModelResponse(
+                        text="Start it with python -m serverctl "
+                             "--port 8765 (see docs/running.md).",
+                        finish_reason="stop")
                 has_tool_result = any(m.role == "tool"
                                       for m in request.messages)
                 if has_tool_result:
@@ -103,10 +113,12 @@ class TestFixtures(EvalBase):
         tasks = default_tasks()
         # S78: the ladder grew — cascade (two defects) joins the suite;
         # S93: rung-3 indirect joins as eval-only (no demos authored)
+        # S105: explore-qa appends as the sixth (rung 7, eval-only);
+        # the first five stay the pinned ladder set
         self.assertEqual([t.name for t in tasks],
                          ["defect-fix-calculator", "defect-fix-strings",
                           "defect-fix-json", "defect-fix-cascade",
-                          "defect-fix-indirect"])
+                          "defect-fix-indirect", "explore-qa"])
         for task in tasks:
             self.assertNotIn(".py", task.goal)  # goals name no files
             root = self.tmp / task.name
@@ -153,7 +165,7 @@ class TestRunner(EvalBase):
             models={"test-model": _ScriptedFactory(succeed=True)},
             store=self.store, run_id="run-all-pass")
         agg = report.aggregates()["test-model"]
-        self.assertEqual(agg["tasks"], 5)
+        self.assertEqual(agg["tasks"], 6)
         self.assertEqual(agg["success_rate"], 1.0)
         self.assertEqual(agg["total_interventions"], 0)
 
@@ -310,3 +322,56 @@ class ProtocolMetricsTests(unittest.TestCase):
         passer = self._record([passing])
         m = protocol_metrics([chainer, rerunner, passer])
         self.assertEqual(0.5, m["diagnosis_chaining_rate"])
+
+
+class TestExploreQA(unittest.TestCase):
+    """S105: rung 7 as measurement — the answer lives only in a docs
+    file; the fact gate demands the planted command + port in the
+    final answer (deterministic containment, no LLM judge)."""
+
+    def test_task_is_sixth_and_pinned_set_unchanged(self):
+        tasks = default_tasks()
+        self.assertEqual("explore-qa", tasks[-1].name)
+        self.assertEqual(["defect-fix-calculator", "defect-fix-strings",
+                          "defect-fix-json", "defect-fix-cascade",
+                          "defect-fix-indirect"],
+                         [t.name for t in tasks[:5]])
+
+    def test_fixture_plants_facts_only_in_running_md(self):
+        task = next(t for t in default_tasks() if t.name == "explore-qa")
+        self.assertEqual(["python -m serverctl", "8765"], task.fact_gate)
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            task.write_fixture(Path(tmp))
+            running = (Path(tmp) / "docs" / "running.md").read_text(
+                encoding="utf-8")
+            readme = (Path(tmp) / "README.md").read_text(
+                encoding="utf-8")
+            api = (Path(tmp) / "docs" / "api.md").read_text(
+                encoding="utf-8")
+        self.assertIn("python -m serverctl", running)
+        self.assertIn("8765", running)
+        self.assertNotIn("8765", readme)
+        self.assertNotIn("8765", api)
+        self.assertNotIn("serverctl --port", readme)
+        # no tests: the fact gate replaces the unittest gate
+        self.assertFalse(list(Path(tmp).glob("test_*.py")))
+
+    def _run_explore(self, final_text):
+        tasks = [t for t in default_tasks() if t.name == "explore-qa"]
+        def factory(model=None):
+            return FakeModelProvider([
+                ModelResponse(text=final_text, finish_reason="stop")])
+        report = run_evaluation({"fake": factory}, tasks=tasks)
+        return report.results["fake"]["explore-qa"]
+
+    def test_fact_gate_passes_grounding_answer(self):
+        result = self._run_explore(
+            "Start it with: python -m serverctl --port 8765 (from the "
+            "repo root, per docs/running.md).")
+        self.assertTrue(result["success"], result["termination_reason"])
+
+    def test_fact_gate_rejects_ungrounded_answer(self):
+        result = self._run_explore(
+            "I could not find how to start the server anywhere.")
+        self.assertFalse(result["success"])

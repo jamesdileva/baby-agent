@@ -275,6 +275,9 @@ class AgentLoop:
                 if self.verifier is not None:
                     attempt = len(session.verification_results) + 1
                     self._emit("verification_started", session, attempt=attempt)
+                    # S105: expose the answer under test BEFORE the gate
+                    # runs (final_result is only assigned on pass)
+                    session.pending_answer = response.text
                     ok, detail = self._verify(session)
                     session.verification_results.append({
                         "ok": ok, "detail": detail,

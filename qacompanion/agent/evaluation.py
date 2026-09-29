@@ -141,6 +141,10 @@ class EvalTask:
     goal: str
     files: Dict[str, str]
     verify_command: str
+    # S105: planted facts the FINAL ANSWER must contain (all of them,
+    # case-insensitive substring) — the rung-7 fact gate. Replaces the
+    # unittest gate for answer-QA tasks; None keeps the suite gate.
+    fact_gate: Optional[List[str]] = None
 
     def write_fixture(self, root: Path) -> None:
         for name, content in self.files.items():
@@ -235,6 +239,37 @@ def default_tasks() -> List[EvalTask]:
                 "test_cart.py": INDIRECT_TESTS,
             },
             verify_command=f"{python} -m unittest",
+        ),
+        # S105: rung 7 as MEASUREMENT only (demos stay gated — they
+        # are ep19's variable). Open-book workspace QA: the answer
+        # lives only in a docs file; the README deliberately does not
+        # answer; the fact gate demands the planted command + port in
+        # the final answer (deterministic containment, no LLM judge).
+        # The port is arbitrary by construction — guessing it is
+        # effectively ruled out.
+        EvalTask(
+            name="explore-qa",
+            goal="How do you start this project's server? I think "
+                 "there are docs in here somewhere — find the answer "
+                 "and tell me the exact command.",
+            files={
+                "docs/running.md":
+                    "# Running\n\n"
+                    "Start the dashboard server from the repo root:\n\n"
+                    "    python -m serverctl --port 8765\n\n"
+                    "The port is fixed; tools that scan for it assume "
+                    "8765.\n",
+                "docs/api.md":
+                    "# API\n\nThe client talks to the server over "
+                    "HTTP. Endpoints are versioned; see the changelog "
+                    "for details.\n",
+                "README.md":
+                    "# serverctl\n\nA small service for local "
+                    "projects. Configuration lives in code; see the "
+                    "docs folder for operational details.\n",
+            },
+            verify_command="",
+            fact_gate=["python -m serverctl", "8765"],
         ),
     ]
 
@@ -356,6 +391,23 @@ def run_evaluation(models: Dict[str, Callable[[Optional[str]], Any]],
         for task in tasks:
             root = Path(tempfile.mkdtemp(prefix=f"eval-{task.name}-"))
             task.write_fixture(root)
+            task_verifier = None
+            if task.fact_gate:
+                # S105: answer-QA tasks gate on fact containment in the
+                # final answer (the loop only COMPLETEDs when the gate
+                # passes; failures enter the normal recovery path)
+                facts = [f.lower() for f in task.fact_gate]
+
+                def fact_verifier(session, _facts=facts):
+                    text = (getattr(session, "pending_answer", None)
+                            or session.final_result or "").lower()
+                    missing = [f for f in _facts if f not in text]
+                    if missing:
+                        return False, (f"final answer lacks the "
+                                       f"planted fact(s): {missing}")
+                    return True, "final answer contains the planted facts"
+
+                task_verifier = fact_verifier
             report.results[model_name][task.name] = run_benchmark(
                 factory(model_name), workspace_root=str(root),
                 experience_store=store, events=events or EventStream(),
@@ -363,6 +415,7 @@ def run_evaluation(models: Dict[str, Callable[[Optional[str]], Any]],
                 fixture_writer=lambda ws, _task=task: _task.write_fixture(
                     ws.root),
                 goal=task.goal,
+                verifier=task_verifier,
             ).to_dict()
     return report
 
