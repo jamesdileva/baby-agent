@@ -47,3 +47,7 @@ ep16-q4.gguf
 
 # session captures stay local (per-session workspace PNGs)
 *.png
+
+# imported model binaries + per-import ollama Modelfiles (recreated at import time)
+*.gguf
+Modelfile.*
