@@ -545,5 +545,78 @@ class TestSessionConfirmations(ServerBase):
         self.assertEqual(409, ctx.exception.code)
 
 
+class TestVerifyAutodetect(unittest.TestCase):
+    """S102.5: the dashboard verify input pre-fills itself from the
+    workspace's project markers; session start falls back to the same
+    detection when the user left the input empty."""
+
+    def test_python_project_suggests_unittest(self):
+        from qacompanion.agent.server import suggest_verify_command
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "pyproject.toml").write_text("[project]\n",
+                                                 encoding="utf-8")
+            (root / "tests").mkdir()
+            self.assertEqual("python -m unittest",
+                             suggest_verify_command(str(root)))
+
+    def test_pytest_config_suggests_pytest(self):
+        from qacompanion.agent.server import suggest_verify_command
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "pyproject.toml").write_text(
+                "[tool.pytest.ini_options]\n", encoding="utf-8")
+            self.assertEqual("python -m pytest",
+                             suggest_verify_command(str(root)))
+
+    def test_ecosystem_markers(self):
+        from qacompanion.agent.server import suggest_verify_command
+        cases = {"package.json": "npm test", "Cargo.toml": "cargo test",
+                 "go.mod": "go test ./...", "Makefile": "make test"}
+        for marker, expected in cases.items():
+            with tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / marker).write_text("x", encoding="utf-8")
+                self.assertEqual(expected,
+                                 suggest_verify_command(tmp), marker)
+
+    def test_no_markers_suggests_nothing(self):
+        from qacompanion.agent.server import suggest_verify_command
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual("", suggest_verify_command(tmp))
+        self.assertEqual("", suggest_verify_command(str(
+            Path(tempfile.gettempdir()) / "definitely-not-here-xyz")))
+
+
+class TestVerifyAutodetectSurface(ServerBase):
+    def test_browse_carries_suggestion(self):
+        (self.tmp / "package.json").write_text("{}", encoding="utf-8")
+        out = self.get("/api/browse?path=" +
+                       str(self.tmp).replace("\\", "/"))
+        self.assertEqual("npm test", out["suggested_verify"])
+
+    def test_start_falls_back_to_detected_verify(self):
+        ws = self.tmp / "ws-py"
+        (ws / "tests").mkdir(parents=True)
+        (ws / "pyproject.toml").write_text("[project]\n",
+                                           encoding="utf-8")
+        out = self.post("/api/session/start", {
+            "goal": "create hello.txt", "workspace": str(ws),
+        })
+        detail = self.get("/api/session/" + out["session_id"])
+        self.assertEqual("python -m unittest", detail["verify_command"])
+
+    def test_explicit_verify_wins_over_detection(self):
+        ws = self.tmp / "ws-explicit"
+        ws.mkdir()
+        (ws / "package.json").write_text("{}", encoding="utf-8")
+        out = self.post("/api/session/start", {
+            "goal": "create hello.txt", "workspace": str(ws),
+            "verify_command": PY + " -m custom_check",
+        })
+        detail = self.get("/api/session/" + out["session_id"])
+        self.assertEqual(PY + " -m custom_check",
+                         detail["verify_command"])
+
+
 if __name__ == "__main__":
     unittest.main()

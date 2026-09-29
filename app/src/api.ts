@@ -3,6 +3,7 @@ export interface SessionSummary {
   goal: string;
   workspace: string;
   model: string | null;
+  verify_command?: string | null;
   state: string;
   iterations: number;
   files_changed: string[];
@@ -116,6 +117,7 @@ export interface BrowseResult {
   parent: string;
   directories: string[];
   files: string[];
+  suggested_verify: string;
   sep: string;
 }
 

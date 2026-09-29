@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AgentEvent,
   BrowseResult,
@@ -51,6 +51,26 @@ const EVENT_LABELS: Record<string, string> = {
   memory_advice: "advice",
 };
 
+function SidebarSection(props: {
+  id: string;
+  title: string;
+  collapsed: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className={`sidebar-section ${props.id}`}>
+      <div className="section-header" onClick={props.onToggle}>
+        <span className="chevron">{props.collapsed ? "▸" : "▾"}</span>
+        <h2>{props.title}</h2>
+      </div>
+      {!props.collapsed && (
+        <div className="section-body">{props.children}</div>
+      )}
+    </section>
+  );
+}
+
 export default function App() {
   const [goal, setGoal] = useState("The tests in this project are failing. Find the bug, fix it, and run the tests to verify they pass.");
   const [workspace, setWorkspace] = useState("");
@@ -65,6 +85,18 @@ export default function App() {
   const [pickerFilter, setPickerFilter] = useState("");
   const [pickerPathEntry, setPickerPathEntry] = useState("");
   const [recentWorkspaces, setRecentWorkspaces] = useState<string[]>([]);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(
+    () => {
+      try {
+        return JSON.parse(
+          localStorage.getItem("ba-collapsed") ?? "{}"
+        ) as Record<string, boolean>;
+      } catch {
+        // corrupt storage: everything expanded
+        return {};
+      }
+    }
+  );
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [feed, setFeed] = useState<AgentEvent[]>([]);
@@ -159,6 +191,18 @@ export default function App() {
     } catch {
       // private mode: memory-only is fine
     }
+  }
+
+  function toggleSection(id: string) {
+    setCollapsed((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try {
+        localStorage.setItem("ba-collapsed", JSON.stringify(next));
+      } catch {
+        // private mode: session-only is fine
+      }
+      return next;
+    });
   }
 
   async function handleStart() {
@@ -258,8 +302,12 @@ export default function App() {
       <h1>Baby-Agent</h1>
       <div className="columns">
         <div className="col">
-          <section className="new-task">
-            <h2>Session settings</h2>
+          <SidebarSection
+            id="settings"
+            title="Session settings"
+            collapsed={!!collapsed["settings"]}
+            onToggle={() => toggleSection("settings")}
+          >
             <div className="workspace-row">
               <input
                 value={workspace}
@@ -299,9 +347,13 @@ export default function App() {
               onChange={(e) => setVerifyCommand(e.target.value)}
               placeholder="verify command (optional, e.g. python -m unittest)"
             />
-          </section>
-          <section className="operations">
-            <h2>Operations</h2>
+          </SidebarSection>
+          <SidebarSection
+            id="verdict"
+            title="Verdict test"
+            collapsed={!!collapsed["verdict"]}
+            onToggle={() => toggleSection("verdict")}
+          >
             <button onClick={handleDrip} disabled={dripRunning}>
               {dripRunning ? "Drip running…" : "Run drip (one real pass)"}
             </button>
@@ -338,9 +390,13 @@ export default function App() {
                 </li>
               ))}
             </ul>
-          </section>
-          <section className="history">
-            <h2>Sessions ({sessions.length})</h2>
+          </SidebarSection>
+          <SidebarSection
+            id="history"
+            title={`Sessions (${sessions.length})`}
+            collapsed={!!collapsed["history"]}
+            onToggle={() => toggleSection("history")}
+          >
             <ul>
               {sessions.length === 0 && <li className="empty">none yet</li>}
               {sessions.map((s) => (
@@ -358,7 +414,7 @@ export default function App() {
                 </li>
               ))}
             </ul>
-          </section>
+          </SidebarSection>
         </div>
         <div className="col">
           {active && (
@@ -369,6 +425,9 @@ export default function App() {
               <p>
                 iterations: {active.iterations} | workspace:{" "}
                 {active.workspace || "(temp)"} | model: {active.model ?? "default"}
+                {active.verify_command
+                  ? ` | verify: ${active.verify_command}`
+                  : " | no verify gate"}
               </p>
               {active.files_changed.length > 0 && (
                 <p>
@@ -510,6 +569,9 @@ export default function App() {
               <button
                 onClick={() => {
                   setWorkspace(browse.path);
+                  if (browse.suggested_verify) {
+                    setVerifyCommand(browse.suggested_verify);
+                  }
                   rememberWorkspace(browse.path);
                   setShowPicker(false);
                 }}

@@ -30,6 +30,10 @@ li.empty { color: #6b7684; font-style: italic; border-bottom: none; }
 .final-answer p { margin: 0.2rem 0 0; white-space: pre-wrap; }
 .chat textarea { resize: vertical; }
 .chat-actions { display: flex; gap: 0.4rem; }
+.section-header { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; user-select: none; }
+.section-header h2 { margin: 0; }
+.section-header:hover h2 { color: #a8c5f8; }
+.chevron { color: #6b7684; font-size: 0.8rem; }
 .workspace-row { display: flex; gap: 0.4rem; align-items: center; }
 .workspace-row input { flex: 1; }
 .workspace-row button { white-space: nowrap; }

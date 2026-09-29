@@ -98,6 +98,48 @@ def list_ollama_models() -> List[str]:
     return names
 
 
+def suggest_verify_command(path: str = "") -> str:
+    """S102.5: detect a verify command from a workspace's top-level
+    project markers so the dashboard's verify input can pre-fill
+    itself. Deterministic file sniffing, no execution; empty string
+    when nothing matches (honest no-suggestion)."""
+    root = Path(path).expanduser() if path else Path.cwd()
+    if not root.is_dir():
+        return ""
+    try:
+        names = {p.name.lower() for p in root.iterdir()}
+    except OSError:
+        return ""
+
+    def has(name: str) -> bool:
+        return name in names
+
+    if has("package.json"):
+        return "npm test"
+    if has("cargo.toml"):
+        return "cargo test"
+    if has("go.mod"):
+        return "go test ./..."
+    if has("pyproject.toml") or has("setup.py") or has("pytest.ini"):
+        # pytest only when a config actually names it; unittest is the
+        # stdlib-safe default for everything else
+        if has("pytest.ini"):
+            return "python -m pytest"
+        pyproject = root / "pyproject.toml"
+        try:
+            if pyproject.exists() and "[tool.pytest" in \
+                    pyproject.read_text(encoding="utf-8",
+                                        errors="replace")[:8192]:
+                return "python -m pytest"
+        except OSError:
+            pass
+        if has("tests") or has("test"):
+            return "python -m unittest"
+    if has("makefile"):
+        return "make test"
+    return ""
+
+
 def browse_directory(path: str = "") -> Dict[str, Any]:
     """S96: subdirectory listing for the dashboard folder picker.
     Local-only server; the workspace param already accepts any path,
@@ -123,6 +165,9 @@ def browse_directory(path: str = "") -> Dict[str, Any]:
             "parent": str(root.resolve().parent),
             "directories": directories,
             "files": files,
+            # S102.5: the picker pre-fills the verify input from the
+            # same detection the session start falls back to
+            "suggested_verify": suggest_verify_command(str(root)),
             "sep": _os.sep}
 
 
@@ -146,6 +191,9 @@ class ManagedSession:
     # loop is sequential); the confirm endpoint resolves it
     pending_confirmation: Optional[Dict[str, Any]] = None
     confirm_event: Any = None
+    # S102.5: the verify command actually in force (user-supplied or
+    # workspace-detected) — surfaced so the UI can show what will gate
+    verify_command: Optional[str] = None
 
     def summary(self) -> Dict[str, Any]:
         session = self.session
@@ -154,6 +202,7 @@ class ManagedSession:
             "goal": self.goal,
             "workspace": self.workspace_root,
             "model": self.model,
+            "verify_command": self.verify_command,
             "state": session.state.value if session else "STARTING",
             "iterations": session.iterations if session else 0,
             "files_changed": list(session.files_changed) if session else [],
@@ -291,6 +340,11 @@ class AgentServerApp:
             tempfile.mkdtemp(prefix="agent-session-"))
         root.mkdir(parents=True, exist_ok=True)  # new projects welcome
         ws = Workspace(root)
+        # S102.5: an empty verify command falls back to workspace
+        # detection — the gate still only exists when something was
+        # detected or supplied (no detection, no gate, same as before)
+        effective_verify = verify_command or suggest_verify_command(
+            str(root))
         session_id = uuid.uuid4().hex
         events = EventStream()
         cancel_event = threading.Event()
@@ -299,12 +353,13 @@ class AgentServerApp:
             workspace_root=str(ws.root), model=model,
             events=events, cancel_event=cancel_event,
         )
+        managed.verify_command = effective_verify or None
         with self._lock:
             self.sessions[session_id] = managed
 
         store = self.experience_store
-        verifier = plan_verifier(_verify_plan(verify_command), ws) \
-            if verify_command else None
+        verifier = plan_verifier(_verify_plan(effective_verify), ws) \
+            if effective_verify else None
         # the server's session id IS the agent session's id: the UI holds
         # this id for events and state, so they must be one and the same
         from .session import AgentSession
