@@ -99,12 +99,37 @@ class TestStateMachine(unittest.TestCase):
         self.assertNotEqual(d.strategy, Strategy.ESCALATE_MODEL)
 
     def test_environment_beats_repeat_count(self):
+        # S98's pin, amended by S103.1: environment routing exists so
+        # blind RETRIES of environment failures become inspections —
+        # it governs first/second occurrences, not stuck repeats. The
+        # 3rd identical failure is ladder territory.
         machine = RecoveryStateMachine()
-        for _ in range(5):
-            machine.tracker.record("tool:same")
         d = machine.on_failure("tool", "ImportError: no module named x",
                                6, 25)
         self.assertEqual(d.strategy, Strategy.ENVIRONMENT_CHECK)
+        d = machine.on_failure("tool", "ImportError: no module named x",
+                               7, 25)
+        self.assertEqual(d.strategy, Strategy.ENVIRONMENT_CHECK)
+        d = machine.on_failure("tool", "ImportError: no module named x",
+                               8, 25)
+        self.assertEqual(d.strategy, Strategy.ALTERNATE_APPROACH)
+
+    def test_reread_missing_file_three_times_gets_ladder(self):
+        # S103.1, live finding: the model re-read docs/running.md x3
+        # (successes interleaved), and each failure re-earned
+        # ENVIRONMENT_CHECK because successes reset the environment
+        # counter — the same-failure ladder was short-circuited. The
+        # 3rd identical failure must reach ALTERNATE_APPROACH.
+        machine = RecoveryStateMachine()
+        machine.on_failure("tool", "file not found: docs/running.md",
+                           1, 25)
+        machine.on_success()
+        machine.on_failure("tool", "file not found: docs/running.md",
+                           4, 25)
+        machine.on_success()
+        d = machine.on_failure("tool", "file not found: docs/running.md",
+                               5, 25)
+        self.assertEqual(d.strategy, Strategy.ALTERNATE_APPROACH)
 
     def test_report(self):
         machine = RecoveryStateMachine()

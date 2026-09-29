@@ -72,6 +72,23 @@ results via a new `record_success()`.
 - The verification path's existing event gains the same payloads
   (additive keys).
 
+## S103.1 — same-failure ladder outranks the environment branch
+
+Live retest (2026-09-28, the docs question retried): recovery fired
+visibly (D1 working) and the model switched behavior each time, but it
+re-read the same missing file (`docs/running.md`) three times with
+successes interleaved — and each failure re-earned ENVIRONMENT_CHECK,
+because successes reset `environment_repeat` and the env branch
+short-circuited the repeat ladder. Refinement: the repeat ladder
+(`repeat_count >= max_same_failure`) is evaluated BEFORE the
+environment branch. First/second occurrences of an environment-class
+failure still get the S98 inspection (the S98 intent — no blind
+retries of environment problems — is preserved by first-occurrence
+routing plus the D2 counter); a 3rd IDENTICAL failure means change
+strategy, environment class or not. Test amended with the documented
+rationale; regression test named after the observed gap
+(`reread_missing_file_three_times_gets_ladder`).
+
 ## Honest bounds
 
 - The ladder still never de-escalates; cycling only makes the EXISTING

@@ -159,11 +159,16 @@ class RecoveryPolicy:
         if not iterations_left:
             return Decision(Strategy.TERMINATE,
                             "no iterations left for another attempt")
-        if self._is_environment(error_text) and environment_repeat < 2:
-            return Decision(Strategy.ENVIRONMENT_CHECK,
-                            "failure text matches environment patterns — "
-                            "inspect the environment first")
         if repeat_count >= self.max_same_failure:
+            # S103.1: the same-failure ladder outranks the environment
+            # branch. S98 routed env-class failures here so blind
+            # retries became environment inspections; the live finding
+            # showed the residual loop — the SAME missing file re-read
+            # 3x kept re-earning ENVIRONMENT_CHECK because successes
+            # between failures reset the environment counter. First
+            # occurrence (repeat_count 1-2) still gets the environment
+            # check below; a 3rd identical failure means change
+            # strategy, environment class or not.
             if alternate_count < self.max_alternates:
                 return Decision(
                     Strategy.ALTERNATE_APPROACH,
@@ -176,6 +181,10 @@ class RecoveryPolicy:
             return Decision(Strategy.ASK_USER,
                             "repeated failure after alternates; no "
                             "escalation available — needs human decision")
+        if self._is_environment(error_text) and environment_repeat < 2:
+            return Decision(Strategy.ENVIRONMENT_CHECK,
+                            "failure text matches environment patterns — "
+                            "inspect the environment first")
         if cycling:
             if alternate_count < self.max_alternates:
                 return Decision(
