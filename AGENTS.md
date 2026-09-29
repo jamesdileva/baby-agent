@@ -80,6 +80,19 @@ Dated history of landed slices, newest first. Standing cycle ritual
 (DECISIONS 2026-09-04): **plan + scope → implement → tests green →
 commit + push → worklog entry.**
 
+- 2026-09-28 — **S105 baseline complete — the explore-qa zero-shot
+  wall is 0/6** — ep17-q4 0/3 (one max-iterations at 25 iters, two
+  CPU-timeout DNFs after 19-25 iters of thrash — the OLLAMA_TIMEOUT
+  fix converting the earlier 6-hour hang into honest failures) and
+  ep11-q4 0/3 (max-iterations ×3, 25 calls each). NEITHER model can
+  answer a docs-lookup question even with double the standard budget,
+  with the planted fact sitting in docs/running.md and the root
+  listing in context — rung 7's target is real, measured, and
+  untouched by any training so far; the demos are ep19's variable.
+  Baseline runs recorded as failed trajectories (SRFT-eligible,
+  standing lane). Ladder rung-7 row updated with the measured
+  baseline. Suite untouched (docs + baseline slice).
+
 - 2026-09-28 — **S106 — Training scale restored + the SECOND
   treadmill closed (the lane version-stamp bug); ep19 export is
   rebuild-stable at 440 records** — ep18's regression named the lever,
