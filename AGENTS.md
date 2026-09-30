@@ -93,6 +93,35 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-09-28 — **Gen-19 verdict — the undertraining fingerprint is
+  CONFIRMED FIXED, but ep19 7/15 < ep17 11/15; ep17-q4 REMAINS
+  champion** — pinned 5-task, temp 0/seed 42, ep19-q4 (the retrained
+  440-record export — attempt 1 was discarded when it FAILED sanity
+  with token-soup output after the user's internet drop corrupted the
+  Colab run; the retrain on a fresh runtime passed the knowledge-
+  question probe cleanly): **ep19 7/15** (calc 3/3 with ZERO failures
+  and 7-iter runs — ep18's 0/3/10-failure thrash signature GONE,
+  strings 3/3 zero-failure clean, json 1/3 with one provider timeout,
+  cascade 0/3 (1 max-iter at 4 failures + 2 timeouts at iter 8 with 1
+  failure — alive when they died), indirect 0/3 max-iter ×3 at only
+  2-3 failures) vs ep17 11/15 same-day (3/3, 3/3, 2/3, 0/3, 3/3).
+  Metrics: ep19 tool_failures 19 vs ep17's 46 and ep18's 100 — the
+  cleanest-behaving generation ever measured; chaining 0.8 vs 0.4;
+  discovery 0.8 vs 1.0. Honest reading: the S106 scale restore did
+  exactly what it claimed (thrash fingerprint eliminated, calc/
+  strings perfect), and ep19's behavior is cleaner than the champion
+  on almost every protocol metric — but the task wins are not there:
+  indirect 0/3 is the SECOND straight generation the S101 drill (in
+  corpus, verified) did not reproduce ep17's 6/6, and cascade
+  remains the program's most volatile task (readings now 0,2,1,2,0,
+  0,2,0 across generations). ep19 NOT shipped; ep17-q4 REMAINS
+  champion. 3 of ep19's 15 runs were timeout-DNFs under tonight's
+  machine load — a cleaner re-reading is cheap but the champion
+  question does not hang on it. Named follow-ups: (a) indirect
+  forensics (drill-in-corpus-but-capability-absent, 2 generations),
+  (b) S107 rung-7 demos (0/6 baseline waiting). Suite untouched
+  (verdict + docs slice).
+
 - 2026-09-28 — **S106 — Training scale restored + the SECOND
   treadmill closed (the lane version-stamp bug); ep19 export is
   rebuild-stable at 440 records** — ep18's regression named the lever,
