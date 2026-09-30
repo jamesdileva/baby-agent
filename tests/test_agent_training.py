@@ -144,6 +144,48 @@ class EligibilityGateTests(unittest.TestCase):
                             for r in record.eligibility_reasons))
         self.assertIsNone(record.chat)
 
+    def test_deliberate_beats_exempt_from_failed_step_cap(self):
+        # S107: the persistence drills carry 3 DECLARED failed beats
+        # (invalid codeintel call x2, ambiguous anchor) — the same
+        # 3-failed-steps shape the S95 cap convicts in real runs. The
+        # cap is for ACCIDENTAL thrash; deliberate records ride.
+        steps = [
+            {"tool": "list_directory", "args": {"path": "."},
+             "ok": True, "result_head": "files"},
+            {"tool": "code_diagnostics", "args": {"path": "m.py"},
+             "ok": False, "result_head": "invalid arguments"},
+            {"tool": "read_file", "args": {"path": "m.py"},
+             "ok": True, "result_head": "def total(a, b):"},
+            {"tool": "edit_file",
+             "args": {"path": "m.py", "old_string": "a - b",
+                      "new_string": "a + b"},
+             "ok": True, "result_head": "edit applied"},
+            {"tool": "code_diagnostics", "args": {"path": "m.py"},
+             "ok": False, "result_head": "invalid arguments"},
+            {"tool": "edit_file",
+             "args": {"path": "m.py", "old_string": "a + b",
+                      "new_string": "a - b"},
+             "ok": False, "result_head": "matches 2 times"},
+            {"tool": "edit_file",
+             "args": {"path": "m.py",
+                      "old_string": "def difference(a, b):\n"
+                                    "    return a + b",
+                      "new_string": "def difference(a, b):\n"
+                                    "    return a - b"},
+             "ok": True, "result_head": "edit applied"},
+        ]
+        for steps_ok, tags in ((True, ["scripted-demo",
+                                       "agent-authored"]),
+                               (False, [])):
+            record = self._build([_eligible_row(
+                steps=steps, tags=tags)])[0]
+            if steps_ok:
+                self.assertTrue(record.eligible,
+                                record.eligibility_reasons)
+                self.assertIsNotNone(record.chat)
+            else:
+                self.assertFalse(record.eligible)
+
     def test_single_recovery_beat_kept(self):
         # scripted recovery demos carry exactly one deliberate failed
         # read plus its correction — the designed shape, not thrash

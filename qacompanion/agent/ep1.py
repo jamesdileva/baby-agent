@@ -1508,6 +1508,221 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
                                 test_path: drill["test_code"]},
                       "goal": drill["goal"],
                       "ambiguous_anchors": [drill["amb_old"]]})
+
+    # --- S107 drill persistence (the gen-19 forensics) ---
+    # The gen-19 double reading named three shapes: S1 the chain-2
+    # catalog-tool loop (after the first fix lands, the model loops on
+    # rejected code_diagnostics / experience_record calls instead of
+    # editing); S2 the fabricated anchor (the indirect edit anchor is
+    # invented from memory, rejected as not-found, and the model
+    # re-reads the file WITHOUT copying the actual line); S3 the beats
+    # are one-shot (the S104 drills demonstrate them only in chain 1).
+    # The fix: drills whose SECOND chain carries the same beats —
+    # invalid-codeintel-call -> honest rejection -> READ instead —
+    # plus a fabricated-anchor indirect drill whose corrective edit
+    # copies the line the fresh read actually showed.
+    # metrics/scale reuse their proven S104 fixtures with NEW goals
+    # (the lesson is new); budget and parcel/shipcalc are fresh
+    # modules (S95: never the eval fixtures).
+    persist_drills = [
+        {
+            "module": "metrics",
+            "module_code":
+                'def total(a, b):\n    return a - b\n\n\n'
+                'def difference(a, b):\n    return a + b\n',
+            "test_code":
+                "import unittest\n\n"
+                "from metrics import total, difference\n\n\n"
+                "class TestMetrics(unittest.TestCase):\n"
+                "    def test_total(self):\n"
+                "        self.assertEqual(total(2, 3), 5)\n\n"
+                "    def test_difference(self):\n"
+                "        self.assertEqual(difference(5, 2), 3)\n\n\n"
+                'if __name__ == "__main__":\n    unittest.main()\n',
+            "fix1_old": '    return a - b',
+            "fix1_new": '    return a + b',
+            "amb_old": '    return a + b',
+            "amb_new": '    return a - b',
+            "wide_old": 'def difference(a, b):\n    return a + b',
+            "wide_new": 'def difference(a, b):\n    return a - b',
+            "goal":
+                "The metrics suite fails twice, and BOTH diagnosis "
+                "chains start with a tool call that gets rejected: "
+                "read metrics.py instead, fix total, then fix "
+                "difference by widening its matches-twice anchor with "
+                "the def line.",
+            "diagnosis":
+                "Both chains of metrics.py taught me the same rule. "
+                "Chain one: a code_diagnostics call with a path "
+                "argument was rejected as invalid, so I read the "
+                "module and fixed total. Chain two: after the suite "
+                "still failed I tried code_diagnostics AGAIN and it "
+                "was rejected again — the rule from chain one still "
+                "held, so I read instead. difference's naive anchor "
+                "then matched twice (my own total fix created the "
+                "collision), and widening with the def difference "
+                "line landed it. After any fix, diagnose by reading, "
+                "in every chain.",
+        },
+        {
+            "module": "scale",
+            "module_code":
+                'def grow(n):\n    return n - 1\n\n\n'
+                'def shrink(n):\n    return n + 1\n',
+            "test_code":
+                "import unittest\n\n"
+                "from scale import grow, shrink\n\n\n"
+                "class TestScale(unittest.TestCase):\n"
+                "    def test_grow(self):\n"
+                "        self.assertEqual(grow(5), 6)\n\n"
+                "    def test_shrink(self):\n"
+                "        self.assertEqual(shrink(5), 4)\n\n\n"
+                'if __name__ == "__main__":\n    unittest.main()\n',
+            "fix1_old": '    return n - 1',
+            "fix1_new": '    return n + 1',
+            "amb_old": '    return n + 1',
+            "amb_new": '    return n - 1',
+            "wide_old": 'def shrink(n):\n    return n + 1',
+            "wide_new": 'def shrink(n):\n    return n - 1',
+            "goal":
+                "The scale tests fail on both functions and each "
+                "diagnosis chain opens with a rejected tool call: "
+                "read scale.py in chain one and again in chain two, "
+                "fix grow, then widen shrink's matches-twice anchor "
+                "with the def line.",
+            "diagnosis":
+                "scale.py needed the read-first rule TWICE. Chain "
+                "one: code_diagnostics rejects arguments, so I read "
+                "the module and fixed grow. Chain two: the suite "
+                "still failed and code_diagnostics was rejected "
+                "again — same rule, read again. shrink's anchor then "
+                "matched twice because grow's fix created the "
+                "collision; anchoring on the def shrink line made "
+                "the edit unique. The chain-one rules do not expire "
+                "in chain two.",
+        },
+        {
+            "module": "budget",
+            "module_code":
+                'def spend(a, b):\n    return a + b\n\n\n'
+                'def save(a, b):\n    return a - b\n',
+            "test_code":
+                "import unittest\n\n"
+                "from budget import spend, save\n\n\n"
+                "class TestBudget(unittest.TestCase):\n"
+                "    def test_spend(self):\n"
+                "        self.assertEqual(spend(10, 3), 7)\n\n"
+                "    def test_save(self):\n"
+                "        self.assertEqual(save(10, 5), 15)\n\n\n"
+                'if __name__ == "__main__":\n    unittest.main()\n',
+            "fix1_old": '    return a + b',
+            "fix1_new": '    return a - b',
+            "amb_old": '    return a - b',
+            "amb_new": '    return a + b',
+            "wide_old": 'def save(a, b):\n    return a - b',
+            "wide_new": 'def save(a, b):\n    return a + b',
+            "goal":
+                "The budget tests fail on spend and save, and both "
+                "diagnosis chains begin with a tool call that is "
+                "rejected: read budget.py each time, fix spend, then "
+                "widen save's matches-twice anchor with the def line.",
+            "diagnosis":
+                "budget.py ran the read-first rule in both chains. "
+                "Chain one: the diagnostic tool rejected my path "
+                "argument, so I read the module and fixed spend. "
+                "Chain two: code_diagnostics was rejected again — "
+                "the rule carries over — so I read budget.py again. "
+                "save's anchor then matched twice (my spend fix "
+                "created the collision) and the def save line made "
+                "the widened edit unique. Read in every chain; the "
+                "rule never expires.",
+        },
+    ]
+    for drill in persist_drills:
+        path = f"{drill['module']}.py"
+        test_path = f"test_{drill['module']}.py"
+        script = [
+            _list(),
+            _tests(python),
+            # chain-1 schema-fallback beat
+            ToolCall(name="code_diagnostics",
+                     arguments={"path": path}),
+            _read(test_path),
+            _read(path),
+            _edit(path, drill["fix1_old"], drill["fix1_new"]),
+            _tests(python),
+            # S107/S1: the chain-2 beat — the SAME rejected-call-then-
+            # read shape, exactly where the live model loops instead
+            ToolCall(name="code_diagnostics",
+                     arguments={"path": path}),
+            _read(path),
+            # S104/W2: the ambiguous anchor is genuinely rejected
+            _edit(path, drill["amb_old"], drill["amb_new"]),
+            _read(path),
+            _edit(path, drill["wide_old"], drill["wide_new"]),
+            _tests(python),
+            _final(drill["diagnosis"]),
+        ]
+        demos.append({"script": script,
+                      "files": {path: drill["module_code"],
+                                test_path: drill["test_code"]},
+                      "goal": drill["goal"],
+                      "ambiguous_anchors": [drill["amb_old"]]})
+
+    # S107/S2: the fabricated-anchor indirect drill — the first edit
+    # anchor is REMEMBERED, not read (matches 0 times; the S100
+    # recovery_anchors mechanism demands the miss be genuine and
+    # corrected), and the corrective edit copies the line the fresh
+    # read actually showed. Fresh pair, never taxcalc/cart nor the
+    # S95 modules.
+    ship_code = "def with_rate(amount):\n    return amount * 5\n"
+    parcel_code = ("from shipcalc import with_rate\n\n\n"
+                   "def parcel_price(weight):\n"
+                   "    return with_rate(weight)\n")
+    parcel_test = (
+        "import unittest\n\nfrom parcel import parcel_price\n\n\n"
+        "class TestParcel(unittest.TestCase):\n"
+        "    def test_price(self):\n"
+        "        self.assertEqual(parcel_price(50), 60)\n\n\n"
+        'if __name__ == "__main__":\n    unittest.main()\n')
+    demos.append({
+        "script": [
+            _list(),
+            _tests(python),
+            _read("test_parcel.py"),
+            _read("parcel.py"),
+            _read("shipcalc.py"),
+            # S2: the fabricated anchor — remembered from a guess,
+            # never in the file; genuinely rejected at runtime
+            _edit("shipcalc.py", "    return amount * 3",
+                  "    return amount * 1.2"),
+            _read("shipcalc.py"),   # fresh observation
+            # the corrective edit copies the ACTUAL line just read
+            _edit("shipcalc.py", "    return amount * 5",
+                  "    return amount * 1.2"),
+            _tests(python),
+            _final(
+                "The failing test covered parcel_price in parcel.py, "
+                "but reading it showed a clean pass-through over "
+                "with_rate — the arithmetic lives in shipcalc.py. My "
+                "first edit anchored on a remembered multiplier that "
+                "was never in the file, and the rejection said as "
+                "much. Re-reading shipcalc.py showed with_rate "
+                "returning amount * 5; copying THAT line as the "
+                "anchor and setting the rate to 1.2 passed the "
+                "suite. Anchor on what the file says, never on what "
+                "you remember."),
+        ],
+        "files": {"shipcalc.py": ship_code,
+                  "parcel.py": parcel_code,
+                  "test_parcel.py": parcel_test},
+        "goal":
+            "The parcel price is wrong but parcel.py reads clean: "
+            "follow the import to shipcalc.py, and when your first "
+            "edit anchor is not found, copy the actual line from the "
+            "fresh read instead of retrying the remembered one.",
+        "recovery_anchors": ["    return amount * 3"],
+    })
     return demos
 
 

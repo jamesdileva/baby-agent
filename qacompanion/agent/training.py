@@ -223,7 +223,12 @@ def _eligibility(record: TrajectoryRecord,
         reasons.append("no verification evidence recorded")
     failed_steps = sum(1 for s in (record.steps or [])
                        if isinstance(s, dict) and s.get("ok") is False)
-    if failed_steps > MAX_FAILED_TOOL_STEPS:
+    # S107: deliberate records are EXEMPT from the failed-step cap —
+    # their failed steps are the declared beats (rejected tool calls,
+    # ambiguous anchors) the drills exist to teach. The cap was written
+    # for accidental thrash in real runs (S95); the gen-19 persistence
+    # drills carry 3 deliberate failures and were being excluded by it.
+    if failed_steps > MAX_FAILED_TOOL_STEPS and not _deliberate(record):
         reasons.append(f"{failed_steps} failed tool steps (max "
                        f"{MAX_FAILED_TOOL_STEPS}) — thrashy successes "
                        "teach guessing, not diagnosis")

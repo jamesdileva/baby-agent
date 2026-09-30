@@ -706,7 +706,7 @@ class AgentAuthoredTests(unittest.TestCase):
 
     def test_batches_pass_the_quality_validator(self):
         demos = agent_authored_demos(sys.executable)
-        self.assertEqual(22, len(demos))
+        self.assertEqual(26, len(demos))
         for demo in demos:
             with self.subTest(goal=demo["goal"][:40]):
                 ok, reasons = validate_demonstration(
@@ -863,18 +863,19 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             stats = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(22, stats["runs"])
-            self.assertEqual(22, stats["passed"], stats)
+            self.assertEqual(26, stats["runs"])
+            self.assertEqual(26, stats["passed"], stats)
             self.assertEqual(0, stats["rejected"])
             records = store.load()
             tagged = [r for r in records
                       if "agent-authored" in r.tags]
-            self.assertEqual(22, len(tagged))
-            self.assertEqual(22, len({r.goal.split(" (benchmark")[0]
+            self.assertEqual(26, len(tagged))
+            self.assertEqual(26, len({r.goal.split(" (benchmark")[0]
                                      for r in tagged}))
             recovered = [r for r in records
                          if "edit-recovery" in r.tags]
-            self.assertEqual(3, len(recovered))
+            # 3 S100 drills + the S107 fabricated-anchor parcel drill
+            self.assertEqual(4, len(recovered))
 
     def test_agent_lane_is_idempotent(self):
         # S95: re-running the lane must not re-record covered goals
@@ -882,11 +883,11 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             first = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(22, first["passed"])
+            self.assertEqual(26, first["passed"])
             second = build_agent_corpus(store, python=sys.executable)
             self.assertEqual(0, second["runs"])
-            self.assertEqual(22, second["skipped_existing"])
-            self.assertEqual(22, len(store.load()))
+            self.assertEqual(26, second["skipped_existing"])
+            self.assertEqual(26, len(store.load()))
 
 
 if __name__ == "__main__":
@@ -952,8 +953,10 @@ class AmbiguousAnchorValidation(unittest.TestCase):
 
     def test_s104_demos_pass_validation(self):
         python = sys.executable
+        # S107's persistence drills also carry ambiguous_anchors; the
+        # S104 drills are the ones whose goals do not mention chains
         demos = [d for d in agent_authored_demos(python)
-                 if "ambiguous_anchors" in d]
+                 if "ambiguous_anchors" in d and "chain" not in d["goal"]]
         self.assertEqual(2, len(demos), "expected the two S104 drills")
         for demo in demos:
             ok, reasons = validate_demonstration(
