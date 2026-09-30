@@ -74,13 +74,17 @@ share 188 -> 122). ep18 NOT SHIPPED; ep19 lever = restore the real
 share (298 available, floored at 122) on the same drills.
 † calculator: the solved-since-gen-8 task's first 0/3 — under-
 training signature, not skill loss.
-Gen-19 (2026-09-28): the S106 scale restore CONFIRMED — thrash
-fingerprint gone (19 failures total vs ep18's 100; calc/strings
+Gen-19 (2026-09-28 + re-reading 09-30 at OLLAMA_TIMEOUT=600): the
+S106 scale restore CONFIRMED — thrash fingerprint gone (calc/strings
 3/3 with zero failures), cleanest-behaving generation ever measured,
-but 7/15 < ep17's 11/15; indirect 0/3 is the second straight
-generation the S101 drill (in-corpus, verified) did not reproduce
-ep17's 6/6 — named follow-up. Not shipped; ep17-q4 champion.
-‡ json: 1 clean success + 1 max-iter + 1 timeout-DNF.
+but 7/15 BOTH readings (stable) < ep17's 12/15 fair reading (its
+best); indirect 0/3 is the second straight generation the S101 drill
+(in-corpus, verified) did not reproduce ep17's 6/6; cascade 0/3 with
+the chain-2 loop varying its target (code_diagnostics x3, then
+experience_record x5 across readings) — the drill-persistence gap is
+ep20's variable. Not shipped; ep17-q4 champion.
+‡ json: 1 clean success + 2 max-iter (the 60s-timeout run became a
+max-iter failure at 600s, not a success).
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).

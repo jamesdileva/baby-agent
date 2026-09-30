@@ -93,6 +93,27 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-09-30 — **Gen-19 re-verdict (OLLAMA_TIMEOUT=600, same pinned
+  conditions) — ep19 7/15 IDENTICAL, the timeouts were NOT masking
+  success; ep17 12/15 its best-ever reading; drill-persistence gap
+  CONFIRMED as ep20's variable** — the 60s default request timeout
+  was the source of all verdict DNFs (found and named); at 600s every
+  DNF ran to completion: **ep19's timeout runs became max-iteration
+  FAILURES, not successes** (json 1/3 with 2 max-iter; cascade 0/3
+  with the 2 timeout runs becoming 6-10-failure thrash; indirect
+  0/3 identical shape) — while **ep17's json timeout became a
+  SUCCESS** (3/3; total 12/15, its best reading). Champion gap real
+  on a fair reading: 7 vs 12. New forensics depth: the newest ep19
+  cascade failure shows the chain-2 loop has a VARYING target — this
+  run burned 5 iterations on failed `experience_record` calls (a
+  memory tool!) after correctly applying the def-anchored add fix —
+  the SAME structure as the code_diagnostics loop (chain 1 works,
+  chain 2 never edits and loops on catalog tools). The
+  drill-persistence diagnosis (beats must survive into chain 2) is
+  confirmed as ep20's single variable; ep21 = rung-7 demos per the
+  agreed sequence. ep17-q4 REMAINS champion. Ladder bands updated
+  with the fair reading. Suite untouched (verdict + docs slice).
+
 - 2026-09-28 — **Gen-19 verdict — the undertraining fingerprint is
   CONFIRMED FIXED, but ep19 7/15 < ep17 11/15; ep17-q4 REMAINS
   champion** — pinned 5-task, temp 0/seed 42, ep19-q4 (the retrained
