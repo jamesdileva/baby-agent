@@ -93,6 +93,26 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-09-30 — **S107 — Drill persistence: the beats must survive
+  into chain 2 (ep20's single variable)** — from the gen-19
+  forensics: S1 the chain-2 catalog-tool loop, S2 the fabricated
+  anchor, S3 the beats are one-shot. Batch of 4 (lane 4/4 passed the
+  real gate, agent-authored + corpus-v8): metrics + scale re-authored
+  on proven fixtures with NEW goals — both chains carry the
+  rejected-call-then-read beat, chain 2 also the ambiguous re-anchor;
+  budget (fresh self-ambiguating double-cascade); parcel/shipcalc —
+  the fabricated-anchor drill (a genuine 0-hit miss under
+  recovery_anchors; the corrective edit copies the line the fresh
+  read actually showed). **En route the S95 failed-step cap was
+  convicting the drills' DECLARED beats (3 deliberate failures >
+  max 2) — the eligibility gate now exempts deliberate records
+  (regression test pins both sides); the third same-class bug
+  (accidental-vs-deliberate failure) after S104.1 and S106.**
+  Export rebuilt: 452 records (148 deliberate + 296 real + 8 SRFT,
+  ~171 Colab steps — the largest corpus in program history), all
+  four S107 drills verified present. Suite 1769 OK, pyflakes clean,
+  preflight clean. Spec: docs/s107-spec.md.
+
 - 2026-09-30 — **Gen-19 re-verdict (OLLAMA_TIMEOUT=600, same pinned
   conditions) — ep19 7/15 IDENTICAL, the timeouts were NOT masking
   success; ep17 12/15 its best-ever reading; drill-persistence gap
