@@ -706,7 +706,7 @@ class AgentAuthoredTests(unittest.TestCase):
 
     def test_batches_pass_the_quality_validator(self):
         demos = agent_authored_demos(sys.executable)
-        self.assertEqual(26, len(demos))
+        self.assertEqual(29, len(demos))
         for demo in demos:
             with self.subTest(goal=demo["goal"][:40]):
                 ok, reasons = validate_demonstration(
@@ -863,14 +863,14 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             stats = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(26, stats["runs"])
-            self.assertEqual(26, stats["passed"], stats)
+            self.assertEqual(29, stats["runs"])
+            self.assertEqual(29, stats["passed"], stats)
             self.assertEqual(0, stats["rejected"])
             records = store.load()
             tagged = [r for r in records
                       if "agent-authored" in r.tags]
-            self.assertEqual(26, len(tagged))
-            self.assertEqual(26, len({r.goal.split(" (benchmark")[0]
+            self.assertEqual(29, len(tagged))
+            self.assertEqual(29, len({r.goal.split(" (benchmark")[0]
                                      for r in tagged}))
             recovered = [r for r in records
                          if "edit-recovery" in r.tags]
@@ -883,11 +883,11 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             first = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(26, first["passed"])
+            self.assertEqual(29, first["passed"])
             second = build_agent_corpus(store, python=sys.executable)
             self.assertEqual(0, second["runs"])
-            self.assertEqual(26, second["skipped_existing"])
-            self.assertEqual(26, len(store.load()))
+            self.assertEqual(29, second["skipped_existing"])
+            self.assertEqual(29, len(store.load()))
 
 
 if __name__ == "__main__":
@@ -1053,6 +1053,57 @@ class AgentVersionStampTests(unittest.TestCase):
             self.assertEqual(0, stats["superseded"])
             self.assertNotIn("superseded-pattern",
                              store.load()[0].tags)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class LaneFactGateTests(unittest.TestCase):
+    """S108: an answer-QA demo declares fact_gate and runs under the
+    containment verifier - the default unittest plan would make a
+    no-test demo uncompletable."""
+
+    def _fact_demo(self, final_text):
+        from qacompanion.agent import ModelResponse, ToolCall
+        return {
+            "script": [
+                ToolCall(name="list_directory",
+                         arguments={"path": "."}),
+                ToolCall(name="read_file",
+                         arguments={"path": "docs/running.md"}),
+                ModelResponse(text=final_text, finish_reason="stop"),
+            ],
+            "files": {"docs/running.md":
+                      "# Running\n\n    python -m serverctl --port "
+                      "8765\n"},
+            "goal": "explore-qa probe: start the server per the docs",
+            "fact_gate": ["python -m serverctl", "8765"],
+        }
+
+    def test_fact_gate_demo_completes_when_grounded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ExperienceStore(Path(tmp) / "e.jsonl")
+            stats = build_agent_corpus(
+                store, python=sys.executable,
+                demos=[self._fact_demo(
+                    "Start it with python -m serverctl --port 8765 "
+                    "(docs/running.md).")])
+            self.assertEqual(1, stats["passed"], stats)
+            tagged = [r for r in store.load()
+                      if "agent-authored" in r.tags]
+            self.assertEqual(1, len(tagged))
+
+    def test_fact_gate_demo_fails_ungrounded_answer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ExperienceStore(Path(tmp) / "e.jsonl")
+            stats = build_agent_corpus(
+                store, python=sys.executable,
+                demos=[self._fact_demo(
+                    "docs/running.md does not mention how to start "
+                    "the server.")])
+            self.assertEqual(1, stats["failed"], stats)
+            self.assertEqual(0, stats["passed"])
 
 
 if __name__ == "__main__":

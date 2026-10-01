@@ -1723,6 +1723,121 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
             "fresh read instead of retrying the remembered one.",
         "recovery_anchors": ["    return amount * 3"],
     })
+
+    # --- S108 rung-7 explore-qa drills (the 0/6 zero-shot wall) ---
+    # The live forensics (S102.4) and the 0/6 baseline agree on the
+    # failure: the model guesses entry paths while the listing sits
+    # unread. The rule the drills teach: THE LISTING IS THE MAP — read
+    # it, open what it names, never guess a path that is not on it.
+    # Per the S107 discipline the beats repeat: when a doc does not
+    # answer, the demonstrator RETURNS TO THE LISTING instead of
+    # guessing. Answer-QA demos declare fact_gate and run under the
+    # containment verifier (no tests exist; the loop only COMPLETEDs
+    # when the final answer carries the planted facts).
+    server_files = {
+        "README.md":
+            "# serverctl\n\nA small service for local projects. "
+            "Configuration lives in code; see the docs folder for "
+            "operational details.\n",
+        "docs/api.md":
+            "# API\n\nThe client talks to the server over HTTP. "
+            "Endpoints are versioned; see the changelog for details."
+            "\n",
+        "docs/running.md":
+            "# Running\n\nStart the dashboard server from the repo "
+            "root:\n\n    python -m serverctl --port 8765\n\nThe "
+            "port is fixed; tools that scan for it assume 8765.\n",
+    }
+    demos.append({
+        "script": [
+            _list(),
+            _read("README.md"),
+            _read("docs/api.md"),
+            # the persistence beat: two docs, no answer — return to
+            # the map instead of guessing entry paths
+            _list(),
+            _read("docs/running.md"),
+            _final(
+                "docs/running.md answers it: start the server from "
+                "the repo root with python -m serverctl --port 8765. "
+                "I read README.md and docs/api.md first and neither "
+                "answered, so I went back to the directory listing "
+                "and opened the one doc I had not read instead of "
+                "guessing entry files."),
+        ],
+        "files": server_files,
+        "goal":
+            "How do you start this project's server? The answer is "
+            "in the docs somewhere — read the listing, open the docs "
+            "until one answers, and tell me the exact command.",
+        "fact_gate": ["python -m serverctl", "8765"],
+    })
+
+    config_files = {
+        "README.md":
+            "# toolsvc\n\nA tiny utility service. Behavior is "
+            "configured in code; the docs folder covers the details."
+            "\n",
+        "docs/configuration.md":
+            "# Configuration\n\nrequest_timeout = 45\n"
+            "max_retries = 3\n\nBoth values are fixed defaults; the "
+            "service reads them at startup.\n",
+    }
+    demos.append({
+        "script": [
+            _list(),
+            _read("README.md"),
+            # the persistence beat again: the README points at the
+            # docs folder, so back to the listing, then read what is
+            # there
+            _list(),
+            _read("docs/configuration.md"),
+            _final(
+                "docs/configuration.md has both values: "
+                "request_timeout = 45 and max_retries = 3. The "
+                "README only pointed at the docs folder, so I listed "
+                "it and read the configuration doc directly — the "
+                "answer came from the file, not a guess."),
+        ],
+        "files": config_files,
+        "goal":
+            "What are this tool's default request timeout and retry "
+            "count? Check the docs folder and tell me the exact "
+            "values.",
+        "fact_gate": ["request_timeout = 45", "max_retries = 3"],
+    })
+
+    testing_files = {
+        "README.md":
+            "# checkmate\n\nA linter for tiny repos. See the docs "
+            "folder for how we run things.\n",
+        "docs/testing.md":
+            "# Testing\n\nCI runs the suite with branch coverage:\n\n"
+            "    python -m coverage run -m unittest --branch\n\nThe "
+            "branch flag is required; plain runs miss branches.\n",
+    }
+    demos.append({
+        "script": [
+            _list(),
+            # S2-shaped beat: ONE guessed read (a path not in the
+            # listing), honestly rejected, corrected by the map
+            _read("src/main.py"),
+            _list(),
+            _read("docs/testing.md"),
+            _final(
+                "src/main.py does not exist here — I guessed it and "
+                "the read failed, so I went back to the listing. "
+                "docs/testing.md answers it: the suite runs with "
+                "branch coverage via python -m coverage run -m "
+                "unittest --branch. One guess is enough; the listing "
+                "already told me what exists."),
+        ],
+        "files": testing_files,
+        "goal":
+            "How does this project run its test suite with coverage? "
+            "Look in the docs folder and give me the exact command.",
+        "fact_gate": ["coverage run -m unittest", "--branch"],
+    })
     return demos
 
 
@@ -1905,11 +2020,34 @@ def build_agent_corpus(experience_store: ExperienceStore,
 
         def fixture_writer(ws, _files=files):
             for name, content in _files.items():
-                (ws.root / name).write_text(content, encoding="utf-8")
+                target = ws.root / name
+                # S108: nested fixtures (docs/running.md) need the
+                # parent dirs — the lane crashed on them before
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
 
+        # S108: an answer-QA demo declares fact_gate and runs under
+        # the same containment verifier run_evaluation builds (the
+        # default unittest plan would make a no-test demo
+        # uncompletable). Demos without fact_gate are unchanged.
+        task_verifier = None
+        if demo.get("fact_gate"):
+            facts = [f.lower() for f in demo["fact_gate"]]
+
+            def lane_fact_verifier(session, _facts=facts):
+                text = (getattr(session, "pending_answer", None)
+                        or session.final_result or "").lower()
+                missing = [f for f in _facts if f not in text]
+                if missing:
+                    return False, (f"final answer lacks the planted "
+                                   f"fact(s): {missing}")
+                return True, "final answer contains the planted facts"
+
+            task_verifier = lane_fact_verifier
         report = run_benchmark(provider, fixture_writer=fixture_writer,
                                goal=goal,
-                               experience_store=experience_store)
+                               experience_store=experience_store,
+                               verifier=task_verifier)
         stats["runs"] += 1
         stats["durations_s"] += report.duration_seconds
         if report.success:
