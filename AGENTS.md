@@ -93,6 +93,27 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-09-30 — **Gen-20 verdict (seed 42, 600s) — ep20 15/15: THE
+  FIRST PERFECT VERDICT IN PROGRAM HISTORY; cascade 3/3 and indirect
+  3/3 — both standing walls FELL on the exact trained variable;
+  ep17 same-day 12/15; seed-43 confirmation running before the
+  champion call** — pinned 5-task, ep20-q4 (452-record S107 export,
+  ~171 steps): **ep20 15/15** (calc 3/3, strings 3/3, json 3/3 —
+  every dilution tripwire held, cascade **3/3 — the persistence
+  drills delivered: the recorded success shows the drilled shape
+  exactly (invalid code_diagnostics call -> read instead -> BOTH
+  defects fixed from the actual file content, generalizing into a
+  single def-anchored multi-line edit that sidesteps the ambiguity),
+  indirect **3/3 zero-failure — the fabricated-anchor drill landed**
+  ) vs ep17-q4 12/15 same-day (cascade 0/3 max-iter thrash x3).
+  Metrics: success 1.0, discovery 1.0, chaining **1.0**, tool
+  failures **12** total (vs ep17's 40), guessed_path 0.0 — the
+  cleanest protocol line ever recorded. Dilution tripwires: NONE
+  tripped (the +4-drills corpus protected every prior task band).
+  Per the never-crown-on-one-reading rule the seed-43 confirmation
+  is running; champion call and ep21 gate decision on its result.
+  Suite untouched (verdict + docs slice).
+
 - 2026-09-30 — **S107 — Drill persistence: the beats must survive
   into chain 2 (ep20's single variable)** — from the gen-19
   forensics: S1 the chain-2 catalog-tool loop, S2 the fabricated

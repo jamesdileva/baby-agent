@@ -53,6 +53,7 @@ human with this note as the record.
 | 17 | ep17-q4 re-verdict (seed 43) | 3/3 | 3/3 | 3/3 |
 | 18 | ep18-q4 (treadmill-cleaned corpus + S104 drills, 96 steps) | 0/3† | 1/3 | 3/3 |
 | 19 | ep19-q4 (restored scale, 440 records / ~165 steps) | 3/3 clean | 3/3 clean | 1/3‡ |
+| 20 | ep20-q4 (S107 persistence drills, 452 records / ~171 steps) | 3/3 | 3/3 | 3/3 |
 | 11 | ep11-q4 re-verdict (pinned 5-task) | 3/3 | 3/3 | 3/3 |
 | 11 | ep11-q4 re-verdict (S95.1 tie day) | 3/3 | 3/3 | 3/3 |
 | 9b | qwen3.5:9b RAW (scout, think-disabled) | 3/3 | 3/3 | 1/3* |
@@ -85,6 +86,15 @@ experience_record x5 across readings) — the drill-persistence gap is
 ep20's variable. Not shipped; ep17-q4 champion.
 ‡ json: 1 clean success + 2 max-iter (the 60s-timeout run became a
 max-iter failure at 600s, not a success).
+Gen-20 (2026-09-30, seed 42, 600s): **ep20 15/15 — first perfect
+verdict in program history.** Cascade 3/3 (the S107 persistence
+drills: chain 2 reads and edits instead of looping — the recorded
+success shows the drilled fallback shape, generalizing into one
+def-anchored multi-line edit fixing both defects), indirect 3/3
+zero-failure (the fabricated-anchor drill). Every dilution tripwire
+held. Metrics: chaining 1.0, failures 12, guessed_path 0.0. Seed-43
+confirmation running before the champion call; ep21 (rung-7 demos)
+gates on it.
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).
