@@ -93,6 +93,26 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-10-01 — **Gen-20 confirmation (seed 43, 600s) — ep20 15/15
+  AGAIN: 30/30 across both readings, the cleanest ledger line the
+  program has ever produced; ep20-q4 SHIPPED as champion (dashboard
+  default switched); ep17-q4 fallback at 23/30; ep21 GATE OPEN** —
+  the confirmation held every task: calc 3/3, strings 3/3, json 3/3,
+  **cascade 3/3 (6/6 across readings — the most volatile task in
+  program history is now the most stable)**, **indirect 3/3
+  zero-failure (6/6 — the S101-lineage anomaly is RESOLVED: the
+  missing piece was persistence, not the drill)** vs ep17 11/15 at
+  seed 43 (cascade 0/3, indirect 2/3). Combined two-reading ledger:
+  **ep20 30/30 vs ep17 23/30.** Metrics: ep20 chaining 1.0, failures
+  16, guessed_path 0.0, discovery 1.0 — perfect or best-possible on
+  every line. The champion call: a 7-task win on the same-day
+  head-to-head with the wins exactly where the single trained
+  variable targeted, confirmed across seeds — no ambiguity.
+  ep17-q4 remains as fallback. **ep21 (S108 rung-7 explore-qa demos)
+  GATE OPEN** — the 0/6 zero-shot baseline is the measured target.
+  Ladder ledger updated. Suite untouched (verdict + one-line UI
+  default).
+
 - 2026-09-30 — **Gen-20 verdict (seed 42, 600s) — ep20 15/15: THE
   FIRST PERFECT VERDICT IN PROGRAM HISTORY; cascade 3/3 and indirect
   3/3 — both standing walls FELL on the exact trained variable;
