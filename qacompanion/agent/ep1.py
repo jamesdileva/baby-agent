@@ -1838,6 +1838,93 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
             "Look in the docs folder and give me the exact command.",
         "fact_gate": ["coverage run -m unittest", "--branch"],
     })
+
+    # --- S109 the post-README seam (the gen-21 forensics) ---
+    # ep21's explore-qa failures: listing-first and the anti-guess
+    # beat TRANSFERRED, but at the post-README moment the model loops
+    # code_references(symbol="main") / code_symbols(name="main") with
+    # invented args x9 instead of returning to the listing. Third
+    # instance of the continuation-seam pattern. The v2 drills
+    # demonstrate the TEMPTED CALL BEING REJECTED at exactly that
+    # seam — same fixtures, new goals (the lane skips covered goals;
+    # the lesson is new).
+    demos.append({
+        "script": [
+            _list(),
+            _read("README.md"),
+            # S109: the tempted call at the post-README seam —
+            # honestly rejected; the correction is the listing
+            ToolCall(name="code_references",
+                     arguments={"symbol": "main"}),
+            _list(),
+            _read("docs/running.md"),
+            _final(
+                "The README pointed at the docs folder — my next "
+                "action was the listing, not a symbol hunt: a "
+                "code_references call was rejected as invalid, and "
+                "docs/running.md answers it anyway. Start the server "
+                "from the repo root with python -m serverctl --port "
+                "8765. When a doc points somewhere, go there and "
+                "read; do not go hunting for symbols."),
+        ],
+        "files": server_files,
+        "goal":
+            "How do you start this project's server? The docs have "
+            "it: when the README points you at the docs folder, "
+            "read the folder's files instead of hunting symbols, "
+            "and give me the exact command.",
+        "fact_gate": ["python -m serverctl", "8765"],
+    })
+    demos.append({
+        "script": [
+            _list(),
+            _read("README.md"),
+            ToolCall(name="code_symbols",
+                     arguments={"name": "main"}),
+            _list(),
+            _read("docs/configuration.md"),
+            _final(
+                "The README sent me to the docs folder. A code_symbols "
+                "call was rejected as invalid — symbol hunts are not "
+                "how this question gets answered — so I listed the "
+                "directory and read docs/configuration.md: "
+                "request_timeout = 45 and max_retries = 3. Read what "
+                "the docs point at; the file carries the values."),
+        ],
+        "files": config_files,
+        "goal":
+            "What are this tool's default request timeout and retry "
+            "count? The docs folder holds the configuration values: "
+            "after the README points you there, open the file and "
+            "quote them exactly.",
+        "fact_gate": ["request_timeout = 45", "max_retries = 3"],
+    })
+    demos.append({
+        "script": [
+            _list(),
+            _read("src/main.py"),
+            ToolCall(name="code_references",
+                     arguments={"symbol": "main"}),
+            _list(),
+            _read("docs/testing.md"),
+            _final(
+                "Two wrong turns, two corrections: the guessed "
+                "src/main.py does not exist (the listing already "
+                "said so), and a code_references call was rejected as "
+                "invalid — both were the same mistake, hunting "
+                "instead of reading. Back at the listing, "
+                "docs/testing.md answers it: python -m coverage run "
+                "-m unittest --branch, branch flag required. The map "
+                "was read the whole time; I only had to use it."),
+        ],
+        "files": testing_files,
+        "goal":
+            "How does this project run its test suite with coverage? "
+            "When a guessed path and a symbol hunt both fail, return "
+            "to the listing, open the docs file, and give me the "
+            "exact command.",
+        "fact_gate": ["coverage run -m unittest", "--branch"],
+    })
     return demos
 
 
