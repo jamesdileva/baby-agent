@@ -93,6 +93,31 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-10-01 — **Gen-21 verdict (seed 42, 600s, 6 tasks) — the
+  pinned set holds (ep20 15/15, its THIRD consecutive perfect pinned
+  reading: rung-3 graduation COMPLETE; ep21 14/15 with one cascade
+  flicker in-band) and champion stays ep20-q4 — but explore-qa is
+  0/6: the S108 demos transferred PARTIALLY and rung 7 did not
+  move** — ep21 14/18 (calc/strings/json/indirect 3/3 clean,
+  cascade 2/3 with one max-iter run at 6 failures) vs ep20 16/18
+  (the pinned 5 at 15/15). explore-qa: ep21 0/3 and ep20 0/3, all
+  max-iterations. THE FORENSICS: ep21's failure anatomy is granular
+  — the anti-guess beat TRANSFERRED (guessed_path 0.0 vs ep20's
+  0.5556: the champion guesses paths on explore-qa, ep21 never
+  does), the listing-first beat TRANSFERRED (its trajectory opens
+  list → README), but the post-README seam FAILED: instead of
+  returning to the listing and opening docs/running.md, it loops
+  code_references(code_symbols hunting "main" with invented args x9
+  — the cascade chain-2 loop's family, now in the QA context; the
+  drill demonstrated the decoy-recovery but not the TEMPTED
+  tool-call rejection at that exact seam). The repeated
+  institutional lesson, third instance: beats transfer on first
+  contact and evaporate at the continuation — demos must show the
+  wandering being rejected at EVERY seam. ep21 NOT shipped; ep20-q4
+  REMAINS champion. Named next: S109 explore-drill seam fix (the
+  tempted-call beat at the post-README seam); rung-4 authoring now
+  OPEN. Suite untouched (verdict + docs slice).
+
 - 2026-10-01 — **Gen-20 confirmation (seed 43, 600s) — ep20 15/15
   AGAIN: 30/30 across both readings, the cleanest ledger line the
   program has ever produced; ep20-q4 SHIPPED as champion (dashboard
