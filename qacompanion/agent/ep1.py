@@ -590,6 +590,33 @@ def repair_agent_corpus_tags(store: ExperienceStore) -> Dict[str, Any]:
             - deduped, "deduped": deduped}
 
 
+def supersede_opening_guess_demos(store: ExperienceStore) -> Dict[str, Any]:
+    """S110 one-time repair: an agent-authored record whose FIRST
+    captured read_file step FAILED demonstrates path-guessing as an
+    opening move — and gen-22 imitated it (guessed_path 0.4444 vs
+    ep21's 0.0; the S100 lesson in a new form: a failure demonstrated
+    early gets imitated early). Recovery beats belong MID-CHAIN. The
+    S108/S109 recovery drills are the only records matching (every
+    other drill's first read succeeds); superseded records are
+    excluded from training and their demo dicts are removed from the
+    lane in the same slice."""
+    records = store.load()
+    superseded = 0
+    for record in records:
+        tags = record.tags or []
+        if "agent-authored" not in tags or "superseded-pattern" in tags:
+            continue
+        steps = record.context.get("tool_calls") or []
+        first_read = next((s for s in steps if s.get("tool") == "read_file"),
+                          None)
+        if first_read is not None and first_read.get("ok") is False:
+            record.tags.append("superseded-pattern")
+            superseded += 1
+    if superseded:
+        store.save(records)
+    return {"scanned": len(records), "superseded": superseded}
+
+
 def mark_superseded_demos(store: ExperienceStore) -> Dict[str, Any]:
     """S68/S69 corpus hygiene: scripted-demo records are superseded
     when their FIRST captured step is read_file (the pre-S66
@@ -1816,27 +1843,182 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
             "    python -m coverage run -m unittest --branch\n\nThe "
             "branch flag is required; plain runs miss branches.\n",
     }
+    # S110: the S108 recovery drill (opening guessed read) is removed
+    # from the lane and its record superseded by
+    # supersede_opening_guess_demos — gen-22 imitated the demonstrated
+    # opening guess (guessed_path 0.4444 vs ep21's 0.0). Its
+    # replacement (testing-v3) corrects the wandering MID-CHAIN, and
+    # five new answer drills raise the read-then-ANSWER-immediately
+    # share (the gen-22 run_tests ritual: a no-test question never
+    # needs the suite).
+
+    # --- S110 testing-v3: both wandering shapes corrected MID-CHAIN
+    # (after a productive pattern is established), answer immediate
     demos.append({
         "script": [
             _list(),
-            # S2-shaped beat: ONE guessed read (a path not in the
-            # listing), honestly rejected, corrected by the map
-            _read("src/main.py"),
+            _read("README.md"),
+            # the seam beat (S109, proven in gen-22: the doc gets read)
+            ToolCall(name="code_references",
+                     arguments={"symbol": "main"}),
             _list(),
+            # a mid-chain wrong-turn read — AFTER the productive
+            # pattern, corrected by the map (the S100 shape that
+            # works; never as an opening move)
+            _read("checkmate.py"),
             _read("docs/testing.md"),
             _final(
-                "src/main.py does not exist here — I guessed it and "
-                "the read failed, so I went back to the listing. "
                 "docs/testing.md answers it: the suite runs with "
                 "branch coverage via python -m coverage run -m "
-                "unittest --branch. One guess is enough; the listing "
-                "already told me what exists."),
+                "unittest --branch. Two detours on the way — a symbol "
+                "hunt was rejected and a guessed module read failed — "
+                "and both were the same mistake after the README "
+                "pointed me at the docs: hunting instead of reading. "
+                "No test run was needed; the question is answered by "
+                "the doc itself."),
         ],
         "files": testing_files,
         "goal":
             "How does this project run its test suite with coverage? "
-            "Look in the docs folder and give me the exact command.",
+            "The docs folder carries the command — find it, and "
+            "remember a question needs no test run, only the answer.",
         "fact_gate": ["coverage run -m unittest", "--branch"],
+    })
+
+    # --- S110 answer-QA volume: five fresh read-then-ANSWER drills,
+    # no run_tests anywhere, beats varied, no opening guessed reads
+    license_files = {
+        "README.md":
+            "# tinyhook\n\nA minimal webhook relay. Project details "
+            "live in the docs folder.\n",
+        "docs/license.md":
+            "# License\n\ntinyhook is released under the MIT license, "
+            "copyright 2026 antfarm. Redistributions must keep the "
+            "notice.\n",
+    }
+    demos.append({
+        "script": [
+            _list(),
+            _read("README.md"),
+            _read("docs/license.md"),
+            _final(
+                "docs/license.md answers it: tinyhook is released "
+                "under the MIT license, copyright 2026 antfarm. No "
+                "test run was needed — the question is answered by "
+                "the doc itself."),
+        ],
+        "files": license_files,
+        "goal":
+            "What license is this project released under? The docs "
+            "folder carries it — find the file and tell me the "
+            "license and copyright.",
+        "fact_gate": ["MIT license", "2026 antfarm"],
+    })
+
+    deploy_files = {
+        "README.md":
+            "# relaysvc\n\nA deployment helper. Operational facts are "
+            "documented in the docs folder.\n",
+        "docs/deploy.md":
+            "# Deployment\n\nDEPLOY_TARGET = staging\nImage tag: "
+            "v2.4\n\nBoth are pinned for this environment.\n",
+    }
+    demos.append({
+        "script": [
+            _list(),
+            _read("README.md"),
+            _read("docs/deploy.md"),
+            _final(
+                "docs/deploy.md pins both facts: DEPLOY_TARGET = "
+                "staging and the image tag is v2.4. Read straight "
+                "from the doc — no test run was needed, the question "
+                "is answered by the file."),
+        ],
+        "files": deploy_files,
+        "goal":
+            "What deployment target and image tag does this project "
+            "pin? Check the docs folder and quote the exact values.",
+        "fact_gate": ["DEPLOY_TARGET = staging", "v2.4"],
+    })
+
+    cli_files = {
+        "README.md":
+            "# sweep\n\nA cleanup utility. Command details are in the "
+            "docs folder.\n",
+        "docs/cli.md":
+            "# CLI\n\nsweep clean --dry-run verifies first; the "
+            "verify-first flag is mandatory on production paths.\n",
+    }
+    demos.append({
+        "script": [
+            _list(),
+            _read("README.md"),
+            _read("docs/cli.md"),
+            _final(
+                "docs/cli.md answers it: sweep clean --dry-run "
+                "verifies first, and verify-first is mandatory on "
+                "production paths. The doc carried both facts — no "
+                "test run needed for a question."),
+        ],
+        "files": cli_files,
+        "goal":
+            "Which flag makes sweep's clean command verify before "
+            "deleting? The docs folder documents the CLI — find the "
+            "exact flags.",
+        "fact_gate": ["--dry-run", "verify-first"],
+    })
+
+    logging_files = {
+        "README.md":
+            "# gater\n\nA tiny event gate. Configuration facts live "
+            "in the docs folder.\n",
+        "docs/logging.md":
+            "# Logging\n\nLOG_DIR = /var/log/gater\nRotation: daily. "
+            "The directory must exist at startup.\n",
+    }
+    demos.append({
+        "script": [
+            _list(),
+            _read("README.md"),
+            _read("docs/logging.md"),
+            _final(
+                "docs/logging.md answers it: LOG_DIR = /var/log/gater "
+                "with daily rotation. Straight from the file — a "
+                "question needs the doc, not a test run."),
+        ],
+        "files": logging_files,
+        "goal":
+            "Where does this project write its logs? The docs folder "
+            "documents the log directory — find it and quote the "
+            "exact path.",
+        "fact_gate": ["/var/log/gater"],
+    })
+
+    changelog_files = {
+        "README.md":
+            "# pinbox\n\nA version-pinning tool. Release facts are in "
+            "the docs folder.\n",
+        "docs/changelog.md":
+            "# Changelog\n\nCurrent stable: 0.9.2 (the 0.9.1 yank is "
+            "resolved). Older lines kept for reference.\n",
+    }
+    demos.append({
+        "script": [
+            _list(),
+            _read("README.md"),
+            _read("docs/changelog.md"),
+            _final(
+                "docs/changelog.md answers it: the current stable is "
+                "0.9.2 (the 0.9.1 yank is resolved). Quoted from the "
+                "file — no test run was needed, the question is "
+                "answered by the doc."),
+        ],
+        "files": changelog_files,
+        "goal":
+            "What is the current stable version of this project? The "
+            "docs folder has the changelog — find it and quote the "
+            "exact version.",
+        "fact_gate": ["0.9.2"],
     })
 
     # --- S109 the post-README seam (the gen-21 forensics) ---
@@ -1899,32 +2081,10 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
             "quote them exactly.",
         "fact_gate": ["request_timeout = 45", "max_retries = 3"],
     })
-    demos.append({
-        "script": [
-            _list(),
-            _read("src/main.py"),
-            ToolCall(name="code_references",
-                     arguments={"symbol": "main"}),
-            _list(),
-            _read("docs/testing.md"),
-            _final(
-                "Two wrong turns, two corrections: the guessed "
-                "src/main.py does not exist (the listing already "
-                "said so), and a code_references call was rejected as "
-                "invalid — both were the same mistake, hunting "
-                "instead of reading. Back at the listing, "
-                "docs/testing.md answers it: python -m coverage run "
-                "-m unittest --branch, branch flag required. The map "
-                "was read the whole time; I only had to use it."),
-        ],
-        "files": testing_files,
-        "goal":
-            "How does this project run its test suite with coverage? "
-            "When a guessed path and a symbol hunt both fail, return "
-            "to the listing, open the docs file, and give me the "
-            "exact command.",
-        "fact_gate": ["coverage run -m unittest", "--branch"],
-    })
+    # S110: the S109 recovery-v2 drill (opening guessed read) is also
+    # removed — gen-22 imitated the demonstrated opening guess; its
+    # record is superseded by supersede_opening_guess_demos, and
+    # testing-v3 above carries the mid-chain version of the lesson.
     return demos
 
 
@@ -2188,7 +2348,14 @@ def build_corpus(experience_store: ExperienceStore,
     # S106: repair the lane's missing version stamps BEFORE hygiene —
     # the one-time un-supersede + dedupe restores the agent-authored
     # corpus, then the version-tagged records survive every rebuild
+    # S106 repair first (stamp version tags; its blanket un-supersede
+    # was the missing-stamp artifact fix), THEN the S110 opening-guess
+    # supersession re-applies — deterministic net effect per rebuild
     repair_agent_corpus_tags(experience_store)
+    # S110: supersede the opening-guess demonstrations BEFORE the lane
+    # runs — their demo dicts are removed in the same slice, so the
+    # superseded goals do not re-record
+    supersede_opening_guess_demos(experience_store)
     hygiene = mark_superseded_demos(experience_store)
     covered = set()
     for record in experience_store.load():
