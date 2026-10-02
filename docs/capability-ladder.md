@@ -57,6 +57,7 @@ human with this note as the record.
 | 20 | ep20-q4 (S107 persistence drills, 452 records / ~171 steps) | 3/3 | 3/3 | 3/3 |
 | 20 | ep20-q4 confirmation (seed 43) | 3/3 | 3/3 | 3/3 |
 | 21 | ep21-q4 (S108 explore drills, 461 records) | 3/3 | 2/3 | 3/3 |
+| 22 | ep22-q4 (S109 seam drills, 470 records) | 0/3§ | 3/3 | 3/3 |
 | 11 | ep11-q4 re-verdict (pinned 5-task) | 3/3 | 3/3 | 3/3 |
 | 11 | ep11-q4 re-verdict (S95.1 tie day) | 3/3 | 3/3 | 3/3 |
 | 9b | qwen3.5:9b RAW (scout, think-disabled) | 3/3 | 3/3 | 1/3* |
@@ -111,6 +112,17 @@ present in the trajectory) but the post-README seam failed (the
 model loops code_references/code_symbols hunting "main" instead of
 returning to the listing) — the continuation seam again, third
 instance of the pattern. Rung 7 NOT moved; ep20 stays champion.
+Gen-22 (2026-10-02): the S109 seam fix TRANSFERRED — the recorded
+explore-qa failure shows the tempted calls rejected and
+docs/running.md READ — but the answer never came: run_tests x6 (the
+defect-fix verification ritual on a question with no tests), the
+answer-QA final shape drowned in the repair-demo majority. AND
+cascade regressed 3/3 -> 0/3 (quiet 3-4-failure runs) with
+guessed_path 0.4444 (ep21: 0.0) — the recovery drill's demonstrated
+guessed-read as an OPENING move plausibly taught guessing (the S100
+lesson in a new form). ep22 recorded as regressed; ep20 stays
+champion (16/18, pinned 15/15 fourth consecutive).
+§ cascade: quiet-failure regression, unconfirmed single reading.
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).

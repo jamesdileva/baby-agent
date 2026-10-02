@@ -93,6 +93,33 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-10-02 — **Gen-22 verdict — explore-qa's seam fix WORKED and
+  exposed the wall behind it (the doc gets READ, then the model
+  never answers); cascade REGRESSED 3/3 -> 0/3 with a guessed-path
+  spike the recovery drill plausibly taught; ep20-q4 REMAINS
+  champion (16/18 vs 12/18)** — pinned 6-task, 600s: ep22 12/18
+  (calc/strings/json 3/3, indirect 3/3, **cascade 0/3 at only 3-4
+  failures per run — a quieter failure than the old thrash**,
+  explore-qa 0/3) vs ep20 16/18 (pinned 5 = 15/15, its FOURTH
+  consecutive perfect reading). THE FORENSICS: the seam fix
+  transferred — the recorded explore-qa failure shows the tempted
+  calls rejected, **docs/running.md READ (the planted fact in
+  context!), then run_tests x6 to max-iterations — the defect-fix
+  verification ritual fired on a question that has no tests (0 tests
+  = vacuous pass) and the answer never came**; the answer-QA final
+  shape is drowned in the repair-demo majority. AND the S109
+  recovery drill's demonstrated guessed-read plausibly TAUGHT path
+  guessing: guessed_path 0.4444 (8/18 runs) vs ep21's 0.0 — the
+  S100-era lesson in a new form: a failure demonstrated as an
+  OPENING move gets imitated as an opening move. Honest verdict:
+  ep22 recorded as regressed (cascade regression + explore-qa
+  unmoved + guessed-path spike); ep20 stays champion. Named next
+  levers: (a) supersede the recovery-v2 drill's guessed-read
+  demonstration (it teaches the wandering), (b) answer-QA volume —
+  the drills must demonstrate read-then-ANSWER-immediately (no test
+  ritual) at higher share, (c) cascade re-check after the corpus
+  settles. Suite untouched (verdict + docs slice).
+
 - 2026-10-01 — **Gen-21 verdict (seed 42, 600s, 6 tasks) — the
   pinned set holds (ep20 15/15, its THIRD consecutive perfect pinned
   reading: rung-3 graduation COMPLETE; ep21 14/15 with one cascade
