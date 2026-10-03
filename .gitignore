@@ -57,3 +57,6 @@ Modelfile.*
 
 # local A/B driver (S111 measurement, not repo tooling)
 /_s111_ab.py
+
+# local scout-remainder driver (measurement, not repo tooling)
+/_s111_scout_remainder.py
