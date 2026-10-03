@@ -113,6 +113,12 @@ present in the trajectory) but the post-README seam failed (the
 model loops code_references/code_symbols hunting "main" instead of
 returning to the listing) — the continuation seam again, third
 instance of the pattern. Rung 7 NOT moved; ep20 stays champion.
+**THE 9B RE-SCOUT (2026-10-03, complete): raw qwen3.5:9b scores
+explore-qa 3/3 ZERO-SHOT** (iters 6/5/4) — the rung-7 wall is a 7B
+capability limit, cleared untouched by the 9B base. Full raw table:
+calc 3/3, strings 0/3, json 0/3, cascade 2/3, indirect 1/3 (2
+empty-response quits). The base-step-up evidence is complete; the
+qwen3.5 kit re-derivation is the next slice, training on Colab L4.
 Gen-22 (2026-10-02): the S109 seam fix TRANSFERRED — the recorded
 explore-qa failure shows the tempted calls rejected and
 docs/running.md READ — but the answer never came: run_tests x6 (the

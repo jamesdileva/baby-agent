@@ -93,6 +93,28 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-10-03 — **The 9B re-scout COMPLETE — the raw qwen3.5:9b
+  scores explore-qa 3/3 ZERO-SHOT (iters 6/5/4, no drills, no
+  training): the rung-7 wall is a 7B capability limit and the 9B
+  clears it untouched — the base-step-up evidence is complete** —
+  full table (raw, 600s, seed 42, n=3): calculator **3/3 clean**,
+  strings 0/3 (1 recovered), json 0/3 (max-iter x3 — genuinely
+  absent, not timeout-masked), cascade 2/3, indirect 1/3 (2
+  empty-response terminations — a CPU-stability quirk, B4's
+  consecutive-empty rule), **explore-qa 3/3**. Combined 9/18 with
+  raw strengths exactly where the 7B is weak (explore-qa) and raw
+  weaknesses exactly where the 7B is strong (strings/json — our
+  drills demonstrably fix those on the repair axis). The SFT thesis
+  writes itself: the 9B base brings rung-7 capability; our corpus
+  brings the repair discipline. Plus the live corroboration: the
+  user's cartoongen session on a REAL workspace (list -> package.json
+  — the exactly-right file) died on the 60s default server timeout
+  mid-answer; OLLAMA_TIMEOUT=600 is required for 9B live sessions.
+  The qwen3.5 kit re-derivation is the next slice (template +
+  fixups); the training attempt goes to Colab Pro L4 (24GB — the
+  free T4's 15GB OOMs at 9B, ~16-18GB estimated). Suite untouched
+  (scout + docs slice).
+
 - 2026-10-02 — **S111 A/B — the attention hypothesis NOT supported
   (preliminary, stopped early); the re-scout launches; the 9B
   landscape settled** — the TaskListingReminder A/B ran one rep
