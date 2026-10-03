@@ -29,7 +29,14 @@ import sys
 GEN = sys.argv[1] if len(sys.argv) > 1 else "ep1"
 BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2
               else "Qwen/Qwen2.5-Coder-3B-Instruct")
-SEVEN_B = "7B" in BASE_MODEL
+# S113: the "lean 4-bit path" flag covers 7B AND 9B — qwen3.5:9b is
+# the base-step-up candidate (explore-qa 3/3 zero-shot per the 9B
+# re-scout) and needs the same memory treatment on the T4/L4.
+SEVEN_B = ("7B" in BASE_MODEL) or ("9B" in BASE_MODEL.upper())
+# S113: skip records longer than this on the big-model path —
+# activations scale with sequence length; the 9B on a 15GB T4 OOMs
+# at the prepare step otherwise (7B records are all under this cap)
+MAX_SEQ_TOKENS = 2048
 DATASET = "training.jsonl"
 OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
@@ -150,14 +157,24 @@ def main():
     def build_all(mode):
         masked = []
         a_total = t_total = 0
+        skipped_long = 0
         for r in rows:
             if mode == "template":
                 example, a, t = masked_example(r["messages"])
             else:
                 example, a, t = _manual_masked_example(r["messages"])
+            # S113: skip over-long records on the big-model path —
+            # activation memory scales with sequence length, and the
+            # 9B on a 15GB T4 OOMs at the prepare step otherwise
+            if SEVEN_B and len(example["input_ids"]) > MAX_SEQ_TOKENS:
+                skipped_long += 1
+                continue
             masked.append(example)
             a_total += a
             t_total += t
+        if skipped_long:
+            print(f"mask: skipped {skipped_long} over-long records "
+                  f"(> {MAX_SEQ_TOKENS} tokens)")
         return masked, a_total, t_total
 
     masked_rows, total_assistant, total_tokens = build_all("template")
@@ -530,9 +547,14 @@ def main():
     # ollama's converter cannot read (freq_base came out 0.0 and the
     # model emitted one repeated token). Patch the SAVED files:
     # explicit lm_head + legacy rope_theta key.
+    # S113: these fixups are QWEN2.5-specific — qwen3.5 ships its own
+    # chat template and a different config layout, so untying the head
+    # and forcing the legacy rope key would corrupt it. The family
+    # check skips the whole block for non-qwen2.5 bases.
     import glob as _glob
     import json as _json
     from safetensors.torch import load_file as _load, save_file as _save
+    QWEN25_FAMILY = "qwen2.5" in BASE_MODEL.lower()
     for shard in _glob.glob(f"{MERGED_DIR}/*.safetensors"):
         state = _load(shard)
         if "model.embed_tokens.weight" in state                 and "lm_head.weight" not in state:
@@ -547,13 +569,17 @@ def main():
         # plain fp16 and only the config would make the converter
         # refuse the dir
         print("fixup: stale quantization_config removed from config.json")
-    cfg["tie_word_embeddings"] = False
-    cfg["rope_theta"] = (cfg.get("rope_theta")
-                         or cfg.get("rope_parameters", {}).get("rope_theta")
-                         or 1000000.0)
-    _json.dump(cfg, open(cfg_path, "w", encoding="utf-8"), indent=2)
-    print("fixup: tie_word_embeddings=False, rope_theta =",
-          cfg["rope_theta"])
+    if QWEN25_FAMILY:
+        cfg["tie_word_embeddings"] = False
+        cfg["rope_theta"] = (cfg.get("rope_theta")
+                             or cfg.get("rope_parameters", {}).get("rope_theta")
+                             or 1000000.0)
+        _json.dump(cfg, open(cfg_path, "w", encoding="utf-8"), indent=2)
+        print("fixup: tie_word_embeddings=False, rope_theta =",
+              cfg["rope_theta"])
+    else:
+        print("fixup: qwen2.5-specific fixups skipped for",
+              BASE_MODEL, "(family: qwen3.5 — keep the shipped config)")
 
     # the honesty gate, in-process: never declare success on a model
     # that cannot speak — degenerate output ships silently otherwise
