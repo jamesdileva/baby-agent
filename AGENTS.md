@@ -93,6 +93,28 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-10-02 — **S111 A/B — the attention hypothesis NOT supported
+  (preliminary, stopped early); the re-scout launches; the 9B
+  landscape settled** — the TaskListingReminder A/B ran one rep
+  before the user stopped it: **both ep20 and ep23 hit
+  max-iterations WITH the task+listing re-injected every turn** —
+  recorded as preliminary-negative (n=1 per model, stopped per the
+  user's read: a working reminder would show itself in rep 1;
+  successes close in 6-11 iters). Conclusion: the wall is not
+  attention — the map in front of the model every turn does not
+  help. The instrument stays in the repo. **9B landscape research
+  (user-directed): Qwen3.8 exists as 27B ONLY — no 7-9B variant;
+  qwen3.5 has no 7b/8b (library sizes: 0.8b/2b/4b/9b/27b/35b-A3B/
+  122b-A10B) — qwen3.5:9b is the only small-class candidate, already
+  local, already scouted (S94.3: 11/15 zero-shot at fair timeouts).
+  GPU math: 9B QLoRA ~16-18GB vs the free T4's 15GB — Colab Pro L4
+  (24GB) or A100, or Kaggle 2xT4 sharded. Per direction: the 9B
+  re-scout is RUNNING on the CURRENT 6-task harness (explore-qa
+  included) — the kit-free gate for the base step-up: if the raw 9B
+  shows explore-qa capability, the kit re-derivation + L4 training
+  becomes the evidenced next slice.** Suite untouched (measurement
+  slice).
+
 - 2026-10-02 — **Gen-23 verdict — cascade RESTORED 3/3 (the
   opening-guess teacher confirmed as ep22's cause), but explore-qa
   0/3 with WORSE thrash (deterministic 10 failures x3,
