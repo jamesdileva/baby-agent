@@ -2567,11 +2567,22 @@ def main():
         template (per-message rendering would corrupt the stream: Qwen
         injects a default system block into every render that lacks
         one) and attribute each new token to the message that
-        introduced it."""
+        introduced it.
+        S113: qwen3.5's template REQUIRES a user turn — a system-only
+        render raises TemplateError (No user query found). Skip the
+        system-only render and render [system, user] jointly at the
+        first user message; its tokens stay masked either way
+        (behavior identical for qwen2.5)."""
         input_ids: list = []
         labels: list = []
         prev_len = 0
+        # qwen3.5 (and possibly other families) cannot render a bare
+        # system message — fold it into the first user render
+        start = 1 if (messages and messages[0].get("role") == "system"
+                      and len(messages) > 1) else 0
         for index, message in enumerate(messages):
+            if index < start:
+                continue
             raw = tokenizer.apply_chat_template(
                 messages[:index + 1], tokenize=True)
             full = _to_flat_token_ids(raw)
