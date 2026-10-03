@@ -33,6 +33,7 @@ BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2
 # the base-step-up candidate (explore-qa 3/3 zero-shot per the 9B
 # re-scout) and needs the same memory treatment on the T4/L4.
 SEVEN_B = ("7B" in BASE_MODEL) or ("9B" in BASE_MODEL.upper())
+NINE_B = "9B" in BASE_MODEL.upper()
 # S113: skip records longer than this on the big-model path —
 # activations scale with sequence length; the 9B on a 15GB T4 OOMs
 # at the prepare step otherwise (7B records are all under this cap).
@@ -182,10 +183,11 @@ def main():
                 example, a, t = masked_example(r["messages"])
             else:
                 example, a, t = _manual_masked_example(r["messages"])
-            # S113: skip over-long records on the big-model path —
-            # activation memory scales with sequence length, and the
-            # 9B on a 15GB T4 OOMs at the prepare step otherwise
-            if SEVEN_B and len(example["input_ids"]) > MAX_SEQ_TOKENS:
+            # S113c: the skip is 9B-ONLY — the gen-24 T4 run skipped
+            # 463/470 records at the 768 cap (and OOM'd anyway), so
+            # the 9B-on-T4 experiment is dead and the cap must never
+            # bite the proven qwen2.5 7B path
+            if NINE_B and len(example["input_ids"]) > MAX_SEQ_TOKENS:
                 skipped_long += 1
                 continue
             masked.append(example)
