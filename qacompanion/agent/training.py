@@ -426,11 +426,21 @@ def _srft_prefix_steps(steps: List[Dict[str, Any]]) -> Optional[List[Dict[str, A
     including the last read_file BEFORE the first edit_file/write_file.
     Everything after the first write is the failed fix attempt and is
     never trained; a prefix without a read (no diagnosis happened) is
-    not worth training."""
+    not worth training.
+    S112: a trajectory with NO edit at all is UNCONCLUDED EXPLORATION,
+    not a repair prefix — the lane mines the productive chain UP TO a
+    fix attempt, and a failed run that never attempted one has no
+    such chain. Gen-21..23's explore-qa failures (and one live
+    dashboard session) were being mined into answerless
+    explore-then-STOP prefixes — demonstrations of getting a
+    question, exploring, and never answering — exactly the
+    never-final behavior the gen-23 verdict measured."""
     first_write = next((i for i, s in enumerate(steps)
                         if s.get("tool") in ("edit_file", "write_file")),
                        None)
-    window = steps if first_write is None else steps[:first_write]
+    if first_write is None:
+        return None
+    window = steps[:first_write]
     last_read = max((i for i, s in enumerate(window)
                      if s.get("tool") == "read_file"), default=None)
     if last_read is None:

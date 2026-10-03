@@ -525,13 +525,17 @@ class SrftLaneTests(unittest.TestCase):
                          [s["tool"] for s in prefix])
 
     def test_no_edit_whole_prefix(self):
+        # S112: a no-edit failure is UNCONCLUDED EXPLORATION, not a
+        # repair prefix — the gen-21..23 explore-qa failures (and one
+        # live dashboard question) were being mined into answerless
+        # explore-then-STOP records that ep23 trained on
         steps = [
             {"tool": "list_directory", "args": {"path": "."},
              "ok": True, "result_head": "files"},
             {"tool": "read_file", "args": {"path": "m.py"},
              "ok": True, "result_head": "code"},
         ]
-        self.assertEqual(2, len(_srft_prefix_steps(steps)))
+        self.assertIsNone(_srft_prefix_steps(steps))
 
     def test_no_read_no_record(self):
         steps = [{"tool": "run_tests", "args": {"command": "t"},
@@ -548,6 +552,11 @@ class SrftLaneTests(unittest.TestCase):
              "ok": True, "result_head": "files"},
             {"tool": "read_file", "args": {"path": "m.py"},
              "ok": True, "result_head": "code"},
+            # S112: the first edit makes this a REPAIR prefix at all
+            {"tool": "edit_file",
+             "args": {"path": "m.py", "old_string": "a",
+                      "new_string": "b"},
+             "ok": False, "result_head": "no match"},
         ]
         prefix = _srft_prefix_steps(steps)
         self.assertTrue(all(s.get("ok") for s in prefix), prefix)
@@ -561,12 +570,23 @@ class SrftLaneTests(unittest.TestCase):
             {"tool": "read_file", "args": {"path": "m.py"},
              "ok": True, "result_head": "code"},
         ]
+        # S112: the rows carry an edit attempt so they are REPAIR
+        # prefixes (no-edit failures are unconcluded exploration now);
+        # the same-goal row has a LONGER productive discovery, which
+        # wins the dedupe
+        edit = {"tool": "edit_file",
+                "args": {"path": "m.py", "old_string": "a",
+                         "new_string": "b"},
+                "ok": False, "result_head": "no match"}
+        attempted = discovery + [edit]
+        attempted_long = discovery + [
+            {"tool": "read_file", "args": {"path": "extra.py"},
+             "ok": True, "result_head": "more"}, edit]
         rows = [
-            self._failed_row(discovery, goal="json task"),
-            # same goal, longer prefix wins the dedupe
-            self._failed_row(discovery + discovery, goal="JSON  Task"),
+            self._failed_row(attempted, goal="json task"),
+            self._failed_row(attempted_long, goal="JSON  Task"),
             # hard-flagged: excluded
-            self._failed_row(discovery, goal="other task",
+            self._failed_row(attempted, goal="other task",
                              hard_flags=[{"kind": "credential_exposure",
                                           "pattern": "x"}]),
         ]
@@ -574,7 +594,7 @@ class SrftLaneTests(unittest.TestCase):
         self.assertEqual(2, candidates)
         self.assertEqual(2, len(chats))  # two distinct goals
         longest = [c for c in chats
-                   if c["metadata"]["steps"] == 4][0]
+                   if c["metadata"]["steps"] == 3][0]
         self.assertTrue(longest["metadata"]["srft-prefix"])
         # no final answer trained: the record ends on an observation
         self.assertEqual("user", longest["messages"][-1]["role"])
@@ -740,3 +760,55 @@ class S100SurgeryTests(unittest.TestCase):
         self.assertEqual(4, len(rows[0]["steps"]))
         self.assertTrue(any(s.get("ok") is False
                             for s in rows[0]["steps"]))
+
+
+class S112UnconcludedExplorationTests(unittest.TestCase):
+    """S112: the SRFT lane mines REPAIR prefixes — a failed trajectory
+    with NO edit attempted is unconcluded exploration. Gen-21..23's
+    explore-qa failures were being mined into answerless
+    explore-then-STOP prefixes (get a question, explore, never
+    answer) — three of them trained into ep23."""
+
+    def _row(self, steps, **kw):
+        row = dict(_eligible_row(**kw))
+        row["steps"] = steps
+        row["classification"] = "FAILED"
+        row["outcome"] = "failed"
+        row["hard_flags"] = []
+        return row
+
+    def _steps(self, with_edit):
+        steps = [
+            {"tool": "list_directory", "args": {"path": "."},
+             "ok": True, "result_head": "files"},
+            {"tool": "read_file", "args": {"path": "README.md"},
+             "ok": True, "result_head": "# readme"},
+        ]
+        if with_edit:
+            steps.append(
+                {"tool": "edit_file",
+                 "args": {"path": "w.py", "old_string": "a",
+                          "new_string": "b"},
+                 "ok": False, "result_head": "no match"})
+            steps.append(
+                {"tool": "read_file", "args": {"path": "w.py"},
+                 "ok": True, "result_head": "def add"})
+        return steps
+
+    def test_no_edit_trajectory_yields_no_prefix(self):
+        rows = [self._row(self._steps(with_edit=False),
+                          session_id="explore-qa-fail")]
+        chats, candidates = _srft_lane(rows)
+        self.assertEqual(0, candidates)
+        self.assertEqual(0, len(chats))
+
+    def test_failed_repair_still_yields_prefix(self):
+        rows = [self._row(self._steps(with_edit=True),
+                          session_id="repair-fail")]
+        chats, candidates = _srft_lane(rows)
+        self.assertEqual(1, candidates)
+        self.assertEqual(1, len(chats))
+
+
+if __name__ == "__main__":
+    unittest.main()
