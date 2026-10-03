@@ -93,6 +93,26 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-10-03 — **S113c + the cross-model-imitation discovery — the
+  2.5 re-run becomes a double experiment** — the gen-24 T4 attempt
+  died twice: OOM at the loss pass (244MB short, even after the
+  squeeze) AND the 768 cap skipped 463/470 records on the qwen2.5
+  re-run (the skip flag covered 7B too). Fixes: the skip is now
+  9B-ONLY (the cap must never bite the proven qwen2.5 path), and the
+  9B-on-T4 experiment is declared dead (batch-1, checkpointing,
+  seq-length, and allocator tricks all tried — 9B needs L4/A100).
+  THE DISCOVERY: auditing the export after the re-scout showed the
+  raw 9B's three explore-qa SUCCESS trajectories (0-2 failed steps,
+  COMPLETED with the planted facts) entered the real pool via the
+  cleanest-first cap — **cross-model imitation: the 7B can now train
+  on the 9B's correct explore-qa behavior.** The rebuilt export
+  (470 records) carries all three. The user's 2.5 re-run (pollution
+  control) with THIS export is therefore a double experiment:
+  (a) did removing the answerless records change explore-qa, and
+  (b) does imitating the 9B's real exploration move rung 7 at 7B?
+  If neither moves it, rung 7 is 7B-blocked pending 9B hardware and
+  rung-4 proceeds. Suite untouched (kit fix + docs slice).
+
 - 2026-10-03 — **The 9B re-scout COMPLETE — the raw qwen3.5:9b
   scores explore-qa 3/3 ZERO-SHOT (iters 6/5/4, no drills, no
   training): the rung-7 wall is a 7B capability limit and the 9B
