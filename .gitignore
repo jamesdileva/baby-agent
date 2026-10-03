@@ -54,3 +54,6 @@ Modelfile.*
 
 # local baseline driver (S105 measurement, not repo tooling)
 /_s105_baseline.py
+
+# local A/B driver (S111 measurement, not repo tooling)
+/_s111_ab.py
