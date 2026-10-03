@@ -93,6 +93,35 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-10-02 — **Gen-23 verdict — cascade RESTORED 3/3 (the
+  opening-guess teacher confirmed as ep22's cause), but explore-qa
+  0/3 with WORSE thrash (deterministic 10 failures x3,
+  guessed_path 1.6667) and the deepest finding yet: the model
+  guesses the DRILLS' file names instead of reading the live
+  listing — rung 7 is a measured capability limit at this recipe;
+  ep20/ep23 tie 15/18 on tasks, ep20 stays champion on behavior** —
+  pinned 6-task, 600s: ep23 15/18 (calc/strings/json/cascade/
+  indirect all 3/3 — **cascade's re-check confirms gen-22's cause:
+  removing the opening-guess demos restored the band immediately**,
+  explore-qa 0/3) vs ep20 15/18 (pinned 15/15, its FIFTH consecutive
+  perfect reading; explore-qa 0/3). THE FORENSICS: ep23's explore-qa
+  trajectory opens drilled (list -> README) then guesses
+  docs/configuration.md and serverctl.py — names from the DRILL
+  fixtures, absent from the eval listing (which shows docs/api.md +
+  docs/running.md, never opened) — the model memorized drill
+  content, not the read-the-map behavior. Three-attempt arc:
+  ep21 (codeintel loop) -> ep22 (doc read, run_tests ritual) ->
+  ep23 (fixture-name guessing) — each attempt moved the failure
+  mode; none closed. Honest conclusion: **observation-grounded
+  answering does not generalize across fixtures at 7B with ~10
+  answer drills (6.5% deliberate share)**; the anti-guess and
+  seam-rejection beats DID transfer and are banked. Task totals tie
+  15/18; ep20-q4 REMAINS champion (chaining 1.0 vs 0.6, failures 26
+  vs 48); ep23 not shipped. Recommendation recorded: move to rung-4
+  authoring (the repair-task machinery where drills demonstrably
+  generalize), rung 7 stays measured-not-conquered in the ladder.
+  Suite untouched (verdict + docs slice).
+
 - 2026-10-02 — **Gen-22 verdict — explore-qa's seam fix WORKED and
   exposed the wall behind it (the doc gets READ, then the model
   never answers); cascade REGRESSED 3/3 -> 0/3 with a guessed-path

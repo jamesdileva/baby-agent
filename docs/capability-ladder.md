@@ -58,6 +58,7 @@ human with this note as the record.
 | 20 | ep20-q4 confirmation (seed 43) | 3/3 | 3/3 | 3/3 |
 | 21 | ep21-q4 (S108 explore drills, 461 records) | 3/3 | 2/3 | 3/3 |
 | 22 | ep22-q4 (S109 seam drills, 470 records) | 0/3§ | 3/3 | 3/3 |
+| 23 | ep23-q4 (S110 answer-QA volume, 473 records) | 3/3 | 3/3 | 3/3 |
 | 11 | ep11-q4 re-verdict (pinned 5-task) | 3/3 | 3/3 | 3/3 |
 | 11 | ep11-q4 re-verdict (S95.1 tie day) | 3/3 | 3/3 | 3/3 |
 | 9b | qwen3.5:9b RAW (scout, think-disabled) | 3/3 | 3/3 | 1/3* |
@@ -123,6 +124,16 @@ guessed-read as an OPENING move plausibly taught guessing (the S100
 lesson in a new form). ep22 recorded as regressed; ep20 stays
 champion (16/18, pinned 15/15 fourth consecutive).
 § cascade: quiet-failure regression, unconfirmed single reading.
+Gen-23 (2026-10-02): cascade RESTORED 3/3 — gen-22's cause
+confirmed (the opening-guess teacher). explore-qa 0/3 at 10
+deterministic failures/run: the model guesses the DRILLS' file
+names (configuration.md, serverctl.py) against a listing that
+never contained them — drill content memorized, the read-the-map
+behavior not generalized. **Rung 7 = measured capability limit at
+7B with ~6.5% answer-drill share; three-attempt arc banked (anti-
+guess and seam-rejection transfer; fixture generalization does
+not).** ep23 ties ep20 15/18 on tasks; ep20 stays champion on
+behavior. Rung-4 authoring next per direction.
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).
