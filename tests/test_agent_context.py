@@ -215,3 +215,66 @@ class TestLoopIntegration(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TaskListingReminderTests(unittest.TestCase):
+    """S111: the attention-vs-capability A/B instrument — the builder
+    re-injects the goal verbatim plus the latest successful
+    list_directory output as ONE bounded user note, rebuilt fresh
+    each turn."""
+
+    def _session(self, msgs):
+        from qacompanion.agent.session import AgentSession
+        s = AgentSession(goal="How do you start this server?")
+        s.messages.extend(msgs)
+        return s
+
+    def _listing_tool_msg(self):
+        from qacompanion.agent.contracts import ModelMessage
+        import json
+        return ModelMessage(role="tool", content=json.dumps({
+            "call_name": "list_directory", "ok": True,
+            "output": json.dumps({"path": ".", "entries": [
+                {"name": "docs", "type": "dir"},
+                {"name": "README.md", "type": "file"}]})}))
+
+    def test_appends_goal_and_listing_note(self):
+        from qacompanion.agent.context import TaskListingReminder
+        from qacompanion.agent.contracts import ModelMessage
+        msgs = [ModelMessage(role="user",
+                             content="How do you start this server?"),
+                self._listing_tool_msg()]
+        out = TaskListingReminder().build(self._session(msgs), [])
+        self.assertEqual(len(out), len(msgs) + 1)
+        note = out[-1]
+        self.assertEqual("user", note.role)
+        self.assertIn("How do you start this server?", note.content)
+        self.assertIn("Most recent directory listing", note.content)
+        self.assertIn("docs", note.content)
+
+    def test_skips_failed_and_unrelated_tool_results(self):
+        from qacompanion.agent.context import TaskListingReminder
+        from qacompanion.agent.contracts import ModelMessage
+        import json
+        msgs = [ModelMessage(role="user", content="start?"),
+                ModelMessage(role="tool", content=json.dumps({
+                    "call_name": "read_file", "ok": True,
+                    "output": "unrelated"})),
+                ModelMessage(role="tool", content=json.dumps({
+                    "call_name": "list_directory", "ok": False,
+                    "output": "boom"}) )]
+        out = TaskListingReminder().build(self._session(msgs), [])
+        self.assertEqual(len(out), len(msgs) + 1)
+        self.assertNotIn("boom", out[-1].content)
+
+    def test_no_listing_still_reminds_task(self):
+        from qacompanion.agent.context import TaskListingReminder
+        from qacompanion.agent.contracts import ModelMessage
+        msgs = [ModelMessage(role="user", content="start?")]
+        out = TaskListingReminder().build(self._session(msgs), [])
+        self.assertEqual(len(out), 2)
+        self.assertIn("Task:", out[-1].content)
+
+
+if __name__ == "__main__":
+    unittest.main()

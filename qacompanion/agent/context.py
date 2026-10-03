@@ -284,3 +284,48 @@ class ContextBuilder:
             over_budget=used > self.budget.max_chars,
         )
         return assembled
+
+
+class TaskListingReminder:
+    """S111: per-turn task + listing reinforcement for answer-QA
+    sessions — the A/B instrument for the attention-vs-capability
+    question. The gen-23 forensics showed the directory listing IS
+    in context but unattended: the model guesses drill-fixture file
+    names instead of opening what the listing shows. This builder
+    returns session.messages PLUS one bounded user-role note,
+    rebuilt fresh each turn (no accumulation): the goal verbatim and
+    the most recent successful list_directory output. User role on
+    purpose — it reads as the operator re-asking the question with
+    the map attached. Not wired into any default path; the A/B
+    harness (docs/s111-spec.md) is its only consumer."""
+
+    LISTING_BOUND = 1200
+
+    def build(self, session: Any, offered_tools: List[Any],
+              native_tools: bool = False) -> List[ModelMessage]:
+        note_parts: List[str] = []
+        for message in reversed(session.messages):
+            if message.role == "user":
+                note_parts.append(f"Task: {message.content}")
+                break
+        listing = None
+        for message in reversed(session.messages):
+            if message.role != "tool":
+                continue
+            try:
+                payload = json.loads(message.content)
+            except Exception:
+                continue
+            if (isinstance(payload, dict)
+                    and payload.get("call_name") == "list_directory"
+                    and payload.get("ok")):
+                listing = str(payload.get("output") or "")
+                break
+        if listing:
+            note_parts.append(
+                "Most recent directory listing (open files that "
+                "exist in it): " + listing[:self.LISTING_BOUND])
+        if not note_parts:
+            return list(session.messages)
+        note = ModelMessage(role="user", content="\n".join(note_parts))
+        return list(session.messages) + [note]

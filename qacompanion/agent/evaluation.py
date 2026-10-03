@@ -376,9 +376,11 @@ def run_evaluation(models: Dict[str, Callable[[Optional[str]], Any]],
                    events: Optional[EventStream] = None,
                    run_id: Optional[str] = None,
                    tool_catalog: Optional[Any] = None,
+                   context_builder: Optional[Any] = None,
                    ) -> EvalReport:
     """Full cross product: every model x every task. tool_catalog=None
-    defers to the benchmark's lean default."""
+    defers to the benchmark's lean default. context_builder (S111)
+    passes an A/B context builder through to every run."""
     import uuid as uuid_mod
     from .benchmark import LEAN_MODEL_CATALOG
 
@@ -416,6 +418,7 @@ def run_evaluation(models: Dict[str, Callable[[Optional[str]], Any]],
                     ws.root),
                 goal=task.goal,
                 verifier=task_verifier,
+                context_builder=context_builder,
             ).to_dict()
     return report
 
