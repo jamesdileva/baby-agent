@@ -35,8 +35,16 @@ BASE_MODEL = (sys.argv[2] if len(sys.argv) > 2
 SEVEN_B = ("7B" in BASE_MODEL) or ("9B" in BASE_MODEL.upper())
 # S113: skip records longer than this on the big-model path —
 # activations scale with sequence length; the 9B on a 15GB T4 OOMs
-# at the prepare step otherwise (7B records are all under this cap)
-MAX_SEQ_TOKENS = 2048
+# at the prepare step otherwise (7B records are all under this cap).
+# S113b: 2048 -> 768 — the gen-24 T4 attempt OOM'd 244MB short in
+# the loss pass, and the qwen3.5 vocab (151k) makes the logits the
+# hog: sequence length is the only lever big enough.
+MAX_SEQ_TOKENS = 768
+# S113b: bake the allocator config in BEFORE torch imports — the
+# gen-24 OOM message itself recommends it (fragmentation recovery)
+import os
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF",
+                      "expandable_segments:True")
 DATASET = "training.jsonl"
 OUTPUT_DIR = f"{GEN}-adapter"
 MERGED_DIR = f"{GEN}-merged"
