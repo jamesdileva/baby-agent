@@ -93,6 +93,30 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-10-04 — **S115 A/B: the worked-example injection 0/3 —
+  BOTH inference instruments are now falsified; the failure shape is
+  unchanged (the doc gets read with the example in context, then the
+  run_tests ritual x7); the last two levers are training-side** —
+  WorkedExampleReminder (the ep0.5 mechanism applied to rung 7)
+  injects a complete worked docs-question demonstration (a DIFFERENT
+  fixture's facts — the oracle-leak lesson applied at design time)
+  every turn: ep24 0/3, all max-iterations at the 25 budget. THE
+  TRAJECTORY: list -> README -> run_tests -> codeintel loop
+  (rejected) -> docs/running.md READ (with the worked example in
+  context the whole time!) -> run_tests x7. The in-context shape
+  teaching does not bind at 7B — same verdict as the map
+  re-injection (S111). Combined with the S111 result, the
+  inference-side is exhausted: two instruments, both 0/3. **The two
+  remaining levers are TRAINING-side: (a) cross-model imitation at
+  SCALE — the raw 9B explores 10-20 fresh fixtures locally (its
+  successes are 4-6 iters each, already proven by the re-scout);
+  the verified successes feed the real pool and ep25 trains on the
+  enriched corpus (the 3 scout successes are already in the export;
+  this scales 3 -> 15+); (b) scripted drill volume 20-30 (S116 as
+  the user framed it) — same training cost, lower expected value
+  given the gen-23 memorization risk.** Either way: one free Colab
+  run, then rung-4 authoring. Suite untouched (measurement slice).
+
 - 2026-10-03 — **The gate-fix re-run: ep24 explore-qa 0/3 (timeout,
   max-iter x2) — with the leak closed the wall stands; rung 7 is
   7B-BLOCKED with the complete evidence chain; rung-4 authoring

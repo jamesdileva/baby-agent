@@ -150,6 +150,12 @@ instrument: all 0/3 honest. Raw qwen3.5:9b 3/3 zero-shot. **Rung 7
 waits for the 9B (SFT on L4); rung-4 authoring proceeds on the 7B.**
 The oracle-leak lesson recorded: a verifier must never reveal what
 it is looking for (S114: both fact-gate rejections fixed).
+**S115 (2026-10-04): the worked-example injection 0/3** — the second
+inference instrument falsified (the doc gets read with the worked
+example in context, then the run_tests ritual). Both inference-side
+levers exhausted; the remaining levers are training-side: cross-
+model imitation at SCALE (the raw 9B explores fresh fixtures, its
+verified successes feed the real pool) or scripted drill volume.
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).
