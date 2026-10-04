@@ -401,12 +401,16 @@ def run_evaluation(models: Dict[str, Callable[[Optional[str]], Any]],
                 facts = [f.lower() for f in task.fact_gate]
 
                 def fact_verifier(session, _facts=facts):
+                    # S114: the rejection must NOT name the facts —
+                    # gen-24's models passed by echoing the rejection's
+                    # own fact list without ever grounding in the docs
                     text = (getattr(session, "pending_answer", None)
                             or session.final_result or "").lower()
                     missing = [f for f in _facts if f not in text]
                     if missing:
-                        return False, (f"final answer lacks the "
-                                       f"planted fact(s): {missing}")
+                        return False, ("final answer must quote the "
+                                       "exact run command from the "
+                                       "documentation")
                     return True, "final answer contains the planted facts"
 
                 task_verifier = fact_verifier

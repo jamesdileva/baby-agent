@@ -93,6 +93,32 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-10-03 — **Gen-24 verdict — CORRECTED: the pinned set 15/15
+  is REAL, but the explore-qa 3/3 was A GATE LEAK (the verifier's
+  rejection message named the facts, and the model echoed them
+  without grounding); ep20-q4 REMAINS champion; S114 fixes the leak
+  and the honest re-measurement is running** — the split verdict
+  (dashboard 4-task at budget 12 + a driver remainder for indirect/
+  explore-qa at the 25 default): ep24 pinned **15/15** (calc/strings/
+  json 3/3, **cascade 3/3 — the stabilization HELD in the same-day
+  reading**, indirect 3/3) vs ep20 15/15. THE FORENSICS THAT
+  MATTERED: the explore-qa "successes" carried finals like "You are
+  correct that the final answer should have included the planted
+  facts `python -m serverctl` and `8765`" — **the model echoed the
+  fact-gate rejection's own fact list** (which names the missing
+  strings verbatim), and run 2 of 3 passed WITHOUT EVER READING
+  docs/running.md. Runs 1/3 DID read the doc (the drilled exploration
+  held — genuine progress) but their passing finals were echoes, so
+  grounding and leak are indistinguishable in the result. **The
+  oracle-leak lesson: a verifier must never reveal what it is looking
+  for.** S114: both fact-gate rejections (eval + lane) now say only
+  "quote the exact run command from the documentation" — guidance
+  without the answer. The fixed-gate re-run (3 runs) measures the
+  honest number; the double experiment (pollution removal + cross-
+  model imitation) is UNRESOLVED until then. ep24 not shipped; ep20
+  stays champion. Suite untouched by the leak fix (verifier message
+  only).
+
 - 2026-10-03 — **S113c + the cross-model-imitation discovery — the
   2.5 re-run becomes a double experiment** — the gen-24 T4 attempt
   died twice: OOM at the loss pass (244MB short, even after the
