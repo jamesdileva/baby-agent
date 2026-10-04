@@ -63,3 +63,6 @@ Modelfile.*
 
 # local ep24-remainder driver (measurement, not repo tooling)
 /_ep24_remainder.py
+
+# local gate-fix re-run driver (measurement, not repo tooling)
+/_ep24_gatefix_rerun.py
