@@ -329,3 +329,36 @@ class TaskListingReminder:
             return list(session.messages)
         note = ModelMessage(role="user", content="\n".join(note_parts))
         return list(session.messages) + [note]
+
+
+class WorkedExampleReminder:
+    """S115: worked-example injection for answer-QA sessions — the
+    ep0.5 mechanism applied to rung 7. The gen-24 forensics: the
+    model READ the answer doc but never produced the answer final
+    (the run_tests ritual consumed the budget). This builder injects
+    ONE complete worked example of a DIFFERENT docs-question answered
+    correctly — teaching the SHAPE (list -> read -> answer
+    immediately, quote the values with the source) without revealing
+    the eval fixture's facts (a different fixture's values are used;
+    quoting them would not pass the gate). One bounded user note,
+    rebuilt fresh each turn. Not wired into any default path."""
+
+    EXAMPLE = (
+        "Worked example — a similar docs-question, answered "
+        "correctly:\n"
+        "Task: What are this tool's default request timeout and "
+        "retry count? Check the docs folder.\n"
+        "Correct approach: list_directory first; read README.md; it "
+        "points at the docs folder, so go back to the listing and "
+        "open the doc that is actually there (docs/"
+        "configuration.md); then answer IMMEDIATELY — a question "
+        "needs no test run.\n"
+        "That answer: docs/configuration.md has both values: "
+        "request_timeout = 45 and max_retries = 3 (quoted from the "
+        "file, source named)."
+    )
+
+    def build(self, session: Any, offered_tools: List[Any],
+              native_tools: bool = False) -> List[ModelMessage]:
+        note = ModelMessage(role="user", content=self.EXAMPLE)
+        return list(session.messages) + [note]

@@ -278,3 +278,41 @@ class TaskListingReminderTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WorkedExampleReminderTests(unittest.TestCase):
+    """S115: worked-example injection — one bounded user note teaching
+    the answer-QA shape with a DIFFERENT fixture's facts (the eval
+    fixture's facts stay hidden; quoting them would not pass the
+    gate)."""
+
+    def test_appends_the_worked_example_note(self):
+        from qacompanion.agent.context import WorkedExampleReminder
+        from qacompanion.agent.contracts import ModelMessage
+        s = AgentSession(goal="How do you start this server?")
+        s.messages.append(ModelMessage(role="user",
+                                       content="How do you start this "
+                                               "server?"))
+        out = WorkedExampleReminder().build(s, [])
+        self.assertEqual(len(out), 2)
+        note = out[-1]
+        self.assertEqual("user", note.role)
+        self.assertIn("Worked example", note.content)
+        self.assertIn("answer IMMEDIATELY", note.content)
+        # teaches with a DIFFERENT fixture's facts, not the eval's
+        self.assertIn("configuration.md", note.content)
+
+    def test_note_is_fresh_each_turn_no_accumulation(self):
+        from qacompanion.agent.context import WorkedExampleReminder
+        from qacompanion.agent.contracts import ModelMessage
+        s = AgentSession(goal="start?")
+        s.messages.append(ModelMessage(role="user", content="start?"))
+        out1 = WorkedExampleReminder().build(s, [])
+        s.messages.append(ModelMessage(role="tool", content="x"))
+        out2 = WorkedExampleReminder().build(s, [])
+        self.assertEqual(len(out1), 2)
+        self.assertEqual(len(out2), 3)  # messages grew by 1, note by 1
+
+
+if __name__ == "__main__":
+    unittest.main()
