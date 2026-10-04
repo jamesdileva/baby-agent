@@ -93,6 +93,27 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-10-04 — **S116 sweep COMPLETE: the raw 9B explored 15 fresh
+  fixtures — 11 success + 2 recovered = 13 fact-gate-verified
+  explore successes, ZERO run_tests in all 15 records; the export is
+  rebuilt with 20 raw-9B records (13 sweep + 7 re-scout survivors)
+  displacing the 13 thrashiest — ep25 trains enriched** — the
+  fixtures (authored in the gitignored driver): 15 varied projects
+  (webshop/notekeeper/imgtool/chatrelay/filewatcher/scorekeep/
+  templater/queuebird/colorwrap/taskcron/vaultdoor/mailbridge/
+  petfeed/wikibackup/glowmeter), question-shaped goals, unguessable
+  planted facts, the S114 non-leaking gate. THE YIELD: 13/15
+  verified (the 2 failures: colorwrap 22 verification attempts,
+  taskcron empty-responses — both honest). **THE KEY DATA: zero
+  run_tests calls in all 15 trajectories — the 9B's clean ending
+  (list -> read -> list -> read -> ANSWER) is now in the corpus at
+  scale: ~20 real question-shaped records + 10 answer drills vs the
+  ~310 repair records that teach the run_tests ritual.** The cap
+  mechanism worked exactly as designed: same 470-record size, better
+  composition. ep25 = the user's Colab run on the enriched export
+  (qwen2.5, free T4); the verdict (--tasks 6) decides rung 7 at 7B.
+  Suite untouched (measurement + generation slice).
+
 - 2026-10-04 — **S115 A/B: the worked-example injection 0/3 —
   BOTH inference instruments are now falsified; the failure shape is
   unchanged (the doc gets read with the example in context, then the
