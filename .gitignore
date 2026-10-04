@@ -69,3 +69,6 @@ Modelfile.*
 
 # local S115 A/B driver (measurement, not repo tooling)
 /_s115_ab.py
+
+# local S116 9B-exploration driver (generation, not repo tooling)
+/_s116_9b_explore.py
