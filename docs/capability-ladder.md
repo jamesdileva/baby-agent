@@ -140,6 +140,16 @@ behavior not generalized. **Rung 7 = measured capability limit at
 guess and seam-rejection transfer; fixture generalization does
 not).** ep23 ties ep20 15/18 on tasks; ep20 stays champion on
 behavior. Rung-4 authoring next per direction.
+**Rung 7 FINAL at 7B (2026-10-03, evidence-complete):** ep24
+(cleaned corpus + cross-model imitation) pinned 15/15 but explore-qa
+0/3 under the FIXED fact-gate — the interim 3/3 was an ORACLE LEAK
+(the gate's rejection named the facts; the model echoed them
+without grounding; run 2 passed without reading the answer doc at
+all). Five trained attempts, four corpus strategies, one inference
+instrument: all 0/3 honest. Raw qwen3.5:9b 3/3 zero-shot. **Rung 7
+waits for the 9B (SFT on L4); rung-4 authoring proceeds on the 7B.**
+The oracle-leak lesson recorded: a verifier must never reveal what
+it is looking for (S114: both fact-gate rejections fixed).
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).

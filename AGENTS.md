@@ -93,6 +93,30 @@ commit + push → worklog entry.**
   standing lane). Ladder rung-7 row updated with the measured
   baseline. Suite untouched (docs + baseline slice).
 
+- 2026-10-03 — **The gate-fix re-run: ep24 explore-qa 0/3 (timeout,
+  max-iter x2) — with the leak closed the wall stands; rung 7 is
+  7B-BLOCKED with the complete evidence chain; rung-4 authoring
+  proceeds on the 7B line; rung 7 waits for the 9B (L4)** — the
+  fixed-gate re-measurement (3 runs, non-leaking rejection): all
+  three failed at the 24-25-iteration budget. **The final rung-7
+  evidence chain, five trained attempts across four corpus
+  strategies: ep20 clean-corpus 0/3, ep21 drills-v1 0/3 (codeintel
+  loop), ep22 seam-fix 0/3 (doc read, run_tests ritual), ep23 volume
+  0/3 (fixture-name guessing), ep24 cleaned+cross-model 0/3 honest
+  (the 3/3 was rejection-echo through the fact-gate leak) — against
+  raw qwen3.5:9b 3/3 ZERO-SHOT.** The conclusion is measured, not
+  assumed: observation-grounded answering does not generalize at 7B
+  with this recipe, and no inference-side instrument (TaskListing-
+  Reminder), corpus shape (cleaned, cross-model), or drill strategy
+  moved it. **ep24's legacy: the pinned set held 15/15 through the
+  corpus surgery (no dilution — the S107/S110/S112 batches are
+  compatible), cascade stayed stabilized, and the gate leak was
+  found and fixed.** ep24 not shipped; **ep20-q4 REMAINS champion**
+  (pinned 15/15 x4 readings). Rung-4 authoring (test authorship
+  with mutation proof — gate open since rung-3 graduated) is the
+  next slice; rung 7 re-opens on the 9B (SFT on L4) when GPU budget
+  allows. Suite untouched (verdict + docs slice).
+
 - 2026-10-03 — **Gen-24 verdict — CORRECTED: the pinned set 15/15
   is REAL, but the explore-qa 3/3 was A GATE LEAK (the verifier's
   rejection message named the facts, and the model echoed them
