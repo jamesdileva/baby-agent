@@ -60,3 +60,6 @@ Modelfile.*
 
 # local scout-remainder driver (measurement, not repo tooling)
 /_s111_scout_remainder.py
+
+# local ep24-remainder driver (measurement, not repo tooling)
+/_ep24_remainder.py
