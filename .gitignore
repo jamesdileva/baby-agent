@@ -84,3 +84,6 @@ Modelfile.*
 
 # local S120 schema-prompt retest driver (measurement, not repo tooling)
 /_s120_schema_retest.py
+
+# local S120 cascade/indirect schema retest driver (measurement)
+/_s120_cascade_indirect.py
