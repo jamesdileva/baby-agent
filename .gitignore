@@ -81,3 +81,6 @@ Modelfile.*
 
 # local ep25 tool-fix retest driver (measurement, not repo tooling)
 /_ep25_toolfix_retest.py
+
+# local S120 schema-prompt retest driver (measurement, not repo tooling)
+/_s120_schema_retest.py
