@@ -321,6 +321,28 @@ class TestPromptAndSession(unittest.TestCase):
         self.assertIn("- sample: does sample things", prompt)
         self.assertIn("Baby-Agent", prompt)
 
+    def test_system_prompt_renders_argument_schemas(self):
+        # S119b: description-only prompts left the argument names
+        # unguessable - the gen-22/25 models invented args
+        # (code_symbols(name=...) when the schema says query) and
+        # looped on 'unknown argument' rejections. The prompt must
+        # carry each tool's argument schema.
+        from qacompanion.agent.contracts import ToolDefinition
+        reg = ToolRegistry()
+        reg.register(RegisteredTool(
+            definition=ToolDefinition(
+                name="code_symbols", description="find symbols",
+                parameters_schema={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "max_results": {"type": "integer"}},
+                    "required": ["query"]}),
+            handler=lambda **kw: "ok"))
+        prompt = build_system_prompt(reg.schemas())
+        self.assertIn("args: query* (string), max_results (integer)",
+                      prompt)
+
     def test_system_prompt_allows_conversational_goals(self):
         # found by live use: "hello" sent a trained explore-first model
         # into 12 iterations of tool thrash (list, tests, screenshot)

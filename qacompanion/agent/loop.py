@@ -72,7 +72,24 @@ def build_system_prompt(tools, base: str = DEFAULT_SYSTEM_PROMPT,
         lines.append("")
         lines.append("Available tools:")
         for tool in tools:
-            lines.append(f"- {tool.name}: {tool.description}")
+            line = f"- {tool.name}: {tool.description}"
+            # S119b: render each tool's ARGUMENT SCHEMA — the gen-22/25
+            # forensics showed models inventing argument names for
+            # complex tools (code_symbols(name=...) when the schema
+            # says query) and looping on 'unknown argument' rejections
+            # that never taught the expected shape. Description-only
+            # prompts leave the arg names unguessable.
+            schema = getattr(tool, "parameters_schema", None) or {}
+            props = schema.get("properties") or {}
+            required = set(schema.get("required") or [])
+            if props:
+                args = ", ".join(
+                    "{}{} ({})".format(
+                        name, "*" if name in required else "",
+                        (spec or {}).get("type", "any"))
+                    for name, spec in props.items())
+                line += f" | args: {args}"
+            lines.append(line)
         if not native_tools:
             lines.append(TOOL_PROTOCOL_PROMPT)
     return "\n".join(lines)
