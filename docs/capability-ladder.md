@@ -177,6 +177,11 @@ returned; cause unconfirmed — the 13-record swap is the only delta)
 and cascade sits in-band at 3/6. ep20-q4 remains champion (15/18 vs
 13/18; the pinned set is the guard); ep25's line stays alive: rung 7
 is real at 7B and the indirect regression is the named ep26 target.
+**S120 (2026-10-05): the schema-visible prompt applied to ep25's
+EXISTING weights (no retraining): explore-qa 1/3, closing at 11
+iters — the first trained-model success at the standard budget,
+inference-side. The two max-iter runs support the alignment thesis:
+the full fix is the ep26 retrain (schemas in every training record).**
 **The tool-contract fix retest (2026-10-04): the trap CONFIRMED as a
 major cause — indirect 0/3 -> 2/3 under the honest rejections (the
 successes close at 23-25 iters, late; the old 'unknown argument'
