@@ -544,9 +544,37 @@ def build_training(curated_dir=None, out_dir=None,
     deliberate = [r for r in step_trainable if _deliberate(r)]
     real = [r for r in step_trainable if not _deliberate(r)]
     if deliberate:
+        # S117: the cap must not evict whole TASKS. The pure
+        # cleanest-first sort evicted every cascade/indirect real
+        # record when the 9B's cleaner explore records entered
+        # (gen-25: indirect 0/3, cascade 1/3 — the hard-won marginal
+        # wins have the most failed steps and were cut first). The
+        # budget is spent ROUND-ROBIN across normalized goals, with
+        # cleanliness ordering within each goal: every task keeps
+        # representation, the thrashiest within each task are still
+        # cut first.
+        budget = REAL_CAP_RATIO * len(deliberate)
         real_sorted = sorted(real, key=lambda r: (
             _failed_step_count(r), r.session_id or ""))
-        kept_real = real_sorted[:REAL_CAP_RATIO * len(deliberate)]
+        from .experience import _normalize_goal
+        groups: Dict[str, List[Any]] = {}
+        for r in real_sorted:
+            key = _normalize_goal(
+                r.goal.split(" (benchmark run")[0])
+            groups.setdefault(key, []).append(r)
+        kept_real = []
+        cycles = [iter(g) for g in groups.values()]
+        exhausted = [False] * len(cycles)
+        while len(kept_real) < budget and not all(exhausted):
+            for i, cycle in enumerate(cycles):
+                if exhausted[i]:
+                    continue
+                try:
+                    kept_real.append(next(cycle))
+                    if len(kept_real) >= budget:
+                        break
+                except StopIteration:
+                    exhausted[i] = True
     else:
         kept_real = list(real)
     real_capped = len(real) - len(kept_real)

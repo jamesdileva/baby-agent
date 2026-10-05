@@ -162,6 +162,36 @@ commit + push → worklog entry.**
   next slice; rung 7 re-opens on the 9B (SFT on L4) when GPU budget
   allows. Suite untouched (verdict + docs slice).
 
+- 2026-10-04 — **Gen-25 verdict — explore-qa 0/3: the cross-model
+  imitation did not move rung 7, AND the terminal-step finding
+  completes the picture; cascade 1/3 + indirect 0/3 regressed; ep20
+  16/18 REMAINS champion (15/15 fifth consecutive); rung 7 at 7B is
+  FINAL-BLOCKED — rung-4 authoring next** — pinned 6-task, 600s:
+  ep25 10/18 (calc/strings/json 3/3, **cascade 1/3 + indirect 0/3 —
+  both regressed with 10-failure thrash x2**, explore-qa 0/3) vs
+  ep20 16/18 (pinned 15/15, explore-qa 0/3). THE EVICTION HYPOTHESIS
+  RETRACTED: the interim claim that the cap evicted the indirect/
+  cascade teaching was MY FILTER BUG (the substring 'agent' matches
+  'baby-agent:epN' — every real record was excluded from the count);
+  the truth: the ep25 export carries 59 cascade + 59 indirect real
+  records — nothing was evicted. The regression cause: the 13-record
+  corpus swap or single-reading noise — unconfirmed (S91.1 rule).
+  THE EXPLORE-QA FORENSICS (the sixth and sharpest attempt): ep25's
+  trajectory is the complete drilled shape — list -> README ->
+  search -> docs/running.md READ — and then it wandered into
+  experience_record calls, test runs, and symbol hunts INSTEAD OF
+  ANSWERING. After six generations the failure is localized to ONE
+  step: **the terminal transition to the answer final on a no-test
+  question.** The rung-7 chain is complete and final: 6 trained
+  attempts (ep20 clean, ep21 drills, ep22 seam, ep23 volume, ep24
+  cleaned+cross-model, ep25 +9B-success-enriched) — all honest 0/3;
+  both inference instruments falsified; raw qwen3.5:9b 3/3 zero-shot.
+  ep25 not shipped; **ep20-q4 REMAINS champion.** Next: rung-4
+  authoring (test authorship with mutation proof) per the agreed
+  sequencing; rung 7 documented as 7B-blocked with the terminal-step
+  gap named, re-opening on the 9B (L4). Suite untouched (verdict +
+  docs slice).
+
 - 2026-10-03 — **Gen-24 verdict — CORRECTED: the pinned set 15/15
   is REAL, but the explore-qa 3/3 was A GATE LEAK (the verifier's
   rejection message named the facts, and the model echoed them

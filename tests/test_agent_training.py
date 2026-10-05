@@ -812,3 +812,62 @@ class S112UnconcludedExplorationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class S117RoundRobinCapTests(unittest.TestCase):
+    """S117: the real cap must not evict whole TASKS — the pure
+    cleanest-first sort wiped every cascade/indirect real record when
+    the 9B's cleaner explore records entered (gen-25: indirect 0/3,
+    cascade 1/3). The budget is spent round-robin across goals."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+
+    def _real_row(self, session_id, failed=0):
+        row = dict(_eligible_row(session_id=session_id))
+        steps = [
+            {"tool": "list_directory", "args": {"path": "."},
+             "ok": True, "result_head": "files"}]
+        for i in range(failed):
+            steps.append(
+                {"tool": "read_file",
+                 "args": {"path": f"ghost{i}.py"}, "ok": False,
+                 "result_head": "file not found"})
+        row["steps"] = steps
+        return row
+
+    def test_round_robin_keeps_every_goal_represented(self):
+        clean = [self._real_row(f"clean{i}") for i in range(10)]
+        thrashy = [self._real_row(f"hard{i}", failed=2)
+                   for i in range(10)]
+        # 10 clean records of goal A + 10 thrashy records of goal B;
+        # a pure cleanest-first cap at 10 would keep ONLY goal A
+        rows = [_eligible_row(session_id="d1",
+                              tags=["scripted-demo"])]
+        rows += [dict(r, goal=f"goal alpha (benchmark run {i:08x})")
+                 for i, r in enumerate(clean)]
+        rows += [dict(r, goal=f"goal beta (benchmark run {i:08x})")
+                 for i, r in enumerate(thrashy)]
+        # deliberate: 5 -> budget 10
+        for i in range(5):
+            rows.append(_eligible_row(
+                session_id=f"d{i}", tags=["scripted-demo"]))
+        out = self.tmp / "training"
+        report = build_training(
+            curated_dir=_write_curated(self.tmp, rows), out_dir=out)
+        chats = [json.loads(line) for line in
+                 (out / "training.jsonl").read_text(
+                     encoding="utf-8").splitlines() if line]
+        real_chats = [c for c in chats
+                      if "scripted-demo" not in
+                      (c["metadata"].get("tags") or [])]
+        # the rows' session ids carry their goal group
+        sids = {c["metadata"]["session_id"] for c in real_chats}
+        self.assertTrue(any(s.startswith("clean") for s in sids),
+                        sids)
+        self.assertTrue(any(s.startswith("hard") for s in sids),
+                        sids)
+        # budget = 6 deliberate x 2 (S106 ratio)
+        self.assertEqual(12, report["real_kept"])

@@ -156,6 +156,14 @@ example in context, then the run_tests ritual). Both inference-side
 levers exhausted; the remaining levers are training-side: cross-
 model imitation at SCALE (the raw 9B explores fresh fixtures, its
 verified successes feed the real pool) or scripted drill volume.
+**Rung 7 FINAL-BLOCKED at 7B (2026-10-04):** gen-25 (the enriched
+corpus + the 9B's imitation records) explore-qa 0/3 — the trajectory
+shows the COMPLETE drilled exploration (list -> README -> search ->
+docs/running.md READ) failing at exactly ONE step: the terminal
+transition to the answer final (the model wandered into
+experience_record/tests/symbol hunts instead of answering). Six
+trained attempts, all honest 0/3; the terminal answer step is the
+measured gap. Rung-4 authoring proceeds; rung 7 re-opens on the 9B.
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).
