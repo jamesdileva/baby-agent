@@ -177,6 +177,12 @@ returned; cause unconfirmed — the 13-record swap is the only delta)
 and cascade sits in-band at 3/6. ep20-q4 remains champion (15/18 vs
 13/18; the pinned set is the guard); ep25's line stays alive: rung 7
 is real at 7B and the indirect regression is the named ep26 target.
+**The tool-contract fix retest (2026-10-04): the trap CONFIRMED as a
+major cause — indirect 0/3 -> 2/3 under the honest rejections (the
+successes close at 23-25 iters, late; the old 'unknown argument'
+loops trapped the model to never-succeeds). At the standard 12-iter
+budget the regression stands; ep26 targets the late-success
+adaptation.** ep20 remains champion; ep25 holds the rung-7 line.
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).

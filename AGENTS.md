@@ -284,6 +284,26 @@ commit + push → worklog entry.**
   the indirect fix (ep26) can build on it. Suite untouched
   (measurement + docs slice).
 
+- 2026-10-04 — **The ep25 tool-fix retest — the trap CONFIRMED as a
+  major cause: indirect 0/3 -> 2/3 under the fixed contract, but the
+  successes are LATE (23-25 iters); ep20-q4 holds champion** — the
+  same-conditions retest (cascade + indirect, n=3, seed 42, 600s,
+  the only change being the honest tool-contract rejections):
+  indirect **2/3** (two successes at 25 and 23 iters + one max-iter)
+  vs gen-25's 0/3 — **the codeintel-loop trap was real: with the
+  honest 'unknown tool' rejections the model eventually adapts and
+  answers, where the old 'unknown argument' loops trapped it to
+  max-iterations.** Cascade 1/3 (one 9-iter success + two max-iter
+  at 25 — vs gen-25's 1/3: unchanged-ish). THE BUDGET FINDING: all
+  retest successes closed at 23-25 iters — over the standard 12 —
+  so at the standard verdict budget the regression stands; the fix
+  converted never-succeeds into succeeds-late. **Champion: ep20-q4
+  holds** (pinned 15/15 at the standard budget is the guard; ep25's
+  explore-qa 3/3 is the rung-7 line). The ep26 targets named: (a)
+  the late-success adaptation (25 iters to close what ep20 closes
+  in 7-9), (b) the cascade max-iter shape. Rung-4 authoring next
+  per the user's sequencing. Suite untouched (measurement slice).
+
 - 2026-10-04 — **S118 honest re-measurement — explore-qa 3/3 for
   ep25: THE RUNG-7 WALL HAS FALLEN AT 7B via cross-model imitation;
   the regression check is running** — the corrected-gate re-run
