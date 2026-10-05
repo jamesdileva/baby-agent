@@ -196,6 +196,15 @@ class AgentLoop:
         self._set_state(session, AgentState.PLANNING)
         offered = [t for t in self.registry.schemas()
                    if self.tool_catalog is None or t.name in self.tool_catalog]
+        # S119: the model-facing tool contract is the ADVERTISED set —
+        # calls to unadvertised (but registered) tools are rejected
+        # honestly instead of executing with unschemad arguments. The
+        # gen-22/25 forensics: the registry half-honored calls to
+        # code_symbols/experience_record (never advertised) with
+        # invented args, and the "unknown argument" rejections looped
+        # the model to max-iterations. An honest "unknown tool" lets
+        # the model adapt to the catalog it was actually given.
+        offered_names = frozenset(t.name for t in offered)
         messages: List[ModelMessage] = [
             ModelMessage(role="system",
                          content=build_system_prompt(
@@ -340,23 +349,33 @@ class AgentLoop:
                                         TERMINATION_CANCELLED)
                 self._emit("tool_requested", session, tool=call.name,
                            arguments=dict(call.arguments))
-                try:
-                    result = self.registry.execute(
-                        call,
-                        policy=self.policy,
-                        workspace=self.workspace,
-                        cancel_event=self.cancel_event,
-                        confirmer=self.confirmer,
-                        event_stream=self.events,
-                        session_id=session.session_id,
-                    )
-                except Exception as exc:  # pipeline crash: feed back, continue
-                    self._record_failure(
-                        session, f"tool execution crashed: {exc!r}")
+                if call.name not in offered_names:
+                    # S119: unadvertised tools are rejected honestly —
+                    # the model was never shown their schemas, so
+                    # executing them (with guessed args) produces the
+                    # unrecoverable "unknown argument" loops
                     result = ToolResult(
                         call_name=call.name, ok=False, output="",
-                        error=f"tool execution crashed: {exc}",
-                    )
+                        error=f"unknown tool: {call.name!r} — use only "
+                              "the tools listed in your instructions")
+                else:
+                    try:
+                        result = self.registry.execute(
+                            call,
+                            policy=self.policy,
+                            workspace=self.workspace,
+                            cancel_event=self.cancel_event,
+                            confirmer=self.confirmer,
+                            event_stream=self.events,
+                            session_id=session.session_id,
+                        )
+                    except Exception as exc:  # pipeline crash: feed back, continue
+                        self._record_failure(
+                            session, f"tool execution crashed: {exc!r}")
+                        result = ToolResult(
+                            call_name=call.name, ok=False, output="",
+                            error=f"tool execution crashed: {exc}",
+                        )
                 session.tool_calls.append(call)
                 session.observations.append(result)
                 changed = _extract_changed_path(call, result, self.registry)

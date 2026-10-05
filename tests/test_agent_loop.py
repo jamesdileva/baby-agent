@@ -398,3 +398,61 @@ class TestPromptAndSession(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UnadvertisedToolGateTests(unittest.TestCase):
+    """S119: the model-facing tool contract is the ADVERTISED set —
+    calls to unadvertised (but registered) tools are rejected
+    honestly ('unknown tool') instead of executing with guessed args
+    (the gen-22/25 forensics: the rejected-arg loop went to
+    max-iterations because the rejection never taught the schema)."""
+
+    def test_unadvertised_tool_rejected_honestly(self):
+        import tempfile
+        from pathlib import Path
+        from qacompanion.agent.loop import AgentLoop
+        from qacompanion.agent.providers import FakeModelProvider
+        from qacompanion.agent.contracts import ToolCall, ModelResponse
+        from qacompanion.agent.workspace import Workspace
+        from qacompanion.agent.registry import ToolRegistry, RegisteredTool
+        from qacompanion.agent.contracts import ToolDefinition
+        from qacompanion.agent.session import AgentConfig
+        from qacompanion.agent.events import EventStream
+
+        with tempfile.TemporaryDirectory() as tmp:
+            reg = ToolRegistry()
+            reg.register(RegisteredTool(
+                definition=ToolDefinition(
+                    name="secret_tool", description="not advertised",
+                    parameters_schema={"type": "object",
+                                       "properties": {}}),
+                handler=lambda **kw: "ok"))
+            reg.register(RegisteredTool(
+                definition=ToolDefinition(
+                    name="known_tool", description="advertised",
+                    parameters_schema={"type": "object",
+                                       "properties": {}}),
+                handler=lambda **kw: "done"))
+            stream = EventStream()
+            script = [
+                ToolCall(name="secret_tool", arguments={"x": "1"}),
+                ToolCall(name="known_tool", arguments={}),
+                ModelResponse(text="done", finish_reason="stop"),
+            ]
+            loop = AgentLoop(
+                FakeModelProvider(script), reg, Workspace(Path(tmp)),
+                config=AgentConfig(max_iterations=8), events=stream,
+                # advertise only known_tool: secret_tool is registered
+                # but NOT offered
+                tool_catalog=["known_tool"],
+            )
+            session = loop.run("probe goal")
+            failed = [e for e in stream.events
+                      if e.event_type == "tool_failed"]
+            self.assertTrue(any("unknown tool" in str(e.payload.get(
+                "error")) for e in failed))
+            completed = [e for e in stream.events
+                         if e.event_type == "tool_completed"
+                         and e.payload.get("tool") == "known_tool"]
+            self.assertTrue(completed, "the advertised tool must work")
+            self.assertEqual("COMPLETED", session.state.value)
