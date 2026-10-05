@@ -177,6 +177,12 @@ returned; cause unconfirmed — the 13-record swap is the only delta)
 and cascade sits in-band at 3/6. ep20-q4 remains champion (15/18 vs
 13/18; the pinned set is the guard); ep25's line stays alive: rung 7
 is real at 7B and the indirect regression is the named ep26 target.
+**S120 cascade/indirect schema retest (2026-10-05): the schema fix
+CONFIRMED at inference — ep25 cascade 1/3 -> 3/3 (clean 8-iter runs,
+the codeintel loops collapsed when the arg schemas became visible;
+no retraining), indirect 0/3 -> 1/3 (partial). The champion calculus
+with schemas: ep25 ~15/18 (12/15 pinned + 3/3 explore) vs ep20 15/18
+— a tie by shape; ep26 (the aligned retrain) decides it properly.
 **S120 (2026-10-05): the schema-visible prompt applied to ep25's
 EXISTING weights (no retraining): explore-qa 1/3, closing at 11
 iters — the first trained-model success at the standard budget,

@@ -284,6 +284,28 @@ commit + push → worklog entry.**
   the indirect fix (ep26) can build on it. Suite untouched
   (measurement + docs slice).
 
+- 2026-10-05 — **S120 cascade/indirect schema retest (the PRIMARY
+  test) — the schema fix CONFIRMED at inference: cascade 1/3 -> 3/3
+  (clean 8-iter runs, the codeintel loops COLLAPSED), indirect 0/3
+  -> 1/3 (partial: one clean 7-iter success + two max-iter)** —
+  ep25's existing weights, no retraining, the schema-visible prompt:
+  cascade went from 10-failure thrash x2 to three consecutive clean
+  8-iteration completions — the model read the arg schemas and
+  stopped inventing them. Indirect recovered partially (the loops
+  reduced; two runs still wandered). THE COMPLETE ROOT-CAUSE CHAIN
+  of the rung-7 arc, all four findings now load-bearing: (1) the
+  oracle leak (S114), (2) the answerless SRFT pollution (S112),
+  (3) the tool-contract trap (S119a), (4) the invisible schemas
+  (S119b) — and the schema fix alone restored cascade to 3/3 at
+  INFERENCE. THE CHAMPION CALCULUS with schemas at inference:
+  ep25 = ~12/15 pinned (cascade restored, indirect 1/3) + explore-qa
+  3/3 = ~15/18 vs ep20 15/18 — a task tie with different shapes
+  (ep25 holds rung 7; ep20 holds indirect stability). The champion
+  resolution: **ep26 (the aligned retrain, schemas in every training
+  record) should lock cascade restored AND lift indirect — its
+  verdict decides the champion properly.** ep27 = rung-4 authoring
+  per sequencing. Suite untouched (measurement slice).
+
 - 2026-10-05 — **S120 the schema-prompt inference retest —
   CORRECTED scope: the primary schema test is cascade/indirect (the
   codeintel loops), which launched after an off-target first probe;
