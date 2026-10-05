@@ -164,6 +164,19 @@ transition to the answer final (the model wandered into
 experience_record/tests/symbol hunts instead of answering). Six
 trained attempts, all honest 0/3; the terminal answer step is the
 measured gap. Rung-4 authoring proceeds; rung 7 re-opens on the 9B.
+**GEN-25 CORRECTED + the re-measurement (2026-10-04): the verdict-
+path measurements were ALL invalid** — run_verdict never passed the
+fact gate, so explore-qa ran the unittest plan on a no-test fixture
+(NO TESTS RAN, exit 5 — structurally impossible; S118 fixed it).
+**Under the REAL gate (driver runs): ep25 explore-qa 3/3 at seed 42
+(deterministic 8-iter runs) + 3/3 at seed 43 — RUNG 7 MOVED AT 7B
+via cross-model imitation** (the raw 9B's verified successes in the
+real pool taught the answer-final shape). THE TRADE: ep25's indirect
+regressed 0/6 across both seeds (the ep21-era codeintel loop
+returned; cause unconfirmed — the 13-record swap is the only delta)
+and cascade sits in-band at 3/6. ep20-q4 remains champion (15/18 vs
+13/18; the pinned set is the guard); ep25's line stays alive: rung 7
+is real at 7B and the indirect regression is the named ep26 target.
 ep12's verdict-day strings 0/3 did not reproduce — the S91.1
 regression call is withdrawn as variance (see DECISIONS: never
 convict on a single n=3).
