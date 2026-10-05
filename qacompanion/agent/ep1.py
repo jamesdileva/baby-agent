@@ -3207,7 +3207,8 @@ def run_verdict(providers: Dict[str, Any], task_count: int = 3,
     taught behavior (gen-6's calculator win came at 7)."""
     from . import AgentConfig
     from .context import ContextBuilder, MemoryRetriever
-    from .evaluation import default_tasks, protocol_metrics
+    from .evaluation import (build_fact_verifier, default_tasks,
+                             protocol_metrics)
     from .experience import MemoryLayer
 
     store = store or ExperienceStore()
@@ -3227,6 +3228,13 @@ def run_verdict(providers: Dict[str, Any], task_count: int = 3,
                     fixture_writer=lambda ws, _t=task: _t.write_fixture(
                         ws.root),
                     goal=task.goal,
+                    # S118: the verdict path MUST honor the fact gate —
+                    # without it explore-qa ran the unittest plan on a
+                    # no-test fixture (structurally impossible to pass)
+                    # and every verdict-based explore-qa score was
+                    # invalid (gen-21..25)
+                    verifier=(build_fact_verifier(task.fact_gate)
+                              if task.fact_gate else None),
                 )
                 runs.append(report.to_dict())
             success_count = sum(1 for r in runs if r["success"])

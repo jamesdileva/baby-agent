@@ -1108,3 +1108,54 @@ class LaneFactGateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VerdictFactGateTests(unittest.TestCase):
+    """S118: the verdict path must honor the fact gate — without it,
+    explore-qa ran the unittest plan on a no-test fixture (structurally
+    impossible to pass) and every verdict-based explore-qa score was
+    invalid (gen-21..25)."""
+
+    def test_run_verdict_honors_fact_gate(self):
+        from unittest.mock import patch
+        from qacompanion.agent import ModelResponse
+        from qacompanion.agent.ep1 import run_verdict
+        from qacompanion.agent.evaluation import default_tasks
+        from qacompanion.agent.providers import FakeModelProvider
+
+        task = next(t for t in default_tasks()
+                    if t.name == "explore-qa")
+
+        def factory(model=None):
+            return FakeModelProvider([
+                ModelResponse(
+                    text="Start it with python -m serverctl --port "
+                         "8765 (see docs/running.md).",
+                    finish_reason="stop")])
+
+        with patch("qacompanion.agent.ep1.run_benchmark") as rb:
+            rb.return_value.to_dict.return_value = {
+                "success": True, "termination_reason": "goal completed",
+                "iterations": 5, "duration_seconds": 1.0,
+                "files_changed": [], "tool_calls": 1,
+                "commands_run": 0}
+            run_verdict({"m": factory}, task_count=6, repetitions=1)
+            # find the explore-qa call: the verifier kwarg must be the
+            # fact-gate verifier (non-None), not the unittest plan
+            calls = [c for c in rb.call_args_list
+                     if c.kwargs.get("goal") == task.goal]
+            self.assertTrue(calls, "explore-qa was never run")
+            verifier = calls[0].kwargs.get("verifier")
+            self.assertIsNotNone(
+                verifier, "explore-qa ran without the fact gate")
+            # the verifier is the containment gate: a factless answer
+            # fails it
+            class _S:
+                pending_answer = "I could not find it."
+                final_result = None
+            ok, detail = verifier(_S())
+            self.assertFalse(ok)
+
+
+if __name__ == "__main__":
+    unittest.main()

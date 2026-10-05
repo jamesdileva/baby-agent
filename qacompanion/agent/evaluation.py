@@ -370,6 +370,27 @@ def compare(old: EvalReport, new: EvalReport) -> Dict[str, Any]:
             "deltas": deltas}
 
 
+def build_fact_verifier(fact_gate: List[str]) -> Callable[[Any],
+                       "tuple[bool, str]"]:
+    """S118: the shared fact-gate verifier builder — used by
+    run_evaluation AND run_verdict. The rejection must NOT name the
+    facts (S114: gen-24's models echoed the rejection's own fact list
+    without grounding); it only says the answer must quote the
+    command from the documentation."""
+    facts = [f.lower() for f in fact_gate]
+
+    def fact_verifier(session, _facts=facts):
+        text = (getattr(session, "pending_answer", None)
+                or session.final_result or "").lower()
+        missing = [f for f in _facts if f not in text]
+        if missing:
+            return False, ("final answer must quote the exact run "
+                           "command from the documentation")
+        return True, "final answer contains the planted facts"
+
+    return fact_verifier
+
+
 def run_evaluation(models: Dict[str, Callable[[Optional[str]], Any]],
                    tasks: Optional[List[EvalTask]] = None,
                    store: Optional[ExperienceStore] = None,
@@ -398,22 +419,7 @@ def run_evaluation(models: Dict[str, Callable[[Optional[str]], Any]],
                 # S105: answer-QA tasks gate on fact containment in the
                 # final answer (the loop only COMPLETEDs when the gate
                 # passes; failures enter the normal recovery path)
-                facts = [f.lower() for f in task.fact_gate]
-
-                def fact_verifier(session, _facts=facts):
-                    # S114: the rejection must NOT name the facts —
-                    # gen-24's models passed by echoing the rejection's
-                    # own fact list without ever grounding in the docs
-                    text = (getattr(session, "pending_answer", None)
-                            or session.final_result or "").lower()
-                    missing = [f for f in _facts if f not in text]
-                    if missing:
-                        return False, ("final answer must quote the "
-                                       "exact run command from the "
-                                       "documentation")
-                    return True, "final answer contains the planted facts"
-
-                task_verifier = fact_verifier
+                task_verifier = build_fact_verifier(task.fact_gate)
             report.results[model_name][task.name] = run_benchmark(
                 factory(model_name), workspace_root=str(root),
                 experience_store=store, events=events or EventStream(),
