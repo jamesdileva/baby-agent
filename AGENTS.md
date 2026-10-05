@@ -260,6 +260,30 @@ commit + push → worklog entry.**
   free T4's 15GB OOMs at 9B, ~16-18GB estimated). Suite untouched
   (scout + docs slice).
 
+- 2026-10-04 — **The ep25 regression check (seed 43) — indirect
+  0/6 across both readings: SYSTEMATIC, not noise; cascade 2/3
+  in-band; ep20-q4 REMAINS champion (15/18 vs 13/18, the pinned set
+  is the guard); ep25 = the rung-7 breakthrough generation with a
+  documented indirect regression** — the seed-43 re-check (cascade +
+  indirect, n=3, 600s): cascade **2/3** (1 max-iter at the 25
+  budget + 2 clean 9-iter wins — in-band, recovered from seed 42's
+  1/3), indirect **0/3 again (all max-iterations)** — **indirect is
+  0/6 across both seeds: the ep20-24 capability (3/3 stable across
+  four readings) is GONE in ep25.** Combined: ep20 16/18 vs ep25
+  13/18. THE TRADE: ep25 gained rung 7 (explore-qa 3/3, the first
+  trained-model exploration capability) and lost indirect — the
+  codeintel loop (ep21-era shape) returned on indirect specifically.
+  The cause is unconfirmed: the 13-record corpus swap is the only
+  delta (the indirect real records: 59 present, the drills present —
+  no eviction); candidate: the 20 zero-run_tests explore records
+  shifted the task-conditioning balance away from the repair
+  test-first shape that indirect depends on. **The champion call:
+  ep20 holds** — 15/18 vs 13/18, indirect stability is worth more
+  than the new capability until the regression is understood. The
+  ep25 line stays alive: the rung-7 capability is real, banked, and
+  the indirect fix (ep26) can build on it. Suite untouched
+  (measurement + docs slice).
+
 - 2026-10-04 — **S118 honest re-measurement — explore-qa 3/3 for
   ep25: THE RUNG-7 WALL HAS FALLEN AT 7B via cross-model imitation;
   the regression check is running** — the corrected-gate re-run
