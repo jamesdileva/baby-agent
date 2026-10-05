@@ -78,3 +78,6 @@ Modelfile.*
 
 # local ep25 regression-check driver (measurement, not repo tooling)
 /_ep25_regcheck.py
+
+# local ep25 tool-fix retest driver (measurement, not repo tooling)
+/_ep25_toolfix_retest.py
