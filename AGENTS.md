@@ -284,21 +284,20 @@ commit + push → worklog entry.**
   the indirect fix (ep26) can build on it. Suite untouched
   (measurement + docs slice).
 
-- 2026-10-05 — **S120 the schema-prompt inference retest — ep25
-  (existing weights, NO retraining) scores explore-qa 1/3, closing
-  at 11 iterations: the first trained-model explore-qa success at
-  the standard budget** — the schema-visible prompt (S119b) applied
-  to ep25's existing weights at inference: one success at 11 iters
-  (within the standard 12) + two max-iterations at 25. THE READ:
-  the schema fix has real inference-side signal (0/3 -> 1/3 without
-  any training), but the partial result supports the alignment
-  thesis — the full fix is the aligned retrain (ep26), where every
-  training record carries the schemas. The two max-iter runs: the
-  model thrashed despite the schemas — consistent with the
-  train/inference mismatch (trained on description-only prompts,
-  inference shows schemas). ep26 expectation: explore-qa toward
-  2-3/3 + the codeintel loops collapsing in cascade/indirect.
-  Suite untouched (measurement slice).
+- 2026-10-05 — **S120 the schema-prompt inference retest —
+  CORRECTED scope: the primary schema test is cascade/indirect (the
+  codeintel loops), which launched after an off-target first probe;
+  the explore-qa probe returned 1/3 (one success at 11 iters + two
+  max-iterations at the 25 budget — explore-qa 3/3 already existed
+  at that budget from the S118 re-measurement, so the 'first at the
+  standard budget' framing was wrong on both counts)** — the
+  schema-visible prompt (S119b) applied to ep25's existing weights
+  at inference. THE READ: partial inference-side signal, supporting
+  the alignment thesis — the full fix is the aligned retrain (ep26).
+  THE PRIMARY TEST (cascade + indirect under the schema prompt, n=3,
+  seed 42): decides whether the codeintel loops collapse when the
+  arg schemas are visible without retraining. Suite untouched
+  (measurement slice).
 
 - 2026-10-04 — **The ep25 tool-fix retest — the trap CONFIRMED as a
   major cause: indirect 0/3 -> 2/3 under the fixed contract, but the
