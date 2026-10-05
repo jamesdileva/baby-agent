@@ -260,6 +260,27 @@ commit + push → worklog entry.**
   free T4's 15GB OOMs at 9B, ~16-18GB estimated). Suite untouched
   (scout + docs slice).
 
+- 2026-10-04 — **S118 honest re-measurement — explore-qa 3/3 for
+  ep25: THE RUNG-7 WALL HAS FALLEN AT 7B via cross-model imitation;
+  the regression check is running** — the corrected-gate re-run
+  (run_evaluation, real fact gate, temp 0, 600s): **ep25 3/3
+  (deterministic 8-iteration runs x3)** vs ep20 0/3 (max-iter x2 +
+  a verification-fail quit). THE SHAPE (recorded trajectory): the
+  drilled exploration executed cleanly — list -> README ->
+  experience_search -> ANSWER with the facts. THE CAVEAT SET: (1)
+  the runs used the 25-iteration driver default (one success would
+  close within the standard 12; the other two needed 19-21 — the
+  budget question is recorded); (2) the same-day gen-25 verdict
+  showed ep25 pinned 10/15 (cascade 1/3, indirect 0/3 — the ep21-era
+  codeintel loop REGRESSED back, 10-failure thrash) — the champion
+  question hangs on whether that regression is noise or the corpus
+  swap; **the regression re-check (cascade + indirect, n=3, seed 43)
+  is RUNNING**; (3) attribution: the double experiment bundled
+  pollution removal + cross-model imitation — movement is confirmed,
+  the split is open. ep20-q4 holds the champion seat pending the
+  regression check (16/18 vs 13/18; the pinned set is the guard).
+  Suite untouched (measurement slice).
+
 - 2026-10-02 — **S111 A/B — the attention hypothesis NOT supported
   (preliminary, stopped early); the re-scout launches; the 9B
   landscape settled** — the TaskListingReminder A/B ran one rep
