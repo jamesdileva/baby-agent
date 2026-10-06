@@ -87,3 +87,6 @@ Modelfile.*
 
 # local S120 cascade/indirect schema retest driver (measurement)
 /_s120_cascade_indirect.py
+
+# local ep26 indirect-budget check driver (measurement)
+/_ep26_indirect_budget.py
