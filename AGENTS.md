@@ -331,6 +331,26 @@ commit + push → worklog entry.**
   sequencing regardless** (the demos are additive; ep27 trains
   after the champion call). Suite untouched (verdict + docs slice).
 
+- 2026-10-05 — **The ep26 indirect budget check — the "regression"
+  partially dissolves into a budget artifact: at 16 iterations
+  indirect scores 1/3 (one clean 13-iter success; two runs still
+  wandered past 16)** — the trajectory forensics (user-directed):
+  ep26's indirect failures are the model executing the COMPLETE
+  drilled chain (list -> test -> code_importers -> read -> edit ->
+  test -> re-read -> edit -> test) and hitting the 12-iteration
+  ceiling MID-LOOP — the successes (11 iters) and failures (12
+  iters) take the IDENTICAL tool sequence, one iteration apart. At
+  16 iters: one run closed at 13; two still wandered. THE VERDICT:
+  the indirect chain is now 13+ iterations (the schema-visible
+  methodical shape: code_importers used CORRECTLY, re-reads before
+  re-edits) — at the 12-iter budget it is a coin flip; at 16, still
+  not deterministic. guessed_path 0.0 is a WIN: the guessing is
+  extinct. ep26-q4's champion ship stands (the indirect trade is
+  budget + stability, not capability); the ep27+ options: (a) a
+  raised indirect budget in the verdict harness, (b) efficiency
+  training (fewer re-reads), (c) accept the trade. Suite untouched
+  (measurement slice).
+
 - 2026-10-05 — **S120 cascade/indirect schema retest (the PRIMARY
   test) — the schema fix CONFIRMED at inference: cascade 1/3 -> 3/3
   (clean 8-iter runs, the codeintel loops COLLAPSED), indirect 0/3
