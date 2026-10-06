@@ -284,6 +284,30 @@ commit + push → worklog entry.**
   the indirect fix (ep26) can build on it. Suite untouched
   (measurement + docs slice).
 
+- 2026-10-05 — **Gen-26 verdict (seed 42, 600s) — ep26 17/18: the
+  schema-aligned retrain DELIVERS on every axis; explore-qa 3/3 AT
+  THE STANDARD BUDGET (6 iters per run — the trained schemas made
+  rung 7 fast), the codeintel loops are GONE (7 tool failures total
+  across 18 runs — the cleanest protocol line ever recorded), the
+  pinned set holds 14/15; ep20 15/18 same-day; seed-43 confirmation
+  running before the champion call** — pinned 6-task: ep26 **17/18**
+  (calc/strings/json 3/3 ZERO failures, **cascade 3/3 with ZERO
+  failures — the stabilization now clean**, indirect 2/3 (one
+  max-iter at only 2 failures — the softest signature possible),
+  **explore-qa 3/3 at 6 iters x3 with 1 failure each**) vs ep20
+  15/18 (pinned 15/15, explore-qa 0/3 at 6-failure thrash x3).
+  METRICS: ep26 success 0.9444, chaining 1.0, guessed_path 0.0,
+  tool_failures 7 (vs ep20's 19) — the cleanest line in program
+  history, beating ep20's own cleanest (ep19's 19). THE ARC CLOSED:
+  the rung-7 wall that 5 trained attempts + 2 inference instruments
+  could not move fell when (a) the cross-model imitation taught the
+  answer shape and (b) the schema fix let the model see the tool
+  args it was inventing. The indirect 2/3: one max-iter at 2
+  failures — in-band-adjacent, not the 0/6 catastrophe ep25 had.
+  ep26 not shipped pending seed 43; **ep27 = rung-4 authoring per
+  sequencing regardless** (the demos are additive; ep27 trains
+  after the champion call). Suite untouched (verdict + docs slice).
+
 - 2026-10-05 — **S120 cascade/indirect schema retest (the PRIMARY
   test) — the schema fix CONFIRMED at inference: cascade 1/3 -> 3/3
   (clean 8-iter runs, the codeintel loops COLLAPSED), indirect 0/3

@@ -177,6 +177,15 @@ returned; cause unconfirmed — the 13-record swap is the only delta)
 and cascade sits in-band at 3/6. ep20-q4 remains champion (15/18 vs
 13/18; the pinned set is the guard); ep25's line stays alive: rung 7
 is real at 7B and the indirect regression is the named ep26 target.
+**GEN-26 (2026-10-05, seed 42): ep26 17/18 — the schema-aligned
+retrain delivers everything.** explore-qa 3/3 AT THE STANDARD BUDGET
+(6 iters x3 — the trained schemas made rung 7 fast), cascade 3/3
+with ZERO failures, the codeintel loops GONE (7 tool failures total
+across 18 runs — the cleanest protocol line ever: guessed_path 0.0,
+chaining 1.0), the pinned set 14/15 (indirect 2/3, one soft
+max-iter at 2 failures). vs ep20 15/18 same-day. Seed-43
+confirmation running before the champion call; ep27 (rung-4)
+proceeds per sequencing regardless.
 **S120 cascade/indirect schema retest (2026-10-05): the schema fix
 CONFIRMED at inference — ep25 cascade 1/3 -> 3/3 (clean 8-iter runs,
 the codeintel loops collapsed when the arg schemas became visible;
