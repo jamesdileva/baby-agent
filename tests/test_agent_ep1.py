@@ -706,7 +706,7 @@ class AgentAuthoredTests(unittest.TestCase):
 
     def test_batches_pass_the_quality_validator(self):
         demos = agent_authored_demos(sys.executable)
-        self.assertEqual(36, len(demos))
+        self.assertEqual(39, len(demos))
         for demo in demos:
             with self.subTest(goal=demo["goal"][:40]):
                 ok, reasons = validate_demonstration(
@@ -863,14 +863,14 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             stats = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(36, stats["runs"])
-            self.assertEqual(36, stats["passed"], stats)
+            self.assertEqual(39, stats["runs"])
+            self.assertEqual(39, stats["passed"], stats)
             self.assertEqual(0, stats["rejected"])
             records = store.load()
             tagged = [r for r in records
                       if "agent-authored" in r.tags]
-            self.assertEqual(36, len(tagged))
-            self.assertEqual(36, len({r.goal.split(" (benchmark")[0]
+            self.assertEqual(39, len(tagged))
+            self.assertEqual(39, len({r.goal.split(" (benchmark")[0]
                                      for r in tagged}))
             recovered = [r for r in records
                          if "edit-recovery" in r.tags]
@@ -883,11 +883,11 @@ class AgentAuthoredTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             store = ExperienceStore(Path(tmp) / "e.jsonl")
             first = build_agent_corpus(store, python=sys.executable)
-            self.assertEqual(36, first["passed"])
+            self.assertEqual(39, first["passed"])
             second = build_agent_corpus(store, python=sys.executable)
             self.assertEqual(0, second["runs"])
-            self.assertEqual(36, second["skipped_existing"])
-            self.assertEqual(36, len(store.load()))
+            self.assertEqual(39, second["skipped_existing"])
+            self.assertEqual(39, len(store.load()))
 
 
 if __name__ == "__main__":

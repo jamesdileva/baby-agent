@@ -2085,13 +2085,69 @@ def agent_authored_demos(python: str) -> List[Dict[str, Any]]:
     # removed — gen-22 imitated the demonstrated opening guess; its
     # record is superseded by supersede_opening_guess_demos, and
     # testing-v3 above carries the mid-chain version of the lesson.
+
+    r4_drills = [
+        {
+            "module": 'calc_pro',
+            "module_code": 'def add(a, b):\n    return a + b\n\n\ndef multiply(a, b):\n    return a * b\n',
+            "test_code": 'import unittest\n\nfrom calc_pro import add, multiply\n\n\nclass TestCalcPro(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n\n    def test_multiply(self):\n        self.assertEqual(multiply(4, 3), 12)\n\n\nif __name__ == "__main__":\n    unittest.main()\n',
+            "mut_old": '    return a * b',
+            "mut_new": '    return a - b',
+            "goal": "Author a proven unit test for calc_pro's add and multiply: write real assertions with specific values, break multiply deliberately to prove the test catches defects, restore it, and show the suite green.",
+            "diagnosis": 'calc_pro.py defined add and multiply; I authored test_calc_pro.py with literal expected values (add(2, 3) == 5, multiply(4, 3) == 12). To prove the test works I mutated multiply to return a - b: the suite FAILED, so the test catches defects. Restoring multiply returned the suite to green. test_calc_pro.py is authored and mutation-proven.',
+        },
+        {
+            "module": 'textpro',
+            "module_code": 'def shout(s):\n    return s.upper()\n\n\ndef whisper(s):\n    return s.lower()\n',
+            "test_code": 'import unittest\n\nfrom textpro import shout, whisper\n\n\nclass TestTextPro(unittest.TestCase):\n    def test_shout(self):\n        self.assertEqual(shout("hey"), "HEY")\n\n    def test_whisper(self):\n        self.assertEqual(whisper("HEY"), "hey")\n\n\nif __name__ == "__main__":\n    unittest.main()\n',
+            "mut_old": '    return s.upper()',
+            "mut_new": '    return s.upper() + "!"',
+            "goal": "Author a proven unit test for textpro's shout and whisper: write literal assertions, mutate shout to prove the test fails on defects, restore it, and show the suite green.",
+            "diagnosis": "textpro.py defined shout and whisper; I authored test_textpro.py with literal expected values (shout('hey') == 'HEY', whisper('HEY') == 'hey'). The mutation proof: appending an exclamation mark to shout's return made the suite FAIL — the test catches defects. Restoring shout made it green again. test_textpro.py is authored and mutation-proven.",
+        },
+        {
+            "module": 'stats',
+            "module_code": 'def mean(nums):\n    return sum(nums) / len(nums)\n\n\ndef total(nums):\n    return sum(nums)\n',
+            "test_code": 'import unittest\n\nfrom stats import mean, total\n\n\nclass TestStats(unittest.TestCase):\n    def test_mean(self):\n        self.assertEqual(mean([3, 4]), 3.5)\n        self.assertEqual(mean([10]), 10.0)\n\n    def test_total(self):\n        self.assertEqual(total([1, 2, 3]), 6)\n\n\nif __name__ == "__main__":\n    unittest.main()\n',
+            "mut_old": '    return sum(nums) / len(nums)',
+            "mut_new": '    return sum(nums) // len(nums)',
+            "goal": "Author a proven unit test for stats' mean and total: write assertions with exact fractional values, flip mean's division to prove the test catches defects, restore it, and show the suite green.",
+            "diagnosis": "stats.py defined mean and total; I authored test_stats.py with exact values (mean([3, 4]) == 3.5, mean([10]) == 10.0). The mutation proof: flipping mean's division to integer division made the suite FAIL (3 instead of 3.5) — the test catches defects. Restoring the true division made it green. test_stats.py is authored and mutation-proven.",
+        },
+    ]
+    for drill in r4_drills:
+        path = f"{drill['module']}.py"
+        test_path = f"test_{drill['module']}.py"
+        script = [
+            _list(),
+            _read(path),
+            ToolCall(name="write_file",
+                     arguments={"path": test_path,
+                                "content": drill["test_code"]}),
+            _tests(python),
+            # the MUTATION: break the target function deliberately
+            _edit(path, drill["mut_old"], drill["mut_new"]),
+            _tests(python),
+            # the RESTORE: exact inverse of the mutation
+            _edit(path, drill["mut_new"], drill["mut_old"]),
+            _tests(python),
+            _final(drill["diagnosis"]),
+        ]
+        demos.append({"script": script,
+                      "files": {path: drill["module_code"],
+                                test_path: drill["test_code"]},
+                      "goal": drill["goal"],
+                      "mutation_proof": {"test_file": test_path,
+                                         "module": path,
+                                         "target": drill["module"]}})
     return demos
 
 
 def validate_demonstration(script: List[Any], files: Dict[str, str],
                             goal: str,
                             recovery_anchors: Optional[List[str]] = None,
-                            ambiguous_anchors: Optional[List[str]] = None
+                            ambiguous_anchors: Optional[List[str]] = None,
+                            mutation_proof: Optional[Dict[str, str]] = None
                             ) -> "tuple[bool, List[str]]":
     """S80 demo quality validator — the anti-flakiness bar every
     demonstration must clear BEFORE it can enter the corpus
@@ -2202,6 +2258,48 @@ def validate_demonstration(script: List[Any], files: Dict[str, str],
         reasons.append("recovery miss without a later corrective edit "
                        "on the same path")
 
+    # 5b. S121 mutation proof (rung 4): a demo declaring
+    # mutation_proof must WRITE the test file, exercise the target
+    # function with literal assertions, and contain a mutate/revert
+    # edit pair bracketed by run_tests calls — the structural shape
+    # of a proven test. The REAL proof (the mutant actually failing
+    # the suite) is checked post-run in build_agent_corpus.
+    if mutation_proof:
+        test_file = mutation_proof.get("test_file")
+        module_path = mutation_proof.get("module")
+        target = mutation_proof.get("target", "")
+        if not test_file or test_file not in state:
+            reasons.append("mutation_proof: declared test file was "
+                           "never written")
+        else:
+            test_body = state[test_file]
+            if target and target not in test_body:
+                reasons.append("mutation_proof: the test never "
+                               f"exercises {target!r}")
+            if "assert" not in test_body.lower():
+                reasons.append("mutation_proof: the test carries no "
+                               "assertions")
+        edits_mp = [(i, t) for i, t in enumerate(tool_calls)
+                    if t.name == "edit_file"
+                    and t.arguments.get("path") == module_path]
+        pair_found = False
+        for a in range(len(edits_mp)):
+            for b in range(a + 1, len(edits_mp)):
+                ea, eb = edits_mp[a][1], edits_mp[b][1]
+                if (ea.arguments.get("new_string") ==
+                        eb.arguments.get("old_string")
+                        and ea.arguments.get("old_string") ==
+                        eb.arguments.get("new_string")):
+                    between = tool_calls[edits_mp[a][0] + 1:edits_mp[b][0]]
+                    after = tool_calls[edits_mp[b][0] + 1:]
+                    if (any(t.name == "run_tests" for t in between)
+                            and any(t.name == "run_tests"
+                                    for t in after)):
+                        pair_found = True
+        if not pair_found:
+            reasons.append("mutation_proof: no mutate/revert edit pair "
+                           "bracketed by run_tests calls")
+
     # 6. goal identity (the S78 goal-dedupe lesson): no placeholder or
     # generic-only goals
     words = [w for w in re.split(r"\W+", goal.lower()) if w]
@@ -2255,7 +2353,8 @@ def build_agent_corpus(experience_store: ExperienceStore,
         ok, reasons = validate_demonstration(
             script, files, goal,
             recovery_anchors=demo.get("recovery_anchors"),
-            ambiguous_anchors=demo.get("ambiguous_anchors"))
+            ambiguous_anchors=demo.get("ambiguous_anchors"),
+            mutation_proof=demo.get("mutation_proof"))
         if not ok:
             stats["rejected"] += 1
             stats["tasks"].append({"goal": goal, "success": False,
@@ -2300,8 +2399,40 @@ def build_agent_corpus(experience_store: ExperienceStore,
         stats["runs"] += 1
         stats["durations_s"] += report.duration_seconds
         if report.success:
-            stats["passed"] += 1
             records = experience_store.load()
+            # S121: the REAL mutation proof - the captured run_tests
+            # steps must show the suite FAILING after the mutation and
+            # passing after the restore; a demo whose test does not
+            # catch the mutant is rejected even though the run itself
+            # completed
+            if demo.get("mutation_proof"):
+                import re as _re
+                steps_mp = (records[-1].context.get("tool_calls")
+                            if records else None) or []
+                test_runs = []
+                for s_mp in steps_mp:
+                    if s_mp.get("tool") != "run_tests":
+                        continue
+                    # S121: the result_head is a TRUNCATED JSON (240
+                    # chars) — json.loads fails on it; the exit code
+                    # rides early in the structure, so regex it
+                    match = _re.search(r'"exit_code": (\d+)',
+                                       str(s_mp.get("result_head") or ""))
+                    if match:
+                        test_runs.append(int(match.group(1)))
+                proof_ok = (len(test_runs) >= 3
+                            and test_runs[-1] == 0
+                            and any(code != 0 for code in test_runs[:-1]))
+                if not proof_ok:
+                    stats["failed"] += 1
+                    stats["tasks"].append({
+                        "goal": goal, "success": False,
+                        "iterations": report.iterations,
+                        "termination": "mutation proof failed: the "
+                                       "authored test did not catch "
+                                       "the mutant"})
+                    continue
+            stats["passed"] += 1
             if records:
                 last = records[-1]
                 if AGENT_AUTHORED_TAG not in last.tags:
