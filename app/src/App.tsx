@@ -74,7 +74,7 @@ function SidebarSection(props: {
 export default function App() {
   const [goal, setGoal] = useState("The tests in this project are failing. Find the bug, fix it, and run the tests to verify they pass.");
   const [workspace, setWorkspace] = useState("");
-  const [model, setModel] = useState("baby-agent:ep20-q4");
+  const [model, setModel] = useState("baby-agent:ep26-q4");
   const [models, setModels] = useState<string[]>([]);
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [provider, setProvider] = useState("ollama");

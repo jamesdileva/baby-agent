@@ -177,6 +177,19 @@ returned; cause unconfirmed — the 13-record swap is the only delta)
 and cascade sits in-band at 3/6. ep20-q4 remains champion (15/18 vs
 13/18; the pinned set is the guard); ep25's line stays alive: rung 7
 is real at 7B and the indirect regression is the named ep26 target.
+**GEN-26 CONFIRMED + SHIPPED (2026-10-05): ep26-q4 = THE CHAMPION —
+32/36 across both seeds (17/18 + 15/18), all six rungs honest.**
+explore-qa 6/6 (deterministic 6-iter runs at BOTH seeds — rung 7
+conquered at the standard budget), cascade 6/6 zero-failure, the
+pinned set 14/15, the behavior metrics cleanest-ever (chaining 1.0
+x2, guessed_path 0.0 x2, 17 tool failures across 36 runs vs ep20's
+38). **THE INDIRECT TRADE: ep26 2/6 vs ep20 6/6 — documented as the
+ep28 target** (the schema-prompt training or the corpus swap; cause
+unconfirmed). The rung-7 arc's final accounting: 6 trained attempts;
+the wall fell when the harness bugs (oracle leak, tool-contract
+trap, invisible schemas) were fixed AND the 9B's recorded behavior
+taught the answer shape — harness truth plus cross-model imitation.
+ep27 = rung-4 authoring per sequencing.
 **GEN-26 (2026-10-05, seed 42): ep26 17/18 — the schema-aligned
 retrain delivers everything.** explore-qa 3/3 AT THE STANDARD BUDGET
 (6 iters x3 — the trained schemas made rung 7 fast), cascade 3/3

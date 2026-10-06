@@ -284,6 +284,29 @@ commit + push → worklog entry.**
   the indirect fix (ep26) can build on it. Suite untouched
   (measurement + docs slice).
 
+- 2026-10-05 — **Gen-26 confirmation (seed 43, 600s) — ep26 15/18
+  again: 32/36 across both readings, the two-reading ledger favors
+  ep26; **ep26-q4 SHIPPED as champion (dashboard default switched);
+  ep17/ep20-class fallback at 30/36; ep27 = rung-4 authoring per
+  sequencing; the indirect regression (2/6) is the documented
+  ep28 target** — the confirmation: calc/strings/json 3/3 ZERO
+  failures, **cascade 3/3 again (6/6 across readings, zero failures
+  — the stabilization is total)**, indirect 0/3 (max-iter x3 at 2-3
+  failures — the regression is SYSTEMATIC across seeds: ep26
+  indirect 2/6 vs ep20's 6/6), **explore-qa 3/3 again (6 iters x3)**
+  vs ep20 15/18 (pinned 15/15, explore-qa 0/6). METRICS: ep26
+  chaining 1.0, guessed_path 0.0, failures 10 (vs ep20's 19) — both
+  readings cleanest-ever-class. THE CHAMPION CALL: the two-reading
+  ledger ep26 32/36 vs ep20 30/36, the win confirmed across seeds —
+  **ep26 holds rung 7 (6/6, deterministic 6-iter runs) AND the
+  near-complete pinned set (14/15), with the indirect trade
+  documented as the ep28 target.** The dashboard default switched
+  to ep26-q4. The rung-7 arc's final accounting: 6 trained
+  attempts; the wall fell when the harness bugs (oracle leak,
+  tool-contract trap, invisible schemas) were fixed AND the 9B's
+  recorded behavior taught the answer shape — harness truth plus
+  cross-model imitation. Suite untouched (verdict + docs slice).
+
 - 2026-10-05 — **Gen-26 verdict (seed 42, 600s) — ep26 17/18: the
   schema-aligned retrain DELIVERS on every axis; explore-qa 3/3 AT
   THE STANDARD BUDGET (6 iters per run — the trained schemas made
