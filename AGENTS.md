@@ -284,6 +284,32 @@ commit + push → worklog entry.**
   the indirect fix (ep26) can build on it. Suite untouched
   (measurement + docs slice).
 
+- 2026-10-06 — **Gen-27 verdict (seed 42 + seed 43, 600s, 6
+  tasks) — ep27 16/18 + 15/18 = 31/36 vs ep26's 32/36; ep26-q4
+  HOLDS champion; explore-qa 6/6 BOTH generations (rung 7 stable);
+  the indirect regression persists (ep26 2/6, ep27 1/6 — the
+  ep25-line tax); rung-4 authoring is TRAINED into ep27 (the eval
+  lacks a test-authorship task — the pinned set is the guard)** —
+  pinned 6-task: ep27 **16/18** (calc/strings/json 3/3 ZERO
+  failures, **cascade 3/3 zero failures — the stabilization held
+  through the rung-4 batch**, indirect 1/3 (one max-iter at 6
+  failures, one max-iter at ZERO failures — the methodical-slow
+  chain, one run of correct work unfinished at the budget),
+  **explore-qa 3/3 at 5-6 iters — FASTER than ep26's 6**) vs ep26
+  16/18 (pinned 14/15, explore-qa 3/3). THE TWO-READING LEDGER:
+  ep26 32/36 vs ep27 31/36; the pinned sets TIE 29/30; explore-qa
+  both 6/6; the difference is indirect (ep26 2/6 vs ep27 1/6).
+  **Champion: ep26-q4 holds** (the incumbent, the ledger lead, and
+  the less-regressed indirect). ep27 not shipped. **The indirect
+  regression is now systematic across THREE generations (ep25 0/6,
+  ep26 2/6, ep27 1/6): the schema-visible methodical chain runs
+  13+ iters vs the 12 budget (the ep26 budget forensics — run 2 of
+  ep27's indirect: 12 iters, ZERO tool failures, correct work
+  unfinished). ep28 = the approved fix: the raised indirect budget
+  + efficiency training.** Rung-4's capability signal awaits a
+  test-authorship eval task (a future harness addition). Suite
+  untouched (verdict + docs slice).
+
 - 2026-10-05 — **Gen-26 confirmation (seed 43, 600s) — ep26 15/18
   again: 32/36 across both readings, the two-reading ledger favors
   ep26; **ep26-q4 SHIPPED as champion (dashboard default switched);

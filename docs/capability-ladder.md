@@ -190,6 +190,16 @@ the wall fell when the harness bugs (oracle leak, tool-contract
 trap, invisible schemas) were fixed AND the 9B's recorded behavior
 taught the answer shape — harness truth plus cross-model imitation.
 ep27 = rung-4 authoring per sequencing.
+**GEN-27 (2026-10-06, both seeds): ep27 31/36 vs ep26 32/36 — ep26
+holds champion.** explore-qa 6/6 BOTH generations (rung 7 STABLE —
+ep27's even faster: 5-6 iters), cascade 6/6 both, the pinned sets
+TIE 29/30. **The indirect regression is SYSTEMATIC across three
+generations: ep25 0/6, ep26 2/6, ep27 1/6** — the schema-visible
+methodical chain runs 13+ iters vs the 12 budget (ep27 run 2: 12
+iters, ZERO tool failures, correct work unfinished — budget, not
+capability). **ep28 = the approved fix: raised indirect budget +
+efficiency training.** Rung-4's capability signal awaits a
+test-authorship eval task.
 **GEN-26 (2026-10-05, seed 42): ep26 17/18 — the schema-aligned
 retrain delivers everything.** explore-qa 3/3 AT THE STANDARD BUDGET
 (6 iters x3 — the trained schemas made rung 7 fast), cascade 3/3
